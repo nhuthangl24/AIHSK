@@ -15,7 +15,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@netlify/plugin-nextjs": "^5.16.5",
     "@prisma/client": "^6.4.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.13.4",
