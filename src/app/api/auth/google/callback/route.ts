@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { signToken } from "@/lib/auth/jwt";
-import { COOKIE_NAME } from "@/lib/auth/session";
-import { UserRole } from "@prisma/client";
+import { COOKIE_NAME, ADMIN_EMAILS } from "@/lib/auth/session";
 import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
@@ -56,43 +54,52 @@ export async function GET(req: NextRequest) {
     const name = profile.name || profile.given_name || "Google User";
     const avatarUrl = profile.picture || null;
 
-    let user = await prisma.user.findUnique({
-      where: { email },
-    });
+    let userId = `google_${email.replace(/[^a-z0-9]/g, "_")}`;
+    const isAdmin = ADMIN_EMAILS.includes(email);
+    let role = isAdmin ? "ADMIN" : "USER";
 
-    if (!user) {
-      const randomPassword = crypto.randomUUID();
-      const passwordHash = await hashPassword(randomPassword);
+    try {
+      const { default: prisma } = await import("@/lib/db/prisma");
+      let user = await prisma.user.findUnique({ where: { email } });
 
-      user = await prisma.user.create({
-        data: {
-          email,
-          name,
-          avatarUrl,
-          passwordHash,
-          emailVerified: true,
-          role: UserRole.USER,
-          profile: {
-            create: {
-              targetLevel: "HSK 3",
-              nativeLanguage: "Tiếng Việt",
-              learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
-              studyHoursWeekly: 4,
+      if (!user) {
+        const randomPassword = crypto.randomUUID();
+        const passwordHash = await hashPassword(randomPassword);
+
+        user = await prisma.user.create({
+          data: {
+            email,
+            name,
+            avatarUrl,
+            passwordHash,
+            emailVerified: true,
+            role: isAdmin ? "ADMIN" : "USER",
+            profile: {
+              create: {
+                targetLevel: "HSK 3",
+                nativeLanguage: "Tiếng Việt",
+                learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
+                studyHoursWeekly: 4,
+              },
             },
           },
-        },
-      });
+        });
+      }
+      userId = user.id;
+      role = user.role;
+    } catch {
+      // DB offline, proceed with Google profile
     }
 
     const token = await signToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
+      userId,
+      email,
+      role: role as any,
+      name,
     });
 
     let redirectPath = "/dashboard";
-    if (user.role === "ADMIN") redirectPath = "/admin";
+    if (role === "ADMIN") redirectPath = "/admin";
 
     const response = NextResponse.redirect(new URL(redirectPath, origin));
 

@@ -8,23 +8,25 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userRecord = await prisma.user.findUnique({
-    where: { id: user.userId },
-    include: { profile: true },
-  });
-
-  if (!userRecord) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  let userRecord: any = null;
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    userRecord = await prisma.user.findUnique({
+      where: { id: user.userId },
+      include: { profile: true },
+    });
+  } catch {
+    userRecord = null;
   }
 
   return NextResponse.json({
     user: {
-      name: userRecord.name,
-      email: userRecord.email,
-      targetLevel: userRecord.profile?.targetLevel || "HSK 3",
-      nativeLanguage: userRecord.profile?.nativeLanguage || "Tiếng Việt",
-      studyHoursWeekly: userRecord.profile?.studyHoursWeekly ?? 3,
-      learningGoal: userRecord.profile?.learningGoal || "",
+      name: userRecord?.name || user.name || "",
+      email: userRecord?.email || user.email || "",
+      targetLevel: userRecord?.profile?.targetLevel || "HSK 3",
+      nativeLanguage: userRecord?.profile?.nativeLanguage || "Tiếng Việt",
+      studyHoursWeekly: userRecord?.profile?.studyHoursWeekly ?? 3,
+      learningGoal: userRecord?.profile?.learningGoal || "",
     },
   });
 }

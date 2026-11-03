@@ -28,7 +28,7 @@ export default async function LearnerDashboardPage() {
     (async () => {
       try {
         const { default: prisma } = await import("@/lib/db/prisma");
-        return prisma.assessmentSession.findMany({
+        return await prisma.assessmentSession.findMany({
           where: { userId: user.userId },
           include: { template: true, result: true },
           orderBy: { createdAt: "desc" },
@@ -39,13 +39,13 @@ export default async function LearnerDashboardPage() {
     (async () => {
       try {
         const { default: prisma } = await import("@/lib/db/prisma");
-        return prisma.userProfile.findUnique({ where: { userId: user.userId } });
+        return await prisma.userProfile.findUnique({ where: { userId: user.userId } });
       } catch { return null; }
     })(),
     (async () => {
       try {
         const { default: prisma } = await import("@/lib/db/prisma");
-        return prisma.subscription.findFirst({
+        return await prisma.subscription.findFirst({
           where: { userId: user.userId, status: "ACTIVE" },
           include: { plan: true },
         });

@@ -10,21 +10,33 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [templates, sessions] = await Promise.all([
-    prisma.assessmentTemplate.findMany({
-      where: { isActive: true, isPublic: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.assessmentSession.findMany({
-      where: { userId: user.userId },
-      include: {
-        template: true,
-        result: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    }),
-  ]);
+  let templates: any[] = [];
+  let sessions: any[] = [];
+
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    const [dbTemplates, dbSessions] = await Promise.all([
+      prisma.assessmentTemplate.findMany({
+        where: { isActive: true, isPublic: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.assessmentSession.findMany({
+        where: { userId: user.userId },
+        include: {
+          template: true,
+          result: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      }),
+    ]);
+    templates = dbTemplates;
+    sessions = dbSessions;
+  } catch {
+    // DB offline, return empty list (client will show preset topics)
+    templates = [];
+    sessions = [];
+  }
 
   return NextResponse.json({ templates, sessions });
 }
