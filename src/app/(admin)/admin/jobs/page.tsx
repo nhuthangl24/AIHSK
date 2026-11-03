@@ -1,0 +1,64 @@
+import prisma from "@/lib/db/prisma";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Activity } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+
+export default async function AdminJobsPage() {
+  const jobs = await prisma.backgroundJob.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          Background Processing & Worker Queues
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Monitor asynchronous scoring pipelines, audio transcription jobs, and retry failed executions.
+        </p>
+      </div>
+
+      <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+              <tr>
+                <th className="py-3 px-4">Job ID</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">Retries</th>
+                <th className="py-3 px-4">Created Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {jobs.map((j) => (
+                <tr key={j.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                  <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                    {j.id.substring(0, 12)}...
+                  </td>
+                  <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                    {j.jobType}
+                  </td>
+                  <td className="py-3 px-4">
+                    <Badge variant={j.status === "COMPLETED" ? "success" : "warning"} className="text-[10px]">
+                      {j.status}
+                    </Badge>
+                  </td>
+                  <td className="py-3 px-4 text-slate-500">
+                    {j.retries} / {j.maxRetries}
+                  </td>
+                  <td className="py-3 px-4 text-slate-500">
+                    {formatDate(j.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}

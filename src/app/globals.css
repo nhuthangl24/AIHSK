@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 346 84% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 215 25% 93%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 215 25% 93%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 215 25% 93%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 346 84% 50%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
+
+    --card: 224 71% 7%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 224 71% 7%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 346 84% 53%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 346 84% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-rose-500/20 selection:text-rose-500;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom soundwave animations */
+@keyframes voiceBar {
+  0%, 100% {
+    height: 6px;
+  }
+  50% {
+    height: 32px;
+  }
+}
+
+.animate-voice-bar-1 {
+  animation: voiceBar 0.9s ease-in-out infinite 0.1s;
+}
+.animate-voice-bar-2 {
+  animation: voiceBar 0.7s ease-in-out infinite 0.3s;
+}
+.animate-voice-bar-3 {
+  animation: voiceBar 1.1s ease-in-out infinite 0.15s;
+}
+.animate-voice-bar-4 {
+  animation: voiceBar 0.8s ease-in-out infinite 0.4s;
+}
+.animate-voice-bar-5 {
+  animation: voiceBar 1s ease-in-out infinite 0.25s;
+}
