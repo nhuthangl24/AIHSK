@@ -10,6 +10,8 @@ import {
   Mic,
   MicOff,
   Volume2,
+  VolumeX,
+  Square,
   Clock,
   Sparkles,
   ArrowRight,
@@ -293,6 +295,25 @@ export default function AssessmentExamRoomPage() {
     window.speechSynthesis.speak(utterance);
   };
 
+  // Stop Examiner Voice immediately
+  const stopExaminerVoice = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setIsExaminerSpeaking(false);
+    }
+  };
+
+  // Keyboard shortcut: Press Escape to stop examiner speech
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isExaminerSpeaking) {
+        stopExaminerVoice();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isExaminerSpeaking]);
+
   // Play the latest examiner turn on load or update
   useEffect(() => {
     if (!session?.turns || session.turns.length === 0) return;
@@ -422,9 +443,13 @@ export default function AssessmentExamRoomPage() {
     }
   };
 
-  // Quick test voice sample in modal
+  // Quick test voice sample in modal (toggles speak / stop)
   const handleTestVoiceSample = () => {
-    speakExaminerText("你好！我是考官李老师，很高兴为你提供华语口语评估服务。");
+    if (isExaminerSpeaking) {
+      stopExaminerVoice();
+    } else {
+      speakExaminerText("你好！我是考官李老师，很高兴为你提供华语口语评估服务。");
+    }
   };
 
   if (isLoading) {
@@ -528,10 +553,15 @@ export default function AssessmentExamRoomPage() {
                 <span>Đang thu ({recordingSeconds}s)</span>
               </>
             ) : isExaminerSpeaking ? (
-              <>
-                <Volume2 className="h-3.5 w-3.5 animate-bounce" />
-                <span>Giám khảo đang nói</span>
-              </>
+              <button
+                type="button"
+                onClick={stopExaminerVoice}
+                className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-85 transition-opacity"
+                title="Bấm để dừng giọng giám khảo (Phím tắt: Esc)"
+              >
+                <Square className="h-3 w-3 fill-rose-600 text-rose-600 animate-pulse" />
+                <span>Giám khảo đang nói &bull; <strong>Dừng lại</strong></span>
+              </button>
             ) : (
               <>
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
