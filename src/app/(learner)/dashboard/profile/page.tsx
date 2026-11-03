@@ -11,14 +11,20 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
-  const userRecord = await prisma.user.findUnique({
-    where: { id: user.userId },
-    include: { profile: true },
-  });
+  let userRecord: any = null;
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    userRecord = await prisma.user.findUnique({
+      where: { id: user.userId },
+      include: { profile: true },
+    });
+  } catch {
+    userRecord = null;
+  }
 
   const initialData = {
-    name: userRecord?.name || "",
-    email: userRecord?.email || "",
+    name: userRecord?.name || user.name || "",
+    email: userRecord?.email || user.email || "",
     targetLevel: userRecord?.profile?.targetLevel || "HSK 3",
     nativeLanguage: userRecord?.profile?.nativeLanguage || "Tiếng Việt",
     studyHoursWeekly: userRecord?.profile?.studyHoursWeekly ?? 3,

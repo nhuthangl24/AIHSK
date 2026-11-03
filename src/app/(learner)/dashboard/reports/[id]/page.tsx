@@ -69,23 +69,29 @@ export default async function AssessmentReportPage({
   const { id } = await params;
   const user = await getCurrentUser();
 
-  const session = await prisma.assessmentSession.findUnique({
-    where: { id },
-    include: {
-      template: true,
-      result: {
-        include: {
-          scoreDimensions: { orderBy: { weight: "desc" } },
-          recommendations: { orderBy: { priority: "asc" } },
+  let session: any = null;
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    session = await prisma.assessmentSession.findUnique({
+      where: { id },
+      include: {
+        template: true,
+        result: {
+          include: {
+            scoreDimensions: { orderBy: { weight: "desc" } },
+            recommendations: { orderBy: { priority: "asc" } },
+          },
         },
+        turns: {
+          orderBy: { turnIndex: "asc" },
+          include: { recording: true },
+        },
+        user: { select: { name: true, email: true } },
       },
-      turns: {
-        orderBy: { turnIndex: "asc" },
-        include: { recording: true },
-      },
-      user: { select: { name: true, email: true } },
-    },
-  });
+    });
+  } catch {
+    session = null;
+  }
 
   if (!session || !session.result) {
     notFound();
@@ -94,9 +100,9 @@ export default async function AssessmentReportPage({
   const result = session.result;
   const scoreBadge = getScoreBadgeColor(result.overallScore);
 
-  const grammarRecs = result.recommendations.filter((r) => r.category === "GRAMMAR");
-  const vocabRecs = result.recommendations.filter((r) => r.category === "VOCABULARY");
-  const pronRecs = result.recommendations.filter((r) => r.category === "PRONUNCIATION");
+  const grammarRecs = result.recommendations.filter((r: any) => r.category === "GRAMMAR");
+  const vocabRecs = result.recommendations.filter((r: any) => r.category === "VOCABULARY");
+  const pronRecs = result.recommendations.filter((r: any) => r.category === "PRONUNCIATION");
 
   const strengths = (result.strengthsJson as string[]) || [];
   const weaknesses = (result.weaknessesJson as string[]) || [];
@@ -190,7 +196,7 @@ export default async function AssessmentReportPage({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {result.scoreDimensions.map((dim) => {
+          {result.scoreDimensions.map((dim: any) => {
             const percent = Math.round((dim.score / dim.maxScore) * 100);
             const quotes = (dim.evidenceQuotesJson as string[]) || [];
             const suggestions = (dim.suggestionsJson as string[]) || [];
@@ -305,7 +311,7 @@ export default async function AssessmentReportPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {grammarRecs.map((g) => (
+                  {grammarRecs.map((g: any) => (
                     <tr key={g.id}>
                       <td className="py-3 px-3 text-rose-600 dark:text-rose-400 font-medium line-through decoration-rose-300">
                         {g.originalPhrase}
@@ -349,7 +355,7 @@ export default async function AssessmentReportPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {vocabRecs.map((v) => (
+                  {vocabRecs.map((v: any) => (
                     <tr key={v.id}>
                       <td className="py-3 px-3 text-slate-700 dark:text-slate-300 font-medium">
                         {v.originalPhrase}
@@ -393,7 +399,7 @@ export default async function AssessmentReportPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {pronRecs.map((p) => (
+                  {pronRecs.map((p: any) => (
                     <tr key={p.id}>
                       <td className="py-3 px-3 text-slate-900 dark:text-white font-semibold">
                         {p.originalPhrase}
@@ -464,7 +470,7 @@ export default async function AssessmentReportPage({
         </CardHeader>
         <CardContent className="p-6 pt-0 space-y-4">
           <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-            {session.turns.map((turn) => {
+            {session.turns.map((turn: any) => {
               const isExaminer = turn.speaker === "EXAMINER";
 
               return (

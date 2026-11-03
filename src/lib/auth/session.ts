@@ -1,9 +1,7 @@
 import { cookies } from "next/headers";
 import { UserRole } from "@prisma/client";
 import { verifyToken, TokenPayload } from "./jwt";
-import { hashPassword } from "./password";
 import { verifyClassniaToken } from "./classnia-token";
-import prisma from "@/lib/db/prisma";
 
 export const COOKIE_NAME = "aihsk_token";
 export const CLASSNIA_COOKIE_NAME = "hsk_session_token";
@@ -53,37 +51,11 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
       if (classniaPayload && classniaPayload.email) {
         const normalizedEmail = classniaPayload.email.toLowerCase().trim();
         const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
-
-        let user = await prisma.user.findUnique({
-          where: { email: normalizedEmail },
-        });
-
-        if (!user) {
-          const randomPass = crypto.randomUUID() + "!PassA1";
-          const passwordHash = await hashPassword(randomPass);
-          user = await prisma.user.create({
-            data: {
-              email: normalizedEmail,
-              name: normalizedEmail.split("@")[0],
-              passwordHash,
-              role: isAdmin ? UserRole.ADMIN : UserRole.USER,
-              emailVerified: true,
-              profile: {
-                create: {
-                  targetLevel: "HSK 3",
-                  nativeLanguage: "Tiếng Việt",
-                  studyHoursWeekly: 3,
-                },
-              },
-            },
-          });
-        }
-
         return {
-          userId: user.id,
-          email: user.email,
-          role: user.role,
-          name: user.name,
+          userId: `classnia_${normalizedEmail.replace(/[^a-z0-9]/g, "_")}`,
+          email: normalizedEmail,
+          role: isAdmin ? UserRole.ADMIN : UserRole.USER,
+          name: normalizedEmail.split("@")[0],
         };
       }
     }
@@ -98,15 +70,33 @@ export async function getCurrentUserWithProfile() {
   const session = await getCurrentUser();
   if (!session) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    include: {
-      profile: true,
-    },
-  });
+  // Try to enrich from DB if available, otherwise return session data directly
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      include: { profile: true },
+    });
+    if (user && user.isActive) return user;
+  } catch {
+    // DB not available (e.g. no DATABASE_URL on edge/serverless) — return minimal profile
+  }
 
-  if (!user || !user.isActive) return null;
-  return user;
+  // Fallback: construct a virtual user from JWT payload (no DB)
+  return {
+    id: session.userId,
+    email: session.email,
+    name: session.name,
+    role: session.role,
+    avatarUrl: null as string | null,
+    isActive: true,
+    emailVerified: true,
+    passwordHash: "",
+    suspendedAt: null as Date | null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    profile: null,
+  };
 }
 
 export async function requireAuth(): Promise<TokenPayload> {

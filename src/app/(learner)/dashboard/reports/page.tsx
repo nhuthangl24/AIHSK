@@ -16,17 +16,23 @@ export default async function ReportsListPage() {
     redirect("/login");
   }
 
-  const sessions = await prisma.assessmentSession.findMany({
-    where: {
-      userId: user.userId,
-      status: "COMPLETED",
-    },
-    include: {
-      template: true,
-      result: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  let sessions: any[] = [];
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    sessions = await prisma.assessmentSession.findMany({
+      where: {
+        userId: user.userId,
+        status: "COMPLETED",
+      },
+      include: {
+        template: true,
+        result: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch {
+    sessions = [];
+  }
 
   return (
     <div className="space-y-8">

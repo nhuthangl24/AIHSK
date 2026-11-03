@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import prisma from "@/lib/db/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,22 +25,32 @@ export default async function LearnerDashboardPage() {
   }
 
   const [sessions, profile, subscription] = await Promise.all([
-    prisma.assessmentSession.findMany({
-      where: { userId: user.userId },
-      include: {
-        template: true,
-        result: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-    }),
-    prisma.userProfile.findUnique({
-      where: { userId: user.userId },
-    }),
-    prisma.subscription.findFirst({
-      where: { userId: user.userId, status: "ACTIVE" },
-      include: { plan: true },
-    }),
+    (async () => {
+      try {
+        const { default: prisma } = await import("@/lib/db/prisma");
+        return prisma.assessmentSession.findMany({
+          where: { userId: user.userId },
+          include: { template: true, result: true },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+        });
+      } catch { return []; }
+    })(),
+    (async () => {
+      try {
+        const { default: prisma } = await import("@/lib/db/prisma");
+        return prisma.userProfile.findUnique({ where: { userId: user.userId } });
+      } catch { return null; }
+    })(),
+    (async () => {
+      try {
+        const { default: prisma } = await import("@/lib/db/prisma");
+        return prisma.subscription.findFirst({
+          where: { userId: user.userId, status: "ACTIVE" },
+          include: { plan: true },
+        });
+      } catch { return null; }
+    })(),
   ]);
 
   const completedSessions = sessions.filter((s) => s.status === "COMPLETED" && s.result);

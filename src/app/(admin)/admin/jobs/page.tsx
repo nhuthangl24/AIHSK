@@ -5,10 +5,16 @@ import { Activity } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default async function AdminJobsPage() {
-  const jobs = await prisma.backgroundJob.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
+  let jobs: any[] = [];
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    jobs = await prisma.backgroundJob.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+  } catch {
+    jobs = [];
+  }
 
   return (
     <div className="space-y-8">

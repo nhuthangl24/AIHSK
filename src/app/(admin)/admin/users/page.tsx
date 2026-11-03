@@ -5,10 +5,16 @@ import { Users, Shield } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default async function AdminUsersPage() {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { profile: true },
-  });
+  let users: any[] = [];
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    users = await prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { profile: true },
+    });
+  } catch {
+    users = [];
+  }
 
   return (
     <div className="space-y-8">

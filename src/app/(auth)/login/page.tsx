@@ -53,12 +53,16 @@ export default function LoginPage() {
           }
         }
       } catch (fbErr: any) {
-        // Nếu không có trên Firebase hoặc sai mật khẩu, tiếp tục thử DB cục bộ
         console.log("Firebase login note:", fbErr.code);
+        if (fbErr.code === "auth/wrong-password" || fbErr.code === "auth/invalid-credential") {
+          setError("Mật khẩu không chính xác. Vui lòng kiểm tra lại hoặc đăng nhập bằng Google.");
+          setIsLoading(false);
+          return;
+        }
       }
     }
 
-    // 2. Thử đăng nhập qua Database cục bộ (cho tài khoản demo hoặc nội bộ)
+    // 2. Thử đăng nhập qua API nội bộ
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -75,7 +79,7 @@ export default function LoginPage() {
       router.push(data.redirectPath || "/dashboard");
       router.refresh();
     } catch (err: any) {
-      setError(err.message || "Email hoặc mật khẩu không chính xác");
+      setError(err.message || "Email hoặc mật khẩu không chính xác. Bạn có thể sử dụng nút Đăng nhập với Google để tiếp tục nhanh.");
     } finally {
       setIsLoading(false);
     }
@@ -84,6 +88,10 @@ export default function LoginPage() {
   const handleGoogleSignInClick = async () => {
     setIsGoogleLoading(true);
     setError(null);
+
+    if (email.trim() && !googleEmailInput) {
+      setGoogleEmailInput(email.trim());
+    }
 
     // Thử mở popup Google Firebase trước
     const { auth } = getFirebaseServices();
@@ -111,8 +119,8 @@ export default function LoginPage() {
           }
         }
       } catch (popupErr: any) {
-        console.log("Google popup cancelled or blocked, opening input modal:", popupErr?.code);
-        // Nếu trình duyệt chặn popup, mở modal nhập email
+        console.log("Google popup notice (e.g. domain whitelist or popup blocked):", popupErr?.code);
+        // Tự động mở modal xác nhận Google email để người dùng không bị gián đoạn
         setShowGoogleModal(true);
       } finally {
         setIsGoogleLoading(false);

@@ -37,27 +37,41 @@ export default async function LearningProgressPage() {
   }
 
   const [sessions, profile] = await Promise.all([
-    prisma.assessmentSession.findMany({
-      where: {
-        userId: user.userId,
-        status: "COMPLETED",
-        result: { isNot: null },
-      },
-      include: {
-        result: {
-          include: {
-            scoreDimensions: {
-              orderBy: { weight: "desc" },
-            },
+    (async () => {
+      try {
+        const { default: prisma } = await import("@/lib/db/prisma");
+        return await prisma.assessmentSession.findMany({
+          where: {
+            userId: user.userId,
+            status: "COMPLETED",
+            result: { isNot: null },
           },
-        },
-        template: true,
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.userProfile.findUnique({
-      where: { userId: user.userId },
-    }),
+          include: {
+            result: {
+              include: {
+                scoreDimensions: {
+                  orderBy: { weight: "desc" },
+                },
+              },
+            },
+            template: true,
+          },
+          orderBy: { createdAt: "asc" },
+        });
+      } catch {
+        return [];
+      }
+    })(),
+    (async () => {
+      try {
+        const { default: prisma } = await import("@/lib/db/prisma");
+        return await prisma.userProfile.findUnique({
+          where: { userId: user.userId },
+        });
+      } catch {
+        return null;
+      }
+    })(),
   ]);
 
   return (

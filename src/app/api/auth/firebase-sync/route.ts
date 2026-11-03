@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db/prisma";
 import { signToken } from "@/lib/auth/jwt";
-import { hashPassword } from "@/lib/auth/password";
 import { getAuthCookieOptions, ADMIN_EMAILS } from "@/lib/auth/session";
 import { UserRole } from "@prisma/client";
 
+/**
+ * Firebase SSO Sync — No Database Required.
+ * Accepts a verified Firebase user payload (already authenticated client-side),
+ * issues a local JWT session cookie, and redirects to dashboard.
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -19,104 +22,25 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
     const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
+    const role: UserRole = isAdmin ? UserRole.ADMIN : UserRole.USER;
 
-    let user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
+    // Use Firebase UID as userId (no DB needed)
+    const userId = uid || `firebase_${normalizedEmail.replace(/[^a-z0-9]/g, "_")}`;
+    const name = displayName || normalizedEmail.split("@")[0];
 
-    if (user) {
-      if (!user.isActive) {
-        return NextResponse.json(
-          { error: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ ban quản trị Classnia." },
-          { status: 403 }
-        );
-      }
+    const token = await signToken({ userId, email: normalizedEmail, role, name });
 
-      // Upgrade to ADMIN if configured in ADMIN_EMAILS
-      if (isAdmin && user.role !== UserRole.ADMIN) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            role: UserRole.ADMIN,
-            avatarUrl: photoURL || user.avatarUrl,
-            name: displayName || user.name,
-          },
-        });
-      } else if (photoURL && !user.avatarUrl) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { avatarUrl: photoURL },
-        });
-      }
-    } else {
-      // Auto-provision user account from Classnia Firebase into PostgreSQL
-      const randomPassword = crypto.randomUUID() + "!PassA1";
-      const passwordHash = await hashPassword(randomPassword);
-
-      user = await prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          name: displayName || normalizedEmail.split("@")[0],
-          avatarUrl: photoURL || null,
-          passwordHash,
-          role: isAdmin ? UserRole.ADMIN : UserRole.USER,
-          emailVerified: true,
-          profile: {
-            create: {
-              targetLevel: "HSK 3",
-              nativeLanguage: "Vietnamese",
-              studyHoursWeekly: 3,
-            },
-          },
-        },
-      });
-    }
-
-    // Sign local JWT session token
-    const token = await signToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    });
-
-    // Routing destination: Admin -> /admin, User -> /dashboard
-    let redirectPath = "/dashboard";
-    if (user.role === "ADMIN") redirectPath = "/admin";
+    const redirectPath = role === UserRole.ADMIN ? "/admin" : "/dashboard";
 
     const response = NextResponse.json({
       success: true,
       message: "Đồng bộ tài khoản Classnia Firebase thành công!",
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatarUrl: user.avatarUrl,
-      },
+      user: { id: userId, email: normalizedEmail, name, role, avatarUrl: photoURL || null },
       redirectPath,
     });
 
-    // Set cookie across subdomains (e.g. .classnia.id.vn)
     const cookieOpts = getAuthCookieOptions();
-    response.cookies.set({
-      ...cookieOpts,
-      value: token,
-    });
-
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        actorId: user.id,
-        action: "FIREBASE_SSO_LOGIN",
-        entityType: "User",
-        entityId: user.id,
-        metadataJson: {
-          firebaseUid: uid || null,
-          provider: "Firebase/Classnia",
-        },
-      },
-    });
+    response.cookies.set({ ...cookieOpts, value: token });
 
     return response;
   } catch (err: any) {

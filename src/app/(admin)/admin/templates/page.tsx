@@ -4,10 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { Layers, Clock } from "lucide-react";
 
 export default async function AdminTemplatesPage() {
-  const templates = await prisma.assessmentTemplate.findMany({
-    include: { rubric: true },
-    orderBy: { createdAt: "asc" },
-  });
+  let templates: any[] = [];
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    templates = await prisma.assessmentTemplate.findMany({
+      include: { rubric: true },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch {
+    templates = [];
+  }
 
   return (
     <div className="space-y-8">
