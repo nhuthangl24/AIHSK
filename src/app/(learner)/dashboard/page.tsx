@@ -14,7 +14,6 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
-  Coins,
 } from "lucide-react";
 import { formatDate, formatScore, getScoreBadgeColor } from "@/lib/utils";
 
@@ -104,8 +103,7 @@ export default async function LearnerDashboardPage() {
             <span className="text-xl">👋</span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Mục tiêu: <span className="font-semibold text-rose-600 dark:text-rose-400">{userTargetLevel}</span> &bull; Số dư:{" "}
-            <span className="font-semibold text-amber-600 dark:text-amber-400">200 Credits</span>
+            Mục tiêu: <span className="font-semibold text-rose-600 dark:text-rose-400">{userTargetLevel}</span>
           </p>
         </div>
 
@@ -121,7 +119,7 @@ export default async function LearnerDashboardPage() {
       </div>
 
       {/* KPI Overview Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
@@ -183,24 +181,6 @@ export default async function LearnerDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 dark:border-slate-800 bg-gradient-to-br from-amber-50/40 via-white to-white dark:from-amber-950/20 dark:via-slate-900 dark:to-slate-900">
-          <CardContent className="p-5 space-y-2">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span className="font-bold text-amber-800 dark:text-amber-300">Credit Khả Dụng</span>
-              <Coins className="h-4 w-4 text-amber-600" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-amber-900 dark:text-amber-200">
-                200
-              </span>
-              <span className="text-xs text-amber-700/80 dark:text-amber-400">/ 200 Credits</span>
-            </div>
-            <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-              <span>Khả dụng cho các lượt khảo thí</span>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Recommended Next Assessment & Quick Action */}

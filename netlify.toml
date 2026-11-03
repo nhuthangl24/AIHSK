@@ -7,3 +7,4 @@
   NPM_FLAGS = "--include=dev"
   NEXT_TELEMETRY_DISABLED = "1"
   PRISMA_GENERATE_DATAPROXY = "false"
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache,.netlify/.next/standalone/node_modules,.netlify/functions-internal"
