@@ -23,7 +23,14 @@ export function verifyClassniaToken(token: string): ClassniaTokenPayload | null 
       .update(payloadB64)
       .digest("base64url");
 
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSig);
+
+    if (sigBuf.length !== expBuf.length) {
+      return null;
+    }
+
+    if (!crypto.timingSafeEqual(sigBuf, expBuf)) {
       return null;
     }
 

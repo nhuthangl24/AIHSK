@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { UserRole } from "@prisma/client";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +15,7 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
-  if (user.role !== UserRole.ADMIN) {
+  if (user.role !== "ADMIN") {
     redirect("/dashboard");
   }
 

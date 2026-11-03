@@ -2,8 +2,21 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { FirebaseSessionSync } from "@/components/auth/firebase-session-sync";
 
+function getBaseUrl(): URL {
+  let raw = process.env.NEXT_PUBLIC_APP_URL || "https://chat.classnia.id.vn";
+  raw = raw.trim();
+  if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+    raw = `https://${raw}`;
+  }
+  try {
+    return new URL(raw);
+  } catch {
+    return new URL("https://chat.classnia.id.vn");
+  }
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://aihsk.classnia.id.vn"),
+  metadataBase: getBaseUrl(),
   title: "Classnia AI | Standardized AI Chinese Speaking Assessment SaaS",
   description:
     "Professional AI-powered oral Chinese language proficiency assessment platform. Full-length natural conversation examination, acoustic diagnostics, and comprehensive 7-dimension psychometric reports.",
