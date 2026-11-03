@@ -1,6 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/session";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,86 +15,99 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
-import { formatDate, formatScore, getScoreBadgeColor } from "@/lib/utils";
+import { formatDate, formatScore } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+const LEVEL_RECOMMENDATIONS: Record<string, { title: string; desc: string; duration: string }> = {
+  "HSK 1": {
+    title: "HSK 1: Làm Quen Ngữ Âm & Giao Tiếp Cơ Bản",
+    desc: "Chào hỏi, tự giới thiệu, hỏi thăm sức khỏe và luyện phát âm chuẩn xác 4 thanh điệu cùng Giám khảo AI.",
+    duration: "10 Phút",
+  },
+  "HSK 2": {
+    title: "HSK 2: Sinh Hoạt Hàng Ngày & Mua Sắm",
+    desc: "Giao tiếp trong các tình huống mua sắm, ẩm thực, hỏi đường và thời tiết thường ngày với các mẫu câu thông dụng.",
+    duration: "10 Phút",
+  },
+  "HSK 3": {
+    title: "HSK 3: Thảo Luận Đời Sống & Du Lịch",
+    desc: "Trao đổi về học tập, du lịch, thói quen và diễn đạt suy nghĩ với các cấu trúc liên từ kết nối câu cơ bản.",
+    duration: "12 Phút",
+  },
+  "HSK 4": {
+    title: "HSK 4: Lập Luận Khẩu Ngữ & Văn Hóa Trung Hoa",
+    desc: "Nâng cấp từ hội thoại sinh hoạt sang thuyết trình quan điểm. Thảo luận về công nghệ, trải nghiệm văn hóa và luyện biến điệu thanh 3 cùng Giám khảo AI.",
+    duration: "12 Phút",
+  },
+  "HSK 5": {
+    title: "HSK 5: Diễn Đạt Chuyên Sâu & Đàm Phán Thương Mại",
+    desc: "Thảo luận về các chủ đề kinh tế - xã hội chuyên sâu, sử dụng thành ngữ phong phú và lập luận đa chiều trong môi trường làm việc.",
+    duration: "15 Phút",
+  },
+  "HSK 6": {
+    title: "HSK 6: Thành Thạo Khẩu Ngữ & Biện Luận Phức Hợp",
+    desc: "Khả năng diễn ngôn lưu loát, tự nhiên như người bản xứ, phân tích văn hóa sâu sắc và phản biện luận điểm phức tạp.",
+    duration: "15 Phút",
+  },
+};
 
-export default async function LearnerDashboardPage() {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
+export default function LearnerDashboardPage() {
+  const router = useRouter();
+  const [userName, setUserName] = useState<string>("Học Viên");
+  const [userTargetLevel, setUserTargetLevel] = useState<string>("HSK 3");
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [sessions, profile, subscription] = await Promise.all([
-    (async () => {
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadData() {
       try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        return await prisma.assessmentSession.findMany({
-          where: { userId: user.userId },
-          include: { template: true, result: true },
-          orderBy: { createdAt: "desc" },
-          take: 6,
-        });
-      } catch { return []; }
-    })(),
-    (async () => {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        return await prisma.userProfile.findUnique({ where: { userId: user.userId } });
-      } catch { return null; }
-    })(),
-    (async () => {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        return await prisma.subscription.findFirst({
-          where: { userId: user.userId, status: "ACTIVE" },
-          include: { plan: true },
-        });
-      } catch { return null; }
-    })(),
-  ]);
+        const [meRes, assessRes] = await Promise.all([
+          fetch("/api/auth/me"),
+          fetch("/api/assessments").catch(() => null),
+        ]);
+
+        if (!meRes.ok) {
+          router.replace("/login");
+          return;
+        }
+
+        const meData = await meRes.json();
+        if (isMounted && meData?.user) {
+          setUserName(meData.user.name || "Học Viên");
+          if (meData.user.profile?.targetLevel) {
+            setUserTargetLevel(meData.user.profile.targetLevel);
+          }
+        }
+
+        if (assessRes && assessRes.ok) {
+          const assessData = await assessRes.json();
+          if (isMounted && Array.isArray(assessData?.sessions)) {
+            setSessions(assessData.sessions);
+          }
+        }
+      } catch (e) {
+        console.warn("Dashboard client fetch note:", e);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   const completedSessions = sessions.filter((s) => s.status === "COMPLETED" && s.result);
   const latestSession = completedSessions[0];
 
-  const userTargetLevel = profile?.targetLevel || "HSK 1";
-
-  const LEVEL_RECOMMENDATIONS: Record<string, { title: string; desc: string; duration: string }> = {
-    "HSK 1": {
-      title: "HSK 1: Làm Quen Ngữ Âm & Giao Tiếp Cơ Bản",
-      desc: "Chào hỏi, tự giới thiệu, hỏi thăm sức khỏe và luyện phát âm chuẩn xác 4 thanh điệu cùng Giám khảo AI.",
-      duration: "10 Phút",
-    },
-    "HSK 2": {
-      title: "HSK 2: Sinh Hoạt Hàng Ngày & Mua Sắm",
-      desc: "Giao tiếp trong các tình huống mua sắm, ẩm thực, hỏi đường và thời tiết thường ngày với các mẫu câu thông dụng.",
-      duration: "10 Phút",
-    },
-    "HSK 3": {
-      title: "HSK 3: Thảo Luận Đời Sống & Du Lịch",
-      desc: "Trao đổi về học tập, du lịch, thói quen và diễn đạt suy nghĩ với các cấu trúc liên từ kết nối câu cơ bản.",
-      duration: "12 Phút",
-    },
-    "HSK 4": {
-      title: "HSK 4: Lập Luận Khẩu Ngữ & Văn Hóa Trung Hoa",
-      desc: "Nâng cấp từ hội thoại sinh hoạt sang thuyết trình quan điểm. Thảo luận về công nghệ, trải nghiệm văn hóa và luyện biến điệu thanh 3 cùng Giám khảo AI.",
-      duration: "12 Phút",
-    },
-    "HSK 5": {
-      title: "HSK 5: Diễn Đạt Chuyên Sâu & Đàm Phán Thương Mại",
-      desc: "Thảo luận về các chủ đề kinh tế - xã hội chuyên sâu, sử dụng thành ngữ phong phú và lập luận đa chiều trong môi trường làm việc.",
-      duration: "15 Phút",
-    },
-    "HSK 6": {
-      title: "HSK 6: Thành Thạo Khẩu Ngữ & Biện Luận Phức Hợp",
-      desc: "Khả năng diễn ngôn lưu loát, tự nhiên như người bản xứ, phân tích văn hóa sâu sắc và phản biện luận điểm phức tạp.",
-      duration: "15 Phút",
-    },
-  };
-
-  const matchedLevelKey = Object.keys(LEVEL_RECOMMENDATIONS).find((k) => userTargetLevel.includes(k)) || "HSK 1";
-  const recommendedAssessment = LEVEL_RECOMMENDATIONS[matchedLevelKey];
+  const matchedLevelKey =
+    Object.keys(LEVEL_RECOMMENDATIONS).find((k) => userTargetLevel.includes(k)) || "HSK 3";
+  const recommendedAssessment = LEVEL_RECOMMENDATIONS[matchedLevelKey] || LEVEL_RECOMMENDATIONS["HSK 3"];
 
   const avgScore =
     completedSessions.length > 0
@@ -107,7 +122,7 @@ export default async function LearnerDashboardPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Chào mừng trở lại, {user.name}!
+              Chào mừng trở lại, {userName}!
             </h1>
             <span className="text-xl">👋</span>
           </div>
@@ -144,7 +159,8 @@ export default async function LearnerDashboardPage() {
             <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
               <TrendingUp className="h-3.5 w-3.5" />
               <span>
-                {latestSession?.result?.hskEstimate || (completedSessions.length > 0 ? `Mục tiêu ${userTargetLevel}` : "Chưa có bài thi")}
+                {latestSession?.result?.hskEstimate ||
+                  (completedSessions.length > 0 ? `Mục tiêu ${userTargetLevel}` : "Chưa có bài thi")}
               </span>
             </div>
           </CardContent>
@@ -189,7 +205,6 @@ export default async function LearnerDashboardPage() {
             </div>
           </CardContent>
         </Card>
-
       </div>
 
       {/* Recommended Next Assessment & Quick Action */}
@@ -241,7 +256,16 @@ export default async function LearnerDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {sessions.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-rose-600" />
+                        <span>Đang đồng bộ dữ liệu khảo thí...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : sessions.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-500">
                       Chưa có bài thi nào. Bấm &quot;Bắt Đầu Khảo Thí&quot; để thi bài đầu tiên!
@@ -251,7 +275,7 @@ export default async function LearnerDashboardPage() {
                   sessions.map((s) => (
                     <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
-                        {s.template.title}
+                        {s.template?.title || "Khảo Thí Khẩu Ngữ"}
                       </td>
                       <td className="py-3.5 px-4 text-slate-500">
                         {formatDate(s.createdAt)}
@@ -266,7 +290,11 @@ export default async function LearnerDashboardPage() {
                               : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                           }`}
                         >
-                          {s.status === "COMPLETED" ? "Đã chấm xong" : s.status === "IN_PROGRESS" ? "Đang thi" : "Đang xử lý"}
+                          {s.status === "COMPLETED"
+                            ? "Đã chấm xong"
+                            : s.status === "IN_PROGRESS"
+                            ? "Đang thi"
+                            : "Đang xử lý"}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
