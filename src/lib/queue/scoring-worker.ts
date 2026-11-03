@@ -219,8 +219,8 @@ export class ScoringWorker {
         await tx.notification.create({
           data: {
             userId: session.userId,
-            title: "Assessment Report Ready (评估报告已生成)",
-            message: `Your ${session.template.title} assessment has been scored. Overall Score: ${report.overallScore}/100 (${report.hskEstimate}).`,
+            title: "Báo cáo chẩn đoán đã sẵn sàng (评估报告已生成)",
+            message: `Bài thi ${session.template.title} của bạn đã được đánh giá hoàn tất. Điểm tổng quan: ${report.overallScore}/100 (${report.hskEstimate}).`,
             type: "SCORE_READY",
             linkUrl: `/dashboard/reports/${sessionId}`,
           },
