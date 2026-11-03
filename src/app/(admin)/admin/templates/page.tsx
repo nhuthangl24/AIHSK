@@ -13,10 +13,10 @@ export default async function AdminTemplatesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Oral Assessment Templates
+          Mẫu Đề Khảo Thí Khẩu Ngữ
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Inspect standardized assessment configuration, 5-stage prompts, and psychometric rubric bindings.
+          Quản lý cấu hình bài thi chuẩn hóa, kịch bản 5 giai đoạn và liên kết thang đo tâm trắc học.
         </p>
       </div>
 
@@ -29,7 +29,7 @@ export default async function AdminTemplatesPage() {
                   {t.targetLevel}
                 </Badge>
                 <span className="text-xs text-slate-500 flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" /> ~{t.estimatedDurationMinutes}m
+                  <Clock className="h-3.5 w-3.5" /> ~{t.estimatedDurationMinutes} phút
                 </span>
               </div>
               <CardTitle className="text-base font-bold">{t.title}</CardTitle>
@@ -37,13 +37,13 @@ export default async function AdminTemplatesPage() {
             </CardHeader>
             <CardContent className="pt-0 space-y-2 text-xs">
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-slate-500">
-                <span>Rubric Binding:</span>
+                <span>Thang đo liên kết:</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {t.rubric?.name || "Standard 7-Dim v1.0"}
+                  {t.rubric?.name || "Chuẩn 7 Chiều Kích v1.0"}
                 </span>
               </div>
               <div className="flex justify-between text-slate-500">
-                <span>Category:</span>
+                <span>Danh mục:</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{t.category}</span>
               </div>
             </CardContent>

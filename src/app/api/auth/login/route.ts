@@ -3,7 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { loginSchema } from "@/lib/validation/auth";
 import { verifyPassword } from "@/lib/auth/password";
 import { signToken } from "@/lib/auth/jwt";
-import { COOKIE_NAME } from "@/lib/auth/session";
+import { COOKIE_NAME, getAuthCookieOptions } from "@/lib/auth/session";
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,11 +43,9 @@ export async function POST(req: NextRequest) {
       name: user.name,
     });
 
-    // Determine redirect route based on role
+    // Determine redirect route based on role (Admin -> /admin, User -> /dashboard)
     let redirectPath = "/dashboard";
-    if (user.role === "TEACHER") redirectPath = "/teacher";
-    else if (user.role === "ORG_ADMIN") redirectPath = "/organization";
-    else if (user.role === "SUPER_ADMIN") redirectPath = "/admin";
+    if (user.role === "SUPER_ADMIN" || user.role === "ORG_ADMIN") redirectPath = "/admin";
 
     const response = NextResponse.json({
       success: true,
@@ -60,14 +58,10 @@ export async function POST(req: NextRequest) {
       redirectPath,
     });
 
+    const cookieOpts = getAuthCookieOptions();
     response.cookies.set({
-      name: COOKIE_NAME,
+      ...cookieOpts,
       value: token,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
     });
 
     // Create audit log

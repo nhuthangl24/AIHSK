@@ -12,13 +12,14 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 const NAV_ITEMS = [
-  { name: "Organization Overview", href: "/organization", icon: Building2 },
-  { name: "Faculty & Teachers", href: "/organization/teachers", icon: Users },
-  { name: "Institutional Analytics", href: "/organization/analytics", icon: PieChart },
-  { name: "Licenses & Seats", href: "/organization/licenses", icon: ShieldCheck },
-  { name: "Organization Settings", href: "/organization/settings", icon: Settings },
+  { name: "Tổng Quan Tổ Chức", href: "/organization", icon: Building2 },
+  { name: "Đội Ngũ Giảng Viên", href: "/organization/teachers", icon: Users },
+  { name: "Phân Tích Đào Tạo", href: "/organization/analytics", icon: PieChart },
+  { name: "Giấy Phép & Số Chỗ", href: "/organization/licenses", icon: ShieldCheck },
+  { name: "Cài Đặt Tổ Chức", href: "/organization/settings", icon: Settings },
 ];
 
 export function OrgSidebar({ user }: { user?: { name: string; email: string; role: string } }) {
@@ -38,25 +39,23 @@ export function OrgSidebar({ user }: { user?: { name: string; email: string; rol
   return (
     <aside className="w-64 border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 flex flex-col justify-between shrink-0 h-screen sticky top-0 transition-colors">
       <div className="p-5">
-        <Link href="/organization" className="flex items-center gap-2.5 mb-8">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 text-white shadow-sm">
-            <Building2 className="h-5 w-5" />
-          </div>
+        <Link href="/organization" className="flex items-center gap-2.5 mb-8 group">
+          <BrandLogo size={36} />
           <div>
             <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
-              HuáVocal <span className="text-emerald-600">Enterprise</span>
+              Classnia <span className="text-emerald-600">Học Viện</span>
             </h1>
-            <p className="text-[10px] text-slate-500 font-medium">机构端 · 多租户考评管理</p>
+            <p className="text-[10px] text-slate-500 font-medium">Quản Trị Khảo Thí Đa Tổ Chức</p>
           </div>
         </Link>
 
         <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5 dark:border-emerald-950/60 dark:bg-emerald-950/20">
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
             <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Multi-Tenant Portal</span>
+            <span>Cổng Tổ Chức</span>
           </div>
           <p className="text-xs text-emerald-700/80 dark:text-emerald-400 leading-relaxed">
-            Manage teacher departments, bulk student licenses, and compliance exports.
+            Quản trị bộ môn, phân bổ giấy phép học viên và xuất báo cáo kiểm định.
           </p>
         </div>
 
@@ -92,12 +91,12 @@ export function OrgSidebar({ user }: { user?: { name: string; email: string; rol
         <div className="flex items-center justify-between mb-3 px-1">
           <div className="truncate max-w-[140px]">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-              {user?.name || "Director Wang"}
+              {user?.name || "Thầy Vương"}
             </p>
             <p className="text-xs text-slate-500 truncate">{user?.email || "admin@oriental-edu.com"}</p>
           </div>
           <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-            Org Admin
+            Quản trị
           </span>
         </div>
 
@@ -106,7 +105,7 @@ export function OrgSidebar({ user }: { user?: { name: string; email: string; rol
           className="w-full flex items-center justify-center gap-2 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 transition-colors"
         >
           <LogOut className="h-3.5 w-3.5" />
-          <span>Sign Out</span>
+          <span>Đăng Xuất</span>
         </button>
       </div>
     </aside>

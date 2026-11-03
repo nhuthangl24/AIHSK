@@ -1,5 +1,5 @@
 export const CHINESE_EXAMINER_SYSTEM_PROMPT = `
-You are Professor Li (李老师), an authoritative, warm, and professional Senior Chinese Language Examiner for HuáVocal AI (华语考官).
+You are Professor Li (李老师), an authoritative, warm, and professional Senior Chinese Language Examiner for Classnia AI (华语考官).
 Your role is to conduct a standardized, adaptive oral Mandarin examination with the learner.
 
 ASSESSMENT STAGES STRUCTURE:
@@ -23,7 +23,7 @@ EXAMINER PRINCIPLES:
 `;
 
 export const SCORING_ENGINE_SYSTEM_PROMPT = `
-You are the Chief Assessment Officer and Psychometrics Expert at HuáVocal AI.
+You are the Chief Assessment Officer and Psychometrics Expert at Classnia AI.
 Evaluate the COMPLETE candidate conversation transcript comprehensively across all 7 standardized oral proficiency dimensions:
 1. Pronunciation & Tone (声调与发音清晰度) [Weight: 20%]
 2. Fluency & Speech Rhythm (流利度与语速连贯性) [Weight: 20%]

@@ -10,12 +10,12 @@ export default function FeaturesPage() {
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-20">
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <Badge variant="cinnabar">Platform Capabilities</Badge>
+          <Badge variant="cinnabar">Tính Năng Nền Tảng</Badge>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Designed for Rigorous Oral Chinese Assessment
+            Được Thiết Kế Cho Khảo Thí Khẩu Ngữ Tiếng Trung Chuẩn Xác
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400">
-            A comprehensive suite of voice AI, applied linguistics, psychometrics, and educational cohort tools.
+            Bộ giải pháp toàn diện kết hợp Voice AI, ngôn ngữ học ứng dụng, tâm trắc học và công cụ quản lý lớp học.
           </p>
         </div>
 
@@ -27,10 +27,10 @@ export default function FeaturesPage() {
                 <Mic className="h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                5-Stage Adaptive AI Examiner
+                Giám Khảo AI Thích Ứng 5 Giai Đoạn
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                The AI Examiner conducts a full-length, structured oral exam with authentic Mandarin pronunciation, dynamic difficulty scaling, and probing follow-ups that elicit true candidate competence.
+                Giám khảo AI tiến hành kỳ phỏng vấn nói hoàn chỉnh với giọng đọc chuẩn phổ thông, tự động điều chỉnh độ khó và đặt các câu hỏi phản biện sâu sắc để khơi gợi năng lực thực tế của thí sinh.
               </p>
             </CardContent>
           </Card>
@@ -41,10 +41,10 @@ export default function FeaturesPage() {
                 <BarChart3 className="h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                Full-Dialogue Psychometric Scoring
+                Chấm Điểm Dựa Trên Toàn Bộ Cuộc Hội Thoại
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Scores are never based on isolated fragments. Our deterministic engine aggregates all conversational turns across 7 dimensions: Pronunciation, Fluency, Vocabulary, Grammar, Coherence, Comprehension, and Interaction.
+                Điểm số không bao giờ tính trên các câu nói rời rạc. Động cơ tính điểm tổng hợp toàn bộ các lượt thoại qua 7 chiều kích: Phát âm, Trôi chảy, Từ vựng, Ngữ pháp, Mạch lạc, Nghe hiểu và Tương tác.
               </p>
             </CardContent>
           </Card>
@@ -55,10 +55,10 @@ export default function FeaturesPage() {
                 <Volume2 className="h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                Tone Sandhi & Acoustic Diagnostics
+                Chẩn Đoán Biến Điệu & Đường Nét Âm Học
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Detects critical third-tone sandhi (三声变调), retroflex articulation (zh, ch, sh), and pause durations at syntactic boundaries to provide genuine actionable pronunciation coaching.
+                Tự động phát hiện biến điệu thanh ba (三声变调), âm uốn lưỡi (zh, ch, sh) và khoảng lặng ngắt nghỉ tại ranh giới cú pháp để đưa ra chỉ dẫn cải thiện phát âm cụ thể.
               </p>
             </CardContent>
           </Card>
@@ -69,10 +69,10 @@ export default function FeaturesPage() {
                 <BookOpen className="h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                Evidence-Grounded Corrections
+                Nhận Xét Có Bằng Chứng Trực Tiếp
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Every claim in your report is substantiated by verbatim quotes from your exam. Grammar tables compare your original sentence against elevated, natural phrasing with applied grammatical rules.
+                Mọi nhận định trong báo cáo đều được minh chứng bằng câu nói nguyên văn của thí sinh. Bảng ngữ pháp đối chiếu câu gốc với câu diễn đạt chuẩn mực kèm quy tắc rõ ràng.
               </p>
             </CardContent>
           </Card>
@@ -83,10 +83,10 @@ export default function FeaturesPage() {
                 <Users className="h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                Teacher Classrooms & Assignments
+                Quản Lý Lớp Học & Giao Bài Cho Giáo Viên
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Educators can create class cohorts, dispatch oral assignments with deadlines, review full student audio transcripts, compare cohort score distributions, and export gradebooks to CSV.
+                Giảng viên dễ dàng tạo lớp, giao bài tập phỏng vấn khẩu ngữ kèm thời hạn, nghe lại file ghi âm của học sinh, theo dõi phân phối điểm số và xuất sổ điểm ra CSV.
               </p>
             </CardContent>
           </Card>
@@ -97,10 +97,10 @@ export default function FeaturesPage() {
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                Multi-Tenant Enterprise Isolation
+                Phân Lập Đa Khách Hàng Chuẩn Doanh Nghiệp
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Universities and language institutes enjoy strict server-enforced tenant isolation, seat allocation controls, audit logging, and full compliance with audio privacy standards.
+                Các trường đại học và viện ngôn ngữ được đảm bảo phân lập dữ liệu nghiêm ngặt, quản lý số chỗ bản quyền, ghi nhật ký kiểm toán và bảo mật quyền riêng tư âm thanh tuyệt đối.
               </p>
             </CardContent>
           </Card>
@@ -108,13 +108,13 @@ export default function FeaturesPage() {
 
         {/* CTA */}
         <div className="rounded-3xl bg-slate-900 text-white p-10 md:p-14 text-center space-y-6">
-          <h2 className="text-3xl font-extrabold">Ready to evaluate your spoken Chinese?</h2>
+          <h2 className="text-3xl font-extrabold">Sẵn sàng đánh giá khả năng nói tiếng Trung của bạn?</h2>
           <p className="text-slate-400 max-w-xl mx-auto text-sm sm:text-base">
-            Join hundreds of candidates benchmarking their oral Mandarin with HuáVocal AI.
+            Tham gia cùng hàng ngàn học viên đang chuẩn hóa khẩu ngữ tiếng Trung với Classnia AI.
           </p>
           <Link href="/register">
             <Button size="lg" className="bg-rose-600 hover:bg-rose-700 text-white font-semibold">
-              Get Started Free &rarr;
+              Bắt Đầu Miễn Phí &rarr;
             </Button>
           </Link>
         </div>

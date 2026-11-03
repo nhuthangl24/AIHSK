@@ -1,5 +1,6 @@
 import { ConversationTurnItem, ComprehensiveAssessmentReport, DimensionScore } from "./types";
 import { SCORING_ENGINE_SYSTEM_PROMPT } from "./prompts";
+import { AIClient, ChatMessage, LLMConfig } from "./ai-client";
 import { z } from "zod";
 
 const DimensionScoreSchema = z.object({
@@ -81,23 +82,27 @@ export class ScoringEngine {
       throw new Error("No learner turns found in the assessment session to evaluate.");
     }
 
-    // If cloud LLM API key is present, attempt live LLM evaluation
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        const report = await this.callOpenAIScoring(turns, targetLevel);
-        return report;
-      } catch (err) {
-        console.warn("Cloud LLM scoring failed, switching to deterministic engine:", err);
+    // If cloud LLM API key is present and not running in Vitest test suite, attempt live LLM evaluation
+    try {
+      if (!process.env.VITEST) {
+        const config = await AIClient.getActiveConfig();
+        if (config.apiKey && config.isEnabled) {
+          const report = await this.callCloudLLMScoring(turns, targetLevel, config);
+          return report;
+        }
       }
+    } catch (err) {
+      console.warn("Cloud LLM scoring failed, switching to deterministic engine:", err);
     }
 
     // High quality deterministic rule-based linguistic assessment engine
     return this.evaluateLinguistically(turns, targetLevel);
   }
 
-  private static async callOpenAIScoring(
+  private static async callCloudLLMScoring(
     turns: ConversationTurnItem[],
-    targetLevel: string
+    targetLevel: string,
+    config: LLMConfig
   ): Promise<ComprehensiveAssessmentReport> {
     const transcriptSummary = turns
       .map(
@@ -106,32 +111,22 @@ export class ScoringEngine {
       )
       .join("\n");
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    const messages: ChatMessage[] = [
+      { role: "system", content: `${SCORING_ENGINE_SYSTEM_PROMPT}\nCRITICAL: Respond ONLY with a valid JSON object matching the scoring schema.` },
+      {
+        role: "user",
+        content: `Candidate Target Level: ${targetLevel}\n\nFULL CONVERSATION TRANSCRIPT:\n${transcriptSummary}\n\nPerform full psychometric evaluation and output strict JSON according to schema.`,
       },
-      body: JSON.stringify({
-        model: process.env.AI_DEFAULT_MODEL || "gpt-4o-mini",
-        messages: [
-          { role: "system", content: SCORING_ENGINE_SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `Candidate Target Level: ${targetLevel}\n\nFULL CONVERSATION TRANSCRIPT:\n${transcriptSummary}\n\nPerform full psychometric evaluation and output strict JSON according to schema.`,
-          },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.2,
-      }),
+    ];
+
+    const rawContent = await AIClient.chatCompletion({
+      messages,
+      model: config.modelId,
+      temperature: 0.2,
+      requireJson: true,
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI Scoring API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const rawParsed = JSON.parse(data.choices[0].message.content);
+    const rawParsed = AIClient.extractJson(rawContent);
     return ScoringReportSchema.parse(rawParsed);
   }
 
@@ -431,7 +426,7 @@ export class ScoringEngine {
           title: "Simulated Oral Exam Re-assessment",
           focus: "Full-length mock exam with timed turns.",
           activities: [
-            "Take the HuáVocal Intermediate Assessment again to verify score improvements.",
+            "Take the Classnia Intermediate Assessment again to verify score improvements.",
             "Compare before/after radar charts.",
           ],
         },

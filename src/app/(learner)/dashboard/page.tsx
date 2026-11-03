@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  Coins,
 } from "lucide-react";
 import { formatDate, formatScore, getScoreBadgeColor } from "@/lib/utils";
 
@@ -46,7 +47,44 @@ export default async function LearnerDashboardPage() {
 
   const completedSessions = sessions.filter((s) => s.status === "COMPLETED" && s.result);
   const latestSession = completedSessions[0];
-  const previousSession = completedSessions[1];
+
+  const userTargetLevel = profile?.targetLevel || "HSK 1";
+
+  const LEVEL_RECOMMENDATIONS: Record<string, { title: string; desc: string; duration: string }> = {
+    "HSK 1": {
+      title: "HSK 1: Làm Quen Ngữ Âm & Giao Tiếp Cơ Bản",
+      desc: "Chào hỏi, tự giới thiệu, hỏi thăm sức khỏe và luyện phát âm chuẩn xác 4 thanh điệu cùng Giám khảo AI.",
+      duration: "10 Phút",
+    },
+    "HSK 2": {
+      title: "HSK 2: Sinh Hoạt Hàng Ngày & Mua Sắm",
+      desc: "Giao tiếp trong các tình huống mua sắm, ẩm thực, hỏi đường và thời tiết thường ngày với các mẫu câu thông dụng.",
+      duration: "10 Phút",
+    },
+    "HSK 3": {
+      title: "HSK 3: Thảo Luận Đời Sống & Du Lịch",
+      desc: "Trao đổi về học tập, du lịch, thói quen và diễn đạt suy nghĩ với các cấu trúc liên từ kết nối câu cơ bản.",
+      duration: "12 Phút",
+    },
+    "HSK 4": {
+      title: "HSK 4: Lập Luận Khẩu Ngữ & Văn Hóa Trung Hoa",
+      desc: "Nâng cấp từ hội thoại sinh hoạt sang thuyết trình quan điểm. Thảo luận về công nghệ, trải nghiệm văn hóa và luyện biến điệu thanh 3 cùng Giám khảo AI.",
+      duration: "12 Phút",
+    },
+    "HSK 5": {
+      title: "HSK 5: Diễn Đạt Chuyên Sâu & Đàm Phán Thương Mại",
+      desc: "Thảo luận về các chủ đề kinh tế - xã hội chuyên sâu, sử dụng thành ngữ phong phú và lập luận đa chiều trong môi trường làm việc.",
+      duration: "15 Phút",
+    },
+    "HSK 6": {
+      title: "HSK 6: Thành Thạo Khẩu Ngữ & Biện Luận Phức Hợp",
+      desc: "Khả năng diễn ngôn lưu loát, tự nhiên như người bản xứ, phân tích văn hóa sâu sắc và phản biện luận điểm phức tạp.",
+      duration: "15 Phút",
+    },
+  };
+
+  const matchedLevelKey = Object.keys(LEVEL_RECOMMENDATIONS).find((k) => userTargetLevel.includes(k)) || "HSK 1";
+  const recommendedAssessment = LEVEL_RECOMMENDATIONS[matchedLevelKey];
 
   const avgScore =
     completedSessions.length > 0
@@ -61,13 +99,13 @@ export default async function LearnerDashboardPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Welcome back, {user?.name || "Candidate"}!
+              Chào mừng trở lại, {user.name}!
             </h1>
             <span className="text-xl">👋</span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Target Level: <span className="font-semibold text-rose-600 dark:text-rose-400">{profile?.targetLevel || "HSK 4"}</span> &bull; Plan:{" "}
-            <span className="font-semibold text-slate-700 dark:text-slate-300">{subscription?.plan.name || "Free Starter"}</span>
+            Mục tiêu: <span className="font-semibold text-rose-600 dark:text-rose-400">{userTargetLevel}</span> &bull; Số dư:{" "}
+            <span className="font-semibold text-amber-600 dark:text-amber-400">200 Credits</span>
           </p>
         </div>
 
@@ -75,7 +113,7 @@ export default async function LearnerDashboardPage() {
           <Link href="/dashboard/assessments">
             <Button className="bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 shadow-sm">
               <Mic className="h-4 w-4" />
-              <span>Start Oral Exam</span>
+              <span>Bắt Đầu Khảo Thí</span>
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
@@ -87,7 +125,7 @@ export default async function LearnerDashboardPage() {
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Latest Oral Score</span>
+              <span>Điểm Khẩu Ngữ Gần Nhất</span>
               <Award className="h-4 w-4 text-rose-600" />
             </div>
             <div className="flex items-baseline gap-2">
@@ -98,7 +136,7 @@ export default async function LearnerDashboardPage() {
             </div>
             <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
               <TrendingUp className="h-3.5 w-3.5" />
-              <span>{latestSession?.result?.hskEstimate || "HSK 4 (Unofficial)"}</span>
+              <span>{latestSession?.result?.hskEstimate || `Mục tiêu ${userTargetLevel}`}</span>
             </div>
           </CardContent>
         </Card>
@@ -106,7 +144,7 @@ export default async function LearnerDashboardPage() {
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Average Proficiency</span>
+              <span>Điểm Trung Bình</span>
               <TrendingUp className="h-4 w-4 text-blue-600" />
             </div>
             <div className="flex items-baseline gap-2">
@@ -116,7 +154,7 @@ export default async function LearnerDashboardPage() {
               <span className="text-xs text-slate-400">/ 100</span>
             </div>
             <div className="text-[11px] text-slate-500">
-              Calculated across {completedSessions.length || 1} completed exam(s)
+              Tổng hợp qua {completedSessions.length || 1} bài kiểm tra hoàn thành
             </div>
           </CardContent>
         </Card>
@@ -124,39 +162,36 @@ export default async function LearnerDashboardPage() {
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Completed Exams</span>
+              <span>Bài Thi Đã Xong</span>
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
                 {completedSessions.length || 1}
               </span>
-              <span className="text-xs text-slate-400">sessions</span>
+              <span className="text-xs text-slate-400">lượt thi</span>
             </div>
             <div className="text-[11px] text-slate-500">
-              Full 5-stage oral interviews
+              Phỏng vấn khẩu ngữ 5 giai đoạn
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 dark:border-slate-800">
+        <Card className="border-slate-200 dark:border-slate-800 bg-gradient-to-br from-amber-50/40 via-white to-white dark:from-amber-950/20 dark:via-slate-900 dark:to-slate-900">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Monthly Quota</span>
-              <Sparkles className="h-4 w-4 text-purple-600" />
+              <span className="font-bold text-amber-800 dark:text-amber-300">Credit Khả Dụng</span>
+              <Coins className="h-4 w-4 text-amber-600" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                {completedSessions.length}
+              <span className="text-3xl font-extrabold text-amber-900 dark:text-amber-200">
+                200
               </span>
-              <span className="text-xs text-slate-400">
-                / {subscription?.plan.maxAssessments || 3} used
-              </span>
+              <span className="text-xs text-amber-700/80 dark:text-amber-400">/ 200 Credits</span>
             </div>
-            <div className="text-[11px] text-rose-600 font-medium">
-              <Link href="/dashboard/subscription" className="hover:underline">
-                Upgrade for unlimited &rarr;
-              </Link>
+            <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <span>Khả dụng cho các lượt khảo thí</span>
             </div>
           </CardContent>
         </Card>
@@ -167,19 +202,19 @@ export default async function LearnerDashboardPage() {
         <CardContent className="p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
             <Badge variant="cinnabar" className="text-xs">
-              Recommended for your level
+              Đề xuất phù hợp với trình độ {userTargetLevel}
             </Badge>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-              HSK 4 Intermediate Argumentation & Culture
+              {recommendedAssessment.title}
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Step up from daily routines to thematic reasoning. Discuss technology, Chinese cultural experiences, and practice third-tone sandhi under guided AI supervision.
+              {recommendedAssessment.desc}
             </p>
           </div>
           <Link href="/dashboard/assessments" className="shrink-0">
             <Button size="lg" className="bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2">
               <Mic className="h-4 w-4" />
-              <span>Launch 12-Min Assessment</span>
+              <span>Bắt Đầu Khảo Thí {recommendedAssessment.duration}</span>
             </Button>
           </Link>
         </CardContent>
@@ -190,10 +225,10 @@ export default async function LearnerDashboardPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <FileText className="h-5 w-5 text-rose-600" />
-            <span>Recent Assessment Reports</span>
+            <span>Báo Cáo Đánh Giá Gần Đây</span>
           </h2>
           <Link href="/dashboard/reports" className="text-xs font-semibold text-rose-600 hover:underline">
-            View all &rarr;
+            Xem tất cả &rarr;
           </Link>
         </div>
 
@@ -202,75 +237,72 @@ export default async function LearnerDashboardPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-800">
                 <tr>
-                  <th className="py-3.5 px-4">Assessment Title</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Overall Score</th>
-                  <th className="py-3.5 px-4">Proficiency Estimate</th>
-                  <th className="py-3.5 px-4 text-right">Report</th>
+                  <th className="py-3.5 px-4">Tên Bài Thi Khẩu Ngữ</th>
+                  <th className="py-3.5 px-4">Ngày Thi</th>
+                  <th className="py-3.5 px-4">Trạng Thái</th>
+                  <th className="py-3.5 px-4">Tổng Điểm</th>
+                  <th className="py-3.5 px-4">Trình Độ Ước Tính</th>
+                  <th className="py-3.5 px-4 text-right">Chi Tiết Báo Cáo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                 {sessions.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-500">
-                      No assessment sessions yet. Click &quot;Start Oral Exam&quot; to begin!
+                      Chưa có bài thi nào. Bấm &quot;Bắt Đầu Khảo Thí&quot; để thi bài đầu tiên!
                     </td>
                   </tr>
                 ) : (
-                  sessions.map((s) => {
-                    const badge = s.result ? getScoreBadgeColor(s.result.overallScore) : null;
-                    return (
-                      <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
-                          {s.template.title}
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-500">
-                          {formatDate(s.createdAt)}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded-full font-medium ${
-                              s.status === "COMPLETED"
-                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                : s.status === "IN_PROGRESS"
-                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-                                : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                            }`}
-                          >
-                            {s.status}
+                  sessions.map((s) => (
+                    <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
+                        {s.template.title}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {formatDate(s.createdAt)}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full font-medium ${
+                            s.status === "COMPLETED"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              : s.status === "IN_PROGRESS"
+                              ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                              : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                          }`}
+                        >
+                          {s.status === "COMPLETED" ? "Đã chấm xong" : s.status === "IN_PROGRESS" ? "Đang thi" : "Đang xử lý"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                        {s.result ? `${formatScore(s.result.overallScore)} / 100` : "Đang tính điểm"}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {s.result ? (
+                          <span className="font-semibold text-rose-600 dark:text-rose-400">
+                            {s.result.hskEstimate}
                           </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
-                          {s.result ? `${formatScore(s.result.overallScore)} / 100` : "Pending"}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {s.result ? (
-                            <span className="font-semibold text-rose-600 dark:text-rose-400">
-                              {s.result.hskEstimate}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          {s.status === "COMPLETED" ? (
-                            <Link href={`/dashboard/reports/${s.id}`}>
-                              <Button variant="outline" size="sm" className="text-xs h-7">
-                                View Report
-                              </Button>
-                            </Link>
-                          ) : (
-                            <Link href={`/dashboard/assessments/${s.id}`}>
-                              <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white text-xs h-7">
-                                Resume Exam
-                              </Button>
-                            </Link>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {s.status === "COMPLETED" ? (
+                          <Link href={`/dashboard/reports/${s.id}`}>
+                            <Button variant="outline" size="sm" className="text-xs h-7">
+                              Xem Chẩn Đoán
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Link href={`/dashboard/assessments/${s.id}`}>
+                            <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white text-xs h-7">
+                              Tiếp Tục Thi
+                            </Button>
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

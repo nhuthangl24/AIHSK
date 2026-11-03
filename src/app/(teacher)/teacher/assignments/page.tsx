@@ -59,11 +59,11 @@ export default function TeacherAssignmentsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create assignment");
 
-      setSuccessMessage(`Assessment "${title}" successfully assigned!`);
+      setSuccessMessage(`Bài kiểm tra "${title}" đã được giao thành công cho lớp!`);
       setTitle("");
       setInstructions("");
     } catch (err: any) {
-      alert(err.message || "Assignment creation failed");
+      alert(err.message || "Giao bài tập thất bại");
     } finally {
       setIsSubmitting(false);
     }
@@ -73,10 +73,10 @@ export default function TeacherAssignmentsPage() {
     <div className="space-y-8 max-w-4xl">
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Oral Assessment Assignments
+          Giao Bài Khảo Thí Khẩu Ngữ
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Dispatch standardized oral Chinese exams to your classroom cohorts with custom deadlines and instructions.
+          Giao các bài kiểm tra khẩu ngữ tiếng Trung chuẩn hóa cho các lớp học kèm thời hạn và hướng dẫn cụ thể.
         </p>
       </div>
 
@@ -91,17 +91,17 @@ export default function TeacherAssignmentsPage() {
         <CardHeader>
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <PlusCircle className="h-5 w-5 text-blue-600" />
-            <span>Create & Assign New Oral Checkpoint</span>
+            <span>Tạo & Giao Bài Kiểm Tra Mới</span>
           </CardTitle>
           <CardDescription>
-            Students enrolled in the selected class will receive an immediate assignment notification.
+            Học sinh trong lớp được chọn sẽ nhận được bài thi và thông báo ngay lập tức.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateAssignment} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="classSelect">Target Class</Label>
+                <Label htmlFor="classSelect">Chọn Lớp Học</Label>
                 <select
                   id="classSelect"
                   value={selectedClassId}
@@ -111,14 +111,14 @@ export default function TeacherAssignmentsPage() {
                 >
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.code}) - {c.members?.length || 0} Students
+                      {c.name} ({c.code}) - {c.members?.length || 0} Học sinh
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="templateSelect">Assessment Template</Label>
+                <Label htmlFor="templateSelect">Đề Thi Khảo Thí</Label>
                 <select
                   id="templateSelect"
                   value={selectedTemplateId}
@@ -136,10 +136,10 @@ export default function TeacherAssignmentsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="title">Assignment Title</Label>
+              <Label htmlFor="title">Tiêu Đề Bài Tập</Label>
               <Input
                 id="title"
-                placeholder="e.g. Mid-Term Oral Proficiency Diagnostic"
+                placeholder="Ví dụ: Đánh giá khẩu ngữ giữa kỳ - Chuẩn HSK 4"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
@@ -147,7 +147,7 @@ export default function TeacherAssignmentsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="dueDate">Due Date (Optional)</Label>
+              <Label htmlFor="dueDate">Hạn Nộp Bài (Tùy chọn)</Label>
               <Input
                 id="dueDate"
                 type="date"
@@ -157,11 +157,11 @@ export default function TeacherAssignmentsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="instructions">Teacher Instructions</Label>
+              <Label htmlFor="instructions">Hướng Dẫn Của Giảng Viên</Label>
               <textarea
                 id="instructions"
                 rows={3}
-                placeholder="Please complete all 5 stages in a quiet environment. Focus on clear tones and answering the follow-up probing questions thoroughly."
+                placeholder="Vui lòng hoàn thành đủ 5 giai đoạn thi trong môi trường yên tĩnh. Chú ý phát âm chuẩn 4 thanh điệu và trả lời chi tiết câu hỏi phản biện."
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background p-3 text-sm text-slate-800 dark:text-slate-200 leading-relaxed"
@@ -176,12 +176,12 @@ export default function TeacherAssignmentsPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Dispatching Assignment...</span>
+                  <span>Đang giao bài...</span>
                 </>
               ) : (
                 <>
                   <ClipboardList className="h-4 w-4" />
-                  <span>Dispatch Assignment to Class</span>
+                  <span>Giao Bài Cho Cả Lớp</span>
                 </>
               )}
             </Button>

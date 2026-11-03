@@ -66,10 +66,10 @@ export default async function TeacherDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Teacher Portal &bull; 教师考评中心
+            Cổng Giảng Viên &bull; 教师考评中心
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage oral Chinese classes, assign standard interviews, and inspect cohort diagnostics.
+            Quản lý lớp khẩu ngữ tiếng Trung, giao đề phỏng vấn chuẩn hóa và theo dõi chẩn đoán lớp học.
           </p>
         </div>
 
@@ -77,7 +77,7 @@ export default async function TeacherDashboardPage() {
           <Link href="/teacher/assignments">
             <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 shadow-sm text-xs">
               <PlusCircle className="h-4 w-4" />
-              <span>Assign Assessment</span>
+              <span>Giao Bài Khảo Thí</span>
             </Button>
           </Link>
         </div>
@@ -88,52 +88,52 @@ export default async function TeacherDashboardPage() {
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Active Classes</span>
+              <span>Lớp Đang Hoạt Động</span>
               <GraduationCap className="h-4 w-4 text-blue-600" />
             </div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
               {classes.length}
             </div>
-            <p className="text-[11px] text-slate-500">Active teaching cohorts</p>
+            <p className="text-[11px] text-slate-500">Nhóm học tập đang phụ trách</p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Enrolled Students</span>
+              <span>Tổng Số Học Sinh</span>
               <Users className="h-4 w-4 text-emerald-600" />
             </div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
               {totalStudents || 1}
             </div>
-            <p className="text-[11px] text-emerald-600 font-medium">100% Active roster</p>
+            <p className="text-[11px] text-emerald-600 font-medium">100% học viên hoạt động</p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Oral Assignments</span>
+              <span>Bài Tập Đã Giao</span>
               <ClipboardList className="h-4 w-4 text-purple-600" />
             </div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
               {assignments.length}
             </div>
-            <p className="text-[11px] text-slate-500">Dispatched checkpoints</p>
+            <p className="text-[11px] text-slate-500">Đợt kiểm tra đã triển khai</p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Class Mean Score</span>
+              <span>Điểm Trung Bình Lớp</span>
               <BarChart3 className="h-4 w-4 text-rose-600" />
             </div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
               {formatScore(avgScore)} <span className="text-xs text-slate-400">/ 100</span>
             </div>
-            <p className="text-[11px] text-rose-600 font-medium">HSK 4 Class Average</p>
+            <p className="text-[11px] text-rose-600 font-medium">Điểm trung bình khóa HSK 4</p>
           </CardContent>
         </Card>
       </div>
@@ -143,9 +143,9 @@ export default async function TeacherDashboardPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Users className="h-5 w-5 text-blue-600" />
-            <span>Recent Student Oral Submissions</span>
+            <span>Bài Khảo Thí Học Sinh Nộp Gần Đây</span>
           </h2>
-          <span className="text-xs text-slate-500">Live Assessment Submissions</span>
+          <span className="text-xs text-slate-500">Bài nộp trực tiếp từ học sinh</span>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -153,12 +153,12 @@ export default async function TeacherDashboardPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-800">
                 <tr>
-                  <th className="py-3.5 px-4">Student Name</th>
-                  <th className="py-3.5 px-4">Assessment</th>
-                  <th className="py-3.5 px-4">Date Completed</th>
-                  <th className="py-3.5 px-4">Score</th>
-                  <th className="py-3.5 px-4">Proficiency Level</th>
-                  <th className="py-3.5 px-4 text-right">Review Report</th>
+                  <th className="py-3.5 px-4">Họ Tên Học Sinh</th>
+                  <th className="py-3.5 px-4">Đề Khảo Thí</th>
+                  <th className="py-3.5 px-4">Ngày Hoàn Thành</th>
+                  <th className="py-3.5 px-4">Điểm Số</th>
+                  <th className="py-3.5 px-4">Cấp Độ Năng Lực</th>
+                  <th className="py-3.5 px-4 text-right">Thao Tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -174,7 +174,7 @@ export default async function TeacherDashboardPage() {
                       {formatDate(s.completedAt || s.createdAt)}
                     </td>
                     <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
-                      {s.result ? `${formatScore(s.result.overallScore)} / 100` : "Pending"}
+                      {s.result ? `${formatScore(s.result.overallScore)} / 100` : "Đang chấm"}
                     </td>
                     <td className="py-3.5 px-4">
                       <span className="font-semibold text-blue-600 dark:text-blue-400">
@@ -184,7 +184,7 @@ export default async function TeacherDashboardPage() {
                     <td className="py-3.5 px-4 text-right">
                       <Link href={`/dashboard/reports/${s.id}`}>
                         <Button variant="outline" size="sm" className="text-xs h-7">
-                          Inspect Diagnostics
+                          Xem Chi Tiết
                         </Button>
                       </Link>
                     </td>

@@ -3,7 +3,8 @@ import prisma from "@/lib/db/prisma";
 import { registerSchema } from "@/lib/validation/auth";
 import { hashPassword } from "@/lib/auth/password";
 import { signToken } from "@/lib/auth/jwt";
-import { COOKIE_NAME } from "@/lib/auth/session";
+import { COOKIE_NAME, getAuthCookieOptions, ADMIN_EMAILS } from "@/lib/auth/session";
+import { UserRole } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,18 +23,20 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(validated.password);
+    const normalizedEmail = validated.email.toLowerCase();
+    const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
 
     const user = await prisma.user.create({
       data: {
-        email: validated.email.toLowerCase(),
+        email: normalizedEmail,
         passwordHash,
         name: validated.name,
-        role: validated.role,
+        role: isAdmin ? UserRole.SUPER_ADMIN : validated.role,
         emailVerified: true,
         profile: {
           create: {
             targetLevel: validated.targetLevel || "HSK 3",
-            nativeLanguage: validated.nativeLanguage || "English",
+            nativeLanguage: validated.nativeLanguage || "Tiếng Việt",
             learningGoal: "Improve oral Chinese fluency",
           },
         },
@@ -74,14 +77,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const cookieOpts = getAuthCookieOptions();
     response.cookies.set({
-      name: COOKIE_NAME,
+      ...cookieOpts,
       value: token,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
     });
 
     return response;

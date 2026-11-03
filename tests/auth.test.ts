@@ -41,4 +41,21 @@ describe("Authentication & Security Unit Tests", () => {
     const result = await verifyToken("invalid.token.structure");
     expect(result).toBeNull();
   });
+
+  it("should support Google login payload verification and token issuance", async () => {
+    const googleUser = {
+      userId: "google_sub_987654",
+      email: "vietnam.candidate@gmail.com",
+      role: UserRole.LEARNER,
+      name: "Google Learner",
+    };
+
+    const token = await signToken(googleUser);
+    const verified = await verifyToken(token);
+
+    expect(verified).not.toBeNull();
+    expect(verified?.email).toBe("vietnam.candidate@gmail.com");
+    expect(verified?.name).toBe("Google Learner");
+    expect(verified?.role).toBe(UserRole.LEARNER);
+  });
 });

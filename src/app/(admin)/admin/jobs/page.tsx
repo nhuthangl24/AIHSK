@@ -14,10 +14,10 @@ export default async function AdminJobsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Background Processing & Worker Queues
+          Xử Lý Tác Vụ Ngầm & Hàng Đợi Worker
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Monitor asynchronous scoring pipelines, audio transcription jobs, and retry failed executions.
+          Theo dõi quy trình chấm điểm bất đồng bộ, tác vụ chuyển văn bản giọng nói và thử lại tác vụ lỗi.
         </p>
       </div>
 
@@ -26,11 +26,11 @@ export default async function AdminJobsPage() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
               <tr>
-                <th className="py-3 px-4">Job ID</th>
-                <th className="py-3 px-4">Type</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Retries</th>
-                <th className="py-3 px-4">Created Date</th>
+                <th className="py-3 px-4">Mã Tác Vụ</th>
+                <th className="py-3 px-4">Loại Tác Vụ</th>
+                <th className="py-3 px-4">Trạng Thái</th>
+                <th className="py-3 px-4">Số Lần Thử Lại</th>
+                <th className="py-3 px-4">Ngày Tạo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

@@ -5,34 +5,34 @@ export default function PrivacyPage() {
     <div className="py-16 md:py-24">
       <div className="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-8 text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
         <div className="space-y-3">
-          <Badge variant="cinnabar">Privacy & Trust</Badge>
+          <Badge variant="cinnabar">Bảo Mật & Tin Cậy</Badge>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
-            Privacy Policy & Voice Data Governance
+            Chính Sách Bảo Mật & Dữ Liệu Giọng Nói
           </h1>
-          <p className="text-xs text-slate-500">Last updated: November 2026</p>
+          <p className="text-xs text-slate-500">Cập nhật lần cuối: Tháng 11/2026</p>
         </div>
 
         <section className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">1. Audio Recordings & Voice Privacy</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">1. Bản Ghi Âm & Quyền Riêng Tư Giọng Nói</h2>
           <p>
-            When you complete an assessment on HuáVocal AI, your device captures audio of your spoken responses. This audio is processed solely for acoustic analysis, speech-to-text transcription, tone contour extraction, and diagnostic report generation.
+            Khi bạn thực hiện bài khảo thí trên Classnia AI, thiết bị của bạn sẽ ghi lại giọng nói câu trả lời. File âm thanh này chỉ được xử lý phục vụ phân tích âm học, chuyển văn bản, trích xuất đường nét thanh điệu và tạo báo cáo chẩn đoán.
           </p>
           <p>
-            We do NOT sell, license, or publish your audio recordings. We do NOT use learner voice data for external general AI model pre-training without explicit opt-in consent.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">2. Access Controls & Tenant Isolation</h2>
-          <p>
-            Your audio recordings and conversation transcripts are accessible only to you, authorized instructors managing your enrolled classes, and administrators within your verified educational organization. Strict server-side authorization middleware prevents unauthorized cross-tenant access.
+            Chúng tôi KHÔNG BAO GIỜ bán, cấp phép thương mại hoặc công khai bản ghi âm của bạn. Chúng tôi KHÔNG sử dụng giọng nói của học viên để huấn luyện các mô hình AI đại trà khi chưa có sự đồng thuận rõ ràng.
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Data Retention and Deletion</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">2. Kiểm Soát Truy Cập & Phân Lập Dữ Liệu</h2>
           <p>
-            Users have the full right to delete individual assessment audio recordings or request complete account deletion at any time from their profile settings. Audio files stored in our S3-compatible storage tier are purged immediately upon deletion request.
+            Bản ghi âm và biên bản hội thoại chỉ có thể truy cập bởi chính bạn, giảng viên phụ trách lớp học của bạn và quản trị viên tổ chức giáo dục được xác minh. Cơ chế phân quyền cấp máy chủ nghiêm ngặt ngăn chặn mọi hành vi truy cập trái phép chéo tổ chức.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Lưu Trữ & Quyền Yêu Cầu Xóa Dữ Liệu</h2>
+          <p>
+            Người dùng có toàn quyền xóa từng bản ghi âm bài thi hoặc yêu cầu xóa toàn bộ tài khoản bất kỳ lúc nào từ mục cài đặt hồ sơ. Dữ liệu trên hệ thống lưu trữ S3 sẽ được xóa vĩnh viễn ngay khi có yêu cầu.
           </p>
         </section>
       </div>

@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { UserRole } from "@prisma/client";
 
-const secretKey = process.env.JWT_SECRET || "huavocal-production-grade-jwt-secret-key-32-chars-minimum";
+const secretKey = process.env.JWT_SECRET || "classnia-production-grade-jwt-secret-key-32-chars-minimum";
 const key = new TextEncoder().encode(secretKey);
 
 export interface TokenPayload {

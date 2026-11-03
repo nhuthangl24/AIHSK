@@ -75,7 +75,7 @@ export default async function AssessmentReportPage({
         <Link href="/dashboard/reports">
           <Button variant="ghost" size="sm" className="text-xs text-slate-500">
             <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Reports
+            Quay lại danh sách báo cáo
           </Button>
         </Link>
 
@@ -98,15 +98,15 @@ export default async function AssessmentReportPage({
                 </Badge>
                 {result.isAcousticAided && (
                   <Badge variant="success" className="text-[10px]">
-                    Acoustic Verified
+                    Đã xác thực âm học
                   </Badge>
                 )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mt-2">
-                Oral Assessment Diagnostic Report
+                Báo Cáo Chẩn Đoán Khẩu Ngữ Tiếng Trung
               </h1>
               <p className="text-xs text-slate-500 mt-1">
-                Candidate: <span className="font-semibold text-slate-800 dark:text-slate-200">{session.user.name}</span> &bull; Assessment:{" "}
+                Thí sinh: <span className="font-semibold text-slate-800 dark:text-slate-200">{session.user.name}</span> &bull; Bài thi:{" "}
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{session.template.title}</span>
               </p>
             </div>
@@ -115,7 +115,7 @@ export default async function AssessmentReportPage({
             <div className="flex items-center gap-4 sm:flex-col sm:items-end">
               <div className="text-left sm:text-right">
                 <span className="text-xs uppercase font-bold tracking-wider text-slate-400">
-                  Overall Score
+                  Điểm Tổng Quan
                 </span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl sm:text-5xl font-black text-rose-600 dark:text-rose-500">
@@ -126,7 +126,7 @@ export default async function AssessmentReportPage({
               </div>
               <div className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>{(result.confidenceLevel * 100).toFixed(0)}% Confidence Rating</span>
+                <span>Độ tin cậy chẩn đoán: {(result.confidenceLevel * 100).toFixed(0)}%</span>
               </div>
             </div>
           </div>
@@ -135,7 +135,7 @@ export default async function AssessmentReportPage({
           <div className="rounded-xl bg-slate-50 p-5 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
               <Sparkles className="h-4 w-4 text-rose-600" />
-              <span>Psychometric Diagnostic Summary</span>
+              <span>Tóm Tắt Chẩn Đoán Ngôn Ngữ Học</span>
             </h3>
             <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
               {result.performanceSummary}
@@ -149,9 +149,9 @@ export default async function AssessmentReportPage({
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Award className="h-5 w-5 text-rose-600" />
-            <span>7 Standardized Dimension Scores</span>
+            <span>7 Chiều Kích Đánh Giá Chuẩn Hóa</span>
           </h2>
-          <span className="text-xs text-slate-500">Weighted Oral Psychometrics</span>
+          <span className="text-xs text-slate-500">Thang điểm khẩu ngữ trọng số tâm trắc học</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -169,7 +169,7 @@ export default async function AssessmentReportPage({
                         {dim.dimensionName}
                       </h4>
                       <span className="text-[10px] text-slate-500 font-medium">
-                        Weight: {(dim.weight * 100).toFixed(0)}% &bull; Level: {dim.performanceLevel}
+                        Trọng số: {(dim.weight * 100).toFixed(0)}% &bull; Cấp độ: {dim.performanceLevel}
                       </span>
                     </div>
                     <div className="text-right">
@@ -198,7 +198,7 @@ export default async function AssessmentReportPage({
                   {quotes.length > 0 && (
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
                       <span className="text-[10px] font-semibold text-slate-500 uppercase">
-                        Transcript Citation:
+                        Dẫn chứng từ biên bản thoại:
                       </span>
                       <p className="text-[11px] italic text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
                         {quotes[0]}
@@ -218,7 +218,7 @@ export default async function AssessmentReportPage({
           <CardContent className="p-6 space-y-4">
             <h3 className="font-bold text-sm text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span>Demonstrated Key Strengths</span>
+              <span>Điểm Mạnh Nổi Bật</span>
             </h3>
             <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
               {strengths.map((s, i) => (
@@ -235,7 +235,7 @@ export default async function AssessmentReportPage({
           <CardContent className="p-6 space-y-4">
             <h3 className="font-bold text-sm text-rose-800 dark:text-rose-300 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-rose-600" />
-              <span>Target Weaknesses & Focus Areas</span>
+              <span>Điểm Yếu Cần Cải Thiện & Trọng Tâm</span>
             </h3>
             <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
               {weaknesses.map((w, i) => (
@@ -255,7 +255,7 @@ export default async function AssessmentReportPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-rose-600" />
-              <span>Grammar & Syntax Precision Analysis</span>
+              <span>Phân Tích Ngữ Pháp & Cấu Trúc Câu</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
@@ -263,10 +263,10 @@ export default async function AssessmentReportPage({
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                   <tr>
-                    <th className="py-2.5 px-3">Original Candidate Utterance</th>
-                    <th className="py-2.5 px-3">Corrected Natural Mandarin</th>
-                    <th className="py-2.5 px-3">Grammatical Rule & Explanation</th>
-                    <th className="py-2.5 px-3">Applied Example</th>
+                    <th className="py-2.5 px-3">Câu nói gốc của thí sinh</th>
+                    <th className="py-2.5 px-3">Cách diễn đạt chuẩn xác</th>
+                    <th className="py-2.5 px-3">Quy tắc ngữ pháp & giải thích</th>
+                    <th className="py-2.5 px-3">Ví dụ áp dụng</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -299,7 +299,7 @@ export default async function AssessmentReportPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-rose-600" />
-              <span>Vocabulary Upgrades & Formal Register</span>
+              <span>Nâng Cấp Từ Vựng & Sắc Thái Trang Trọng</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
@@ -307,10 +307,10 @@ export default async function AssessmentReportPage({
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                   <tr>
-                    <th className="py-2.5 px-3">Spoken Word</th>
-                    <th className="py-2.5 px-3">Elevated HSK / Formal Alternatives</th>
-                    <th className="py-2.5 px-3">Register & Connotation</th>
-                    <th className="py-2.5 px-3">Context Example</th>
+                    <th className="py-2.5 px-3">Từ ngữ khẩu ngữ</th>
+                    <th className="py-2.5 px-3">Từ vựng nâng cao / Trang trọng</th>
+                    <th className="py-2.5 px-3">Sắc thái ý nghĩa & ngữ cảnh</th>
+                    <th className="py-2.5 px-3">Ví dụ ngữ cảnh</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -343,7 +343,7 @@ export default async function AssessmentReportPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <Calendar className="h-4 w-4 text-rose-600" />
-              <span>Personalized 4-Week Learning Roadmap</span>
+              <span>Lộ Trình Học Tập 4 Tuần Cá Nhân Hóa</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
@@ -354,7 +354,7 @@ export default async function AssessmentReportPage({
                   className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-2 text-xs"
                 >
                   <span className="font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider text-[10px]">
-                    Week {plan.week}
+                    Tuần {plan.week}
                   </span>
                   <h4 className="font-bold text-slate-900 dark:text-white leading-tight">
                     {plan.title}
@@ -380,7 +380,7 @@ export default async function AssessmentReportPage({
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <FileText className="h-4 w-4 text-rose-600" />
-            <span>Complete Examination Transcript & Audio Logs</span>
+            <span>Toàn Bộ Biên Bản Hội Thoại & Bản Ghi Âm</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 pt-0 space-y-4">
@@ -396,7 +396,7 @@ export default async function AssessmentReportPage({
                         isExaminer ? "text-rose-600 dark:text-rose-400" : "text-blue-600 dark:text-blue-400"
                       }`}
                     >
-                      {isExaminer ? "考官 Examiner Li" : "考生 Candidate"} &bull; Stage {turn.stage}
+                      {isExaminer ? "考官 Giám khảo Lý" : "考生 Thí sinh"} &bull; Giai đoạn {turn.stage}
                     </span>
                     {turn.audioUrl && (
                       <audio controls src={turn.audioUrl} className="h-6 w-36" />

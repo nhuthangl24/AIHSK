@@ -1,7 +1,7 @@
-# HuáVocal AI (华语考官 AI)
+# Classnia AI (华语考官 AI)
 ### Standardized AI Chinese Speaking Assessment SaaS Platform
 
-HuáVocal AI is a brand-new, production-ready SaaS platform for AI-powered oral Chinese language proficiency assessment. The platform enables learners, educators, and language institutions to conduct authentic, full-length spoken Mandarin examinations with an adaptive AI Examiner and receive psychometrically grounded, multi-dimensional diagnostic reports.
+Classnia AI is a brand-new, production-ready SaaS platform for AI-powered oral Chinese language proficiency assessment. The platform enables learners, educators, and language institutions to conduct authentic, full-length spoken Mandarin examinations with an adaptive AI Examiner and receive psychometrically grounded, multi-dimensional diagnostic reports.
 
 ---
 
@@ -144,4 +144,4 @@ During the architecture and implementation phases, the following official engine
 
 ## 📄 License & Disclaimer
 
-HuáVocal AI is an independent software product. It provides formative educational estimates aligned with CEFR and HSK proficiency rubrics. HuáVocal AI is not affiliated with, licensed by, or an official representative of Chinese Testing International (CTI) or the Ministry of Education of China.
+Classnia AI is an independent software product. It provides formative educational estimates aligned with CEFR and HSK proficiency rubrics. Classnia AI is not affiliated with, licensed by, or an official representative of Chinese Testing International (CTI) or the Ministry of Education of China.

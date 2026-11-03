@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting HuáVocal AI SaaS database seeding...");
+  console.log("🌱 Starting Classnia AI SaaS database seeding...");
 
   // 1. Subscription Plans
   console.log("Creating subscription plans...");
@@ -201,7 +201,7 @@ async function main() {
       emailVerified: true,
       profile: {
         create: {
-          targetLevel: "HSK 4",
+          targetLevel: "HSK 1",
           nativeLanguage: "English",
           learningGoal: "Prepare for study abroad in Beijing and work in bilingual tech environments.",
           studyHoursWeekly: 5,
@@ -454,7 +454,7 @@ async function main() {
         { week: 1, title: "Tone Sandhi Precision", focus: "Tone contour drills", activities: ["Shadowing 15 mins daily", "Pitch recorder feedback"] },
         { week: 2, title: "Syntactic Complexity", focus: "把字句 & 被动句", activities: ["10 oral sentences daily", "Narrative retelling"] },
         { week: 3, title: "Thematic Vocabulary", focus: "Education & Tech Terminology", activities: ["HSK 4/5 word list exercises", "Mini debate presentation"] },
-        { week: 4, title: "Mock Diagnostic Re-evaluation", focus: "Full exam replay", activities: ["Retake HuáVocal assessment", "Track radar chart delta"] },
+        { week: 4, title: "Mock Diagnostic Re-evaluation", focus: "Full exam replay", activities: ["Retake Classnia assessment", "Track radar chart delta"] },
       ],
     },
   });
@@ -534,6 +534,29 @@ async function main() {
       currentPeriodEnd: new Date(Date.now() + 30 * 24 * 3600 * 1000),
     },
   });
+
+  // Default AI Provider Configuration: HHTECH.API Gateway
+  console.log("Configuring HHTECH.API Gateway...");
+  const existingAIConfig = await prisma.aIProviderConfiguration.findFirst({
+    where: { providerType: "LLM", isDefault: true },
+  });
+  if (!existingAIConfig) {
+    await prisma.aIProviderConfiguration.create({
+      data: {
+        providerType: "LLM",
+        providerName: "hhtech",
+        modelId: "claude-sonnet-4.6",
+        isEnabled: true,
+        isDefault: true,
+        configJson: {
+          baseUrl: "https://hhtechapi.net/v1",
+          apiKey: process.env.HHTECH_API_KEY || "",
+          temperature: 0.7,
+          notes: "Pre-configured HHTECH.API Gateway (Claude, GPT, Gemini, DeepSeek)",
+        },
+      },
+    });
+  }
 
   console.log("✅ Seeding completed successfully!");
   console.log("--------------------------------------------------");

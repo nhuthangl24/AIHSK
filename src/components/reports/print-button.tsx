@@ -12,7 +12,7 @@ export function PrintButton() {
       className="text-xs flex items-center gap-1.5"
     >
       <Printer className="h-3.5 w-3.5" />
-      <span>Print / Save PDF</span>
+      <span>In / Xuất PDF</span>
     </Button>
   );
 }

@@ -8,12 +8,12 @@ export default function AboutPage() {
     <div className="py-16 md:py-24">
       <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4">
-          <Badge variant="cinnabar">Our Assessment Philosophy</Badge>
+          <Badge variant="cinnabar">Triết Lý Đánh Giá Khẩu Ngữ</Badge>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Educational Rigor in AI Oral Assessment
+            Tính Chuẩn Xác & Chuẩn Mực Trong Khảo Thí Khẩu Ngữ AI
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            HuáVocal AI was created to solve a critical gap in language education: evaluating conversational speaking proficiency holistically rather than grading disjointed sentences.
+            Classnia AI được phát triển nhằm giải quyết khoảng trống then chốt trong giáo dục ngôn ngữ: đánh giá năng lực nói và tương tác hội thoại một cách toàn diện thay vì chấm điểm từng câu đơn lẻ rời rạc.
           </p>
         </div>
 
@@ -21,13 +21,13 @@ export default function AboutPage() {
           <Card className="border-slate-200 dark:border-slate-800">
             <CardContent className="p-8 space-y-4">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Why Full-Length Conversation Matters
+                Vì Sao Cuộc Hội Thoại Hoàn Chỉnh Lại Có Ý Nghĩa Quyết Định
               </h2>
               <p>
-                In standard language testing, a candidate who prepares a single rehearsed sentence may appear fluent for five seconds, but fail when asked to substantiate a point, navigate counterarguments, or sustain dialogue over five conversational stages.
+                Trong khảo thí ngôn ngữ, một thí sinh có thể học thuộc lòng một câu đơn lẻ để phát âm trôi chảy trong vài giây, nhưng sẽ bộc lộ hạn chế khi phải giải thích luận điểm, đối đáp phản biện hoặc duy trì đối thoại qua 5 giai đoạn liên tục.
               </p>
               <p>
-                HuáVocal AI simulates an actual oral examination board. The AI Examiner listens to your complete response, evaluates lexical range and grammatical connectivity across multiple turns, and presents follow-up questions that challenge your discourse competence.
+                Classnia AI mô phỏng hội đồng thi khẩu ngữ chuyên nghiệp. Giám khảo AI lắng nghe toàn bộ câu trả lời, đánh giá độ rộng từ vựng và khả năng kết nối ngữ pháp qua nhiều lượt đối đáp, đồng thời đưa ra các câu hỏi mở rộng thử thách năng lực diễn ngôn thực tế.
               </p>
             </CardContent>
           </Card>
@@ -35,26 +35,26 @@ export default function AboutPage() {
           <Card className="border-slate-200 dark:border-slate-800">
             <CardContent className="p-8 space-y-4">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                CEFR & HSK Proficiency Calibration
+                Chuẩn Hóa Theo Khung Năng Lực CEFR & HSK
               </h2>
               <p>
-                Our rubrics are calibrated against the Common European Framework of Reference for Languages (CEFR A1 through C2) and HSK (Hanyu Shuiping Kaoshi) proficiency descriptions.
+                Bộ tiêu chí chấm điểm được hiệu chuẩn theo Khung tham chiếu trình độ ngôn ngữ chung Châu Âu (CEFR A1 đến C2) và khung chuẩn năng lực HSK.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                   <h4 className="font-bold text-slate-900 dark:text-white mb-1">
-                    CEFR Benchmark
+                    Khung Tham Chiếu CEFR
                   </h4>
                   <p className="text-xs text-slate-500">
-                    A1/A2 for basic survival interactions; B1/B2 for independent topical discourse; C1/C2 for spontaneous, articulate abstract reasoning.
+                    A1/A2 cho giao tiếp cơ bản hàng ngày; B1/B2 cho diễn đạt chủ đề độc lập; C1/C2 cho tư duy trừu tượng và phản xạ tự nhiên.
                   </p>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                   <h4 className="font-bold text-slate-900 dark:text-white mb-1">
-                    HSK Alignment (Unofficial)
+                    Quy Đổi Chuẩn HSK (Học thuật)
                   </h4>
                   <p className="text-xs text-slate-500">
-                    Estimated oral capability aligned with HSK 1 through HSK 6 vocabulary bands and grammatical complexity tiers.
+                    Ước tính năng lực khẩu ngữ tương ứng với các bậc từ vựng và độ phức tạp ngữ pháp từ HSK 1 đến HSK 6.
                   </p>
                 </div>
               </div>
@@ -64,10 +64,10 @@ export default function AboutPage() {
           <div id="disclaimer" className="p-6 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200 text-xs sm:text-sm space-y-2">
             <h3 className="font-bold flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-amber-600" />
-              <span>Official Certification Disclaimer</span>
+              <span>Tuyên Bố Miễn Trừ Trách Nhiệm Về Chứng Chỉ Chính Thức</span>
             </h3>
             <p className="leading-relaxed">
-              HuáVocal AI is an independent language assessment technology platform. It provides formative educational estimates and diagnostic feedback. HuáVocal AI is not affiliated with, licensed by, or an official representative of Chinese Testing International (CTI) or the Ministry of Education of the People&apos;s Republic of China. Our assessment reports are for diagnostic and educational advancement.
+              Classnia AI là nền tảng công nghệ đánh giá ngôn ngữ độc lập, cung cấp ước tính năng lực và phản hồi chẩn đoán phục vụ mục đích học tập. Classnia AI không liên kết trực tiếp, không đại diện và không cấp chứng chỉ chính thức thay thế cho Chinese Testing International (CTI) hay Bộ Giáo dục Trung Quốc. Báo cáo đánh giá nhằm mục đích chẩn đoán và nâng cao năng lực cá nhân.
             </p>
           </div>
         </div>

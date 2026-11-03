@@ -1,5 +1,6 @@
 import { ConversationTurnItem, StageDefinition } from "./types";
 import { CHINESE_EXAMINER_SYSTEM_PROMPT } from "./prompts";
+import { AIClient, ChatMessage, LLMConfig } from "./ai-client";
 
 export interface NextTurnResult {
   stage: number;
@@ -56,58 +57,55 @@ export class ExaminerService {
     targetLevel = "HSK 3",
     topic = "Daily Life & Cultural Experience"
   ): Promise<NextTurnResult> {
-    const totalTurns = turns.length;
     const currentLearnerTurnCount = turns.filter((t) => t.speaker === "LEARNER").length;
 
-    // Check if cloud LLM is available
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        return await this.callOpenAI(turns, targetLevel, topic);
-      } catch (err) {
-        console.warn("OpenAI Examiner call failed, falling back to adaptive engine:", err);
+    // Check if cloud LLM is available (HHTECH / OpenAI / Claude)
+    try {
+      if (!process.env.VITEST) {
+        const config = await AIClient.getActiveConfig();
+        if (config.apiKey && config.isEnabled) {
+          return await this.callCloudLLM(turns, targetLevel, topic, config);
+        }
       }
+    } catch (err) {
+      console.warn("Cloud Examiner call failed, falling back to adaptive engine:", err);
     }
 
     // High fidelity built-in pedagogical state machine
     return this.generateAdaptiveTurn(turns, currentLearnerTurnCount, targetLevel, topic);
   }
 
-  private static async callOpenAI(
+  private static async callCloudLLM(
     turns: ConversationTurnItem[],
     targetLevel: string,
-    topic: string
+    topic: string,
+    config: LLMConfig
   ): Promise<NextTurnResult> {
-    const messages = [
+    const messages: ChatMessage[] = [
       {
         role: "system",
-        content: `${CHINESE_EXAMINER_SYSTEM_PROMPT}\nTarget Level: ${targetLevel}. Topic: ${topic}`,
+        content: `${CHINESE_EXAMINER_SYSTEM_PROMPT}\nTarget Level: ${targetLevel}. Topic: ${topic}\nIMPORTANT: Reply ONLY with a strict JSON object according to the schema.`,
       },
       ...turns.map((t) => ({
-        role: t.speaker === "EXAMINER" ? "assistant" : "user",
+        role: (t.speaker === "EXAMINER" ? "assistant" : "user") as "assistant" | "user",
         content: t.textContent,
       })),
     ];
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: process.env.AI_DEFAULT_MODEL || "gpt-4o-mini",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      }),
+    const rawContent = await AIClient.chatCompletion({
+      messages,
+      model: config.modelId,
+      temperature: config.temperature ?? 0.7,
+      requireJson: true,
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const parsed = JSON.parse(data.choices[0].message.content);
+    const parsed = AIClient.extractJson<{
+      stage?: number;
+      examinerResponse?: string;
+      pinyin?: string;
+      isCompleted?: boolean;
+      feedbackHint?: string;
+    }>(rawContent);
 
     return {
       stage: parsed.stage || 1,

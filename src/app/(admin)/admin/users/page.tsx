@@ -14,10 +14,10 @@ export default async function AdminUsersPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Platform User Governance
+          Quản Trị Người Dùng Nền Tảng
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Review registered candidate, instructor, and institutional tenant accounts across the platform.
+          Quản lý danh sách tài khoản thí sinh, giảng viên và tổ chức trên toàn hệ thống.
         </p>
       </div>
 
@@ -26,11 +26,11 @@ export default async function AdminUsersPage() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
               <tr>
-                <th className="py-3 px-4">User</th>
-                <th className="py-3 px-4">Role</th>
-                <th className="py-3 px-4">Target Level</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Joined Date</th>
+                <th className="py-3 px-4">Người Dùng</th>
+                <th className="py-3 px-4">Vai Trò</th>
+                <th className="py-3 px-4">Trình Độ Mục Tiêu</th>
+                <th className="py-3 px-4">Trạng Thái</th>
+                <th className="py-3 px-4">Ngày Tham Gia</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -50,7 +50,7 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="py-3 px-4">
                     <Badge variant={u.isActive ? "success" : "destructive"} className="text-[10px]">
-                      {u.isActive ? "Active" : "Suspended"}
+                      {u.isActive ? "Hoạt động" : "Tạm khóa"}
                     </Badge>
                   </td>
                   <td className="py-3 px-4 text-slate-500">

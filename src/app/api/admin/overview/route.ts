@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { UserRole } from "@prisma/client";
+import { AIClient } from "@/lib/ai/ai-client";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -18,6 +19,7 @@ export async function GET() {
     recentJobs,
     recentAudits,
     recentUsers,
+    activeAI,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.assessmentSession.count(),
@@ -45,7 +47,12 @@ export async function GET() {
         createdAt: true,
       },
     }),
+    AIClient.getActiveConfig(),
   ]);
+
+  const llmDisplay = activeAI.apiKey && activeAI.isEnabled
+    ? `${activeAI.providerName.toUpperCase()} (${activeAI.modelId})`
+    : "Built-in Adaptive Neural Engine";
 
   return NextResponse.json({
     metrics: {
@@ -61,7 +68,7 @@ export async function GET() {
     recentAudits,
     recentUsers,
     aiConfig: {
-      llmProvider: process.env.OPENAI_API_KEY ? "OpenAI GPT-4o-mini" : "Built-in Adaptive Neural Engine",
+      llmProvider: llmDisplay,
       speechRecognition: "Web Audio STT / Cloud Whisper API",
       speechSynthesis: "Native Web Speech / Cloud TTS",
       scoringEngine: "Multi-dimensional Psychometric Engine v1.0",

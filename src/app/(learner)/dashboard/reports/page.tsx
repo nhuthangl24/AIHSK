@@ -32,10 +32,10 @@ export default async function ReportsListPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Oral Assessment Reports
+          Báo Cáo Đánh Giá Khẩu Ngữ
         </h1>
         <p className="text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
-          Review your complete historical examination reports, 7-dimension linguistic scores, and weekly improvement plans.
+          Xem lại toàn bộ lịch sử báo cáo khảo thí, điểm số ngôn ngữ học 7 chiều kích và lộ trình cải thiện cá nhân hóa.
         </p>
       </div>
 
@@ -43,14 +43,14 @@ export default async function ReportsListPage() {
         <Card className="border-slate-200 dark:border-slate-800 text-center p-12">
           <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-            No completed assessments yet
+            Chưa có bài thi nào hoàn thành
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-6">
-            Take your first 5-stage spoken interview with AI Examiner Li to receive an in-depth diagnostic report.
+            Hãy tham gia bài thi phỏng vấn nói 5 giai đoạn đầu tiên cùng Giám khảo AI Lý để nhận báo cáo chẩn đoán chi tiết.
           </p>
           <Link href="/dashboard/assessments">
             <Button className="bg-rose-600 hover:bg-rose-700 text-white font-semibold">
-              Start Assessment Free &rarr;
+              Bắt đầu làm bài thi &rarr;
             </Button>
           </Link>
         </Card>
@@ -71,7 +71,7 @@ export default async function ReportsListPage() {
                       {formatDate(s.createdAt)}
                     </span>
                     <Badge variant="cinnabar" className="text-[10px]">
-                      {s.result?.hskEstimate || "HSK Diagnostic"}
+                      {s.result?.hskEstimate || "Chẩn đoán HSK"}
                     </Badge>
                   </div>
 
@@ -80,7 +80,7 @@ export default async function ReportsListPage() {
                       {s.template.title}
                     </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      CEFR Level: <span className="font-semibold text-slate-700 dark:text-slate-300">{s.result?.cefrEstimate || "B1"}</span>
+                      Trình độ CEFR: <span className="font-semibold text-slate-700 dark:text-slate-300">{s.result?.cefrEstimate || "B1"}</span>
                     </p>
                   </div>
 
@@ -90,13 +90,13 @@ export default async function ReportsListPage() {
                     </span>
                     <span className="text-xs text-slate-400">/ 100</span>
                     <span className="text-xs text-emerald-600 font-semibold ml-auto flex items-center gap-1">
-                      <Award className="h-3.5 w-3.5" /> High Confidence
+                      <Award className="h-3.5 w-3.5" /> Độ tin cậy cao
                     </span>
                   </div>
 
                   <Link href={`/dashboard/reports/${s.id}`} className="block pt-2">
                     <Button variant="outline" className="w-full text-xs font-semibold flex items-center justify-center gap-2">
-                      <span>View Full Diagnostic Report</span>
+                      <span>Xem Báo Cáo Chẩn Đoán Chi Tiết</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   </Link>

@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth/session";
 import prisma from "@/lib/db/prisma";
+import { AIClient } from "@/lib/ai/ai-client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,6 +24,7 @@ export default async function PlatformAdminPage() {
     recentJobs,
     auditLogs,
     templates,
+    activeAI,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.assessmentSession.count(),
@@ -38,7 +40,12 @@ export default async function PlatformAdminPage() {
       include: { actor: true },
     }),
     prisma.assessmentTemplate.findMany(),
+    AIClient.getActiveConfig(),
   ]);
+
+  const activeLLMTitle = activeAI.apiKey && activeAI.isEnabled
+    ? `${activeAI.providerName === "hhtech" ? "HHTECH.API" : activeAI.providerName.toUpperCase()} · ${activeAI.modelId}`
+    : "Built-in Adaptive Neural Engine";
 
   return (
     <div className="space-y-8">
@@ -46,14 +53,14 @@ export default async function PlatformAdminPage() {
       <div className="pb-6 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Badge variant="destructive" className="text-xs">
-            Super Administrator
+            Quản Trị Viên Cấp Cao
           </Badge>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            HuáVocal AI Platform Governance
+            Quản Trị Nền Tảng Classnia AI
           </h1>
         </div>
         <p className="text-sm text-slate-500 mt-1">
-          System telemetry, AI provider orchestration, queue health, and tenant audit logs.
+          Giám sát hệ thống, điều phối mô hình AI, trạng thái hàng đợi và nhật ký bảo mật.
         </p>
       </div>
 
@@ -62,27 +69,27 @@ export default async function PlatformAdminPage() {
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Total Platform Users</span>
+              <span>Tổng Số Người Dùng</span>
               <Users className="h-4 w-4 text-purple-600" />
             </div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
               {userCount}
             </div>
-            <p className="text-[11px] text-slate-500">Learners, Teachers, Admins</p>
+            <p className="text-[11px] text-slate-500">Học viên, Giảng viên, Quản trị</p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Total Oral Exams</span>
+              <span>Tổng Số Phiên Thi Khẩu Ngữ</span>
               <Activity className="h-4 w-4 text-blue-600" />
             </div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
               {assessmentCount}
             </div>
             <p className="text-[11px] text-emerald-600 font-medium">
-              {assessmentCount > 0 ? Math.round((completedCount / assessmentCount) * 100) : 100}% Completion Rate
+              {assessmentCount > 0 ? Math.round((completedCount / assessmentCount) * 100) : 100}% Tỷ lệ hoàn thành
             </p>
           </CardContent>
         </Card>
@@ -90,26 +97,26 @@ export default async function PlatformAdminPage() {
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Scoring Pipeline Status</span>
+              <span>Hệ Thống Chấm Điểm</span>
               <Cpu className="h-4 w-4 text-emerald-600" />
             </div>
             <div className="text-2xl font-extrabold text-emerald-600">
-              Healthy
+              Hoạt động tốt
             </div>
-            <p className="text-[11px] text-slate-500">Multi-Turn Engine Active</p>
+            <p className="text-[11px] text-slate-500">Động cơ hội thoại đa lượt đang chạy</p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Assessment Templates</span>
+              <span>Mẫu Đề Khảo Thí</span>
               <Layers className="h-4 w-4 text-rose-600" />
             </div>
             <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
               {templates.length}
             </div>
-            <p className="text-[11px] text-slate-500">Active standardized rubrics</p>
+            <p className="text-[11px] text-slate-500">Bộ tiêu chí chấm chuẩn hóa</p>
           </CardContent>
         </Card>
       </div>
@@ -119,47 +126,47 @@ export default async function PlatformAdminPage() {
         <CardHeader>
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <Cpu className="h-5 w-5 text-purple-600" />
-            <span>AI Model & Speech Provider Status</span>
+            <span>Trạng Thái Mô Hình AI & Giọng Nói</span>
           </CardTitle>
           <CardDescription>
-            Live status of external AI providers with automatic fallback to built-in linguistic models.
+            Trạng thái các nhà cung cấp AI với cơ chế tự động chuyển dự phòng sang mô hình ngôn ngữ tích hợp.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-1.5">
               <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">
-                Examiner LLM Engine
+                Mô Hình AI Giám Khảo
               </span>
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                {process.env.OPENAI_API_KEY ? "OpenAI GPT-4o-mini" : "Built-in Adaptive Neural Engine"}
+                {activeLLMTitle}
               </h4>
               <p className="text-slate-500">
-                5-Stage Mandarin oral interview orchestrator with automatic pinyin.
+                Điều phối phỏng vấn khẩu ngữ 5 giai đoạn kèm phiên âm Pinyin tự động.
               </p>
             </div>
 
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-1.5">
               <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">
-                Speech-to-Text & Audio
+                Nhận Dạng Giọng Nói & Âm Thanh
               </span>
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">
                 Web Audio STT / Cloud Whisper API
               </h4>
               <p className="text-slate-500">
-                Mandarin audio stream recognition with tone contour extraction.
+                Nhận dạng luồng âm thanh tiếng Trung và trích xuất đường nét thanh điệu.
               </p>
             </div>
 
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-1.5">
               <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">
-                Scoring Engine
+                Động Cơ Chấm Điểm
               </span>
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                Psychometric 7-Dimension v1.0
+                Tâm trắc học 7 chiều kích v1.0
               </h4>
               <p className="text-slate-500">
-                Deterministic rule & evidence extractor calibrated to CEFR & HSK.
+                Trích xuất quy tắc & bằng chứng hội thoại theo chuẩn HSK & CEFR.
               </p>
             </div>
           </div>
@@ -172,13 +179,13 @@ export default async function PlatformAdminPage() {
           <CardHeader>
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <Activity className="h-4 w-4 text-blue-600" />
-              <span>Background Job Queue</span>
+              <span>Hàng Đợi Xử Lý Ngầm</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
               {recentJobs.length === 0 ? (
-                <p className="py-4 text-slate-500">No recent queue jobs</p>
+                <p className="py-4 text-slate-500">Chưa có tác vụ ngầm nào</p>
               ) : (
                 recentJobs.map((j) => (
                   <div key={j.id} className="py-2.5 flex items-center justify-between">
@@ -200,7 +207,7 @@ export default async function PlatformAdminPage() {
           <CardHeader>
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-purple-600" />
-              <span>Security & Telemetry Audit Trail</span>
+              <span>Nhật Ký Bảo Mật & Hệ Thống</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
@@ -209,7 +216,7 @@ export default async function PlatformAdminPage() {
                 <div key={log.id} className="py-2.5 flex items-center justify-between">
                   <div>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">{log.action}</span>
-                    <p className="text-[10px] text-slate-400">Actor: {log.actor?.email || "System"} &bull; {formatDate(log.createdAt)}</p>
+                    <p className="text-[10px] text-slate-400">Người thực hiện: {log.actor?.email || "Hệ thống"} &bull; {formatDate(log.createdAt)}</p>
                   </div>
                   <span className="font-mono text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                     {log.entityType}

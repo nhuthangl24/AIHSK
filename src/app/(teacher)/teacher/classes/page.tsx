@@ -24,10 +24,10 @@ export default async function TeacherClassesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Classrooms & Student Rosters
+            Lớp Học & Danh Sách Học Sinh
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage your student cohorts, join codes, and view class-level enrollment.
+            Quản lý nhóm học tập, mã tham gia lớp và theo dõi tình hình học sinh theo lớp.
           </p>
         </div>
       </div>
@@ -45,22 +45,22 @@ export default async function TeacherClassesPage() {
                 </span>
               </div>
               <CardTitle className="text-lg font-bold">{c.name}</CardTitle>
-              <p className="text-xs text-slate-500">{c.description || "Oral training cohort"}</p>
+              <p className="text-xs text-slate-500">{c.description || "Lớp luyện khẩu ngữ chuyên sâu"}</p>
             </CardHeader>
 
             <CardContent className="space-y-4 pt-0">
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
                 <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
                   <Users className="h-4 w-4 text-blue-600" />
-                  <span>{c.members.length} Enrolled Student(s)</span>
+                  <span>{c.members.length} Học sinh ghi danh</span>
                 </span>
-                <span>{c.assignments.length} Assignments</span>
+                <span>{c.assignments.length} Bài tập</span>
               </div>
 
               {/* Members preview */}
               <div className="space-y-1.5 pt-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Student Roster:
+                  Danh Sách Học Sinh:
                 </span>
                 <ul className="space-y-1 text-xs">
                   {c.members.slice(0, 3).map((m) => (

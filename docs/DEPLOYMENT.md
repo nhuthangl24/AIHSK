@@ -1,6 +1,6 @@
-# HuáVocal AI SaaS Deployment Guide
+# Classnia AI SaaS Deployment Guide
 
-This guide details the steps required to deploy HuáVocal AI to production environments such as Vercel, Railway, Render, AWS, or Docker containers.
+This guide details the steps required to deploy Classnia AI to production environments such as Vercel, Railway, Render, AWS, or Docker containers.
 
 ---
 
@@ -13,7 +13,7 @@ Copy `.env.example` to your production environment configuration and populate th
 DATABASE_URL="postgresql://user:password@db-host.internal:5432/aihsk_saas?schema=public&sslmode=require"
 
 # Application URL & Security
-NEXT_PUBLIC_APP_URL="https://app.huavocal.com"
+NEXT_PUBLIC_APP_URL="https://app.classnia.com"
 JWT_SECRET="generate-a-secure-random-64-character-hex-string-for-production"
 SESSION_EXPIRY_DAYS="7"
 
@@ -80,7 +80,7 @@ When running in serverless environments (like Vercel), local disk writes are eph
    ```json
    [
      {
-       "AllowedOrigins": ["https://app.huavocal.com"],
+       "AllowedOrigins": ["https://app.classnia.com"],
        "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
        "AllowedHeaders": ["*"],
        "MaxAgeSeconds": 3000
@@ -98,7 +98,7 @@ When running in serverless environments (like Vercel), local disk writes are eph
    - Teacher ($49/mo)
    - Organization ($199/mo)
 2. Configure Webhook endpoint pointing to:
-   `https://app.huavocal.com/api/billing/webhook`
+   `https://app.classnia.com/api/billing/webhook`
 3. Listen for events:
    - `checkout.session.completed`
    - `customer.subscription.updated`
@@ -111,6 +111,6 @@ When running in serverless environments (like Vercel), local disk writes are eph
 ## 6. Custom Domain & Subdomains
 
 Recommended DNS setup:
-- Root / Marketing: `huavocal.com`
-- App Portal: `app.huavocal.com`
-- Institutional Tenants (Optional): `<school-slug>.huavocal.com`
+- Root / Marketing: `classnia.com`
+- App Portal: `app.classnia.com`
+- Institutional Tenants (Optional): `<school-slug>.classnia.com`
