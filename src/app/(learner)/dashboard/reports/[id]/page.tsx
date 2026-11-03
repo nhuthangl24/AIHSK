@@ -24,6 +24,41 @@ import { formatDate, formatScore, getScoreBadgeColor } from "@/lib/utils";
 
 import { PrintButton } from "@/components/reports/print-button";
 
+function formatPerformanceLevel(level: string): string {
+  switch (level) {
+    case "Mastery":
+      return "Thành thạo (Mastery)";
+    case "Proficient":
+      return "Đạt chuẩn (Proficient)";
+    case "Developing":
+      return "Cần cải thiện (Developing)";
+    case "Elementary":
+      return "Cơ bản (Elementary)";
+    default:
+      return level;
+  }
+}
+
+function localizeDimensionName(name: string): string {
+  const map: Record<string, string> = {
+    "Pronunciation & Tones (发音与声调)": "Phát âm & Thanh điệu (发音与声调)",
+    "Pronunciation & Tones": "Phát âm & Thanh điệu (发音与声调)",
+    "Fluency & Speech Rhythm (流利度与语速连贯)": "Độ lưu loát & Nhịp điệu nói (流利度与语速连贯)",
+    "Fluency & Speech Rhythm": "Độ lưu loát & Nhịp điệu nói (流利度与语速连贯)",
+    "Vocabulary Range (词汇广度与得体度)": "Vốn từ vựng & Tính chuẩn xác (词汇广度与得体度)",
+    "Vocabulary Range": "Vốn từ vựng & Tính chuẩn xác (词汇广度与得体度)",
+    "Grammar & Syntax (语法结构与准确度)": "Cấu trúc ngữ pháp & Độ chuẩn xác (语法结构与准确度)",
+    "Grammar & Syntax": "Cấu trúc ngữ pháp & Độ chuẩn xác (语法结构与准确度)",
+    "Coherence & Discourse (篇章连贯与逻辑结构)": "Tính liên kết & Cấu trúc ngữ đoạn (篇章连贯与逻辑结构)",
+    "Coherence & Discourse": "Tính liên kết & Cấu trúc ngữ đoạn (篇章连贯与逻辑结构)",
+    "Listening Comprehension (听力理解与应答切题)": "Khả năng nghe hiểu & Phản xạ (听力理解与应答切题)",
+    "Listening Comprehension": "Khả năng nghe hiểu & Phản xạ (听力理解与应答切题)",
+    "Interactive Sustained Dialogue (互动表达与深层展开)": "Khả năng tương tác & Mở rộng chiều sâu (互动表达与深层展开)",
+    "Interactive Sustained Dialogue": "Khả năng tương tác & Mở rộng chiều sâu (互动表达与深层展开)",
+  };
+  return map[name] || name;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function AssessmentReportPage({
@@ -166,10 +201,10 @@ export default async function AssessmentReportPage({
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                        {dim.dimensionName}
+                        {localizeDimensionName(dim.dimensionName)}
                       </h4>
                       <span className="text-[10px] text-slate-500 font-medium">
-                        Trọng số: {(dim.weight * 100).toFixed(0)}% &bull; Cấp độ: {dim.performanceLevel}
+                        Trọng số: {(dim.weight * 100).toFixed(0)}% &bull; Cấp độ: {formatPerformanceLevel(dim.performanceLevel)}
                       </span>
                     </div>
                     <div className="text-right">
@@ -327,6 +362,50 @@ export default async function AssessmentReportPage({
                       </td>
                       <td className="py-3 px-3 italic text-slate-500">
                         {v.exampleSentence}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pronunciation & Tone Diagnosis Section */}
+      {pronRecs.length > 0 && (
+        <Card className="border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-rose-600" />
+              <span>Chẩn Đoán Phát Âm & Biến Điệu Thanh</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                  <tr>
+                    <th className="py-2.5 px-3">Điểm ngữ âm trọng tâm</th>
+                    <th className="py-2.5 px-3">Hiện tượng ghi nhận</th>
+                    <th className="py-2.5 px-3">Gợi ý luyện tập cải thiện</th>
+                    <th className="py-2.5 px-3">Từ luyện tập tiêu biểu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {pronRecs.map((p) => (
+                    <tr key={p.id}>
+                      <td className="py-3 px-3 text-slate-900 dark:text-white font-semibold">
+                        {p.originalPhrase}
+                      </td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400 leading-relaxed">
+                        {p.explanation}
+                      </td>
+                      <td className="py-3 px-3 text-emerald-700 dark:text-emerald-300 font-medium">
+                        {p.correctedPhrase}
+                      </td>
+                      <td className="py-3 px-3 italic font-medium text-rose-600 dark:text-rose-400">
+                        {p.exampleSentence}
                       </td>
                     </tr>
                   ))}
