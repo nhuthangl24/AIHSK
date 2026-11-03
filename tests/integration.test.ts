@@ -52,7 +52,7 @@ describe("Assessment Lifecycle Integration Tests", () => {
 
     expect(turnResult.learnerTurn).toBeDefined();
     expect(turnResult.examinerTurn).toBeDefined();
-    expect(turnResult.examinerTurn.speaker).toBe("EXAMINER");
+    expect(turnResult.examinerTurn?.speaker).toBe("EXAMINER");
 
     const session = await prisma.assessmentSession.findUnique({
       where: { id: createdSessionId },

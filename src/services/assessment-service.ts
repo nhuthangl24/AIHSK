@@ -80,6 +80,11 @@ export class AssessmentService {
 
     if (session.status !== SessionStatus.IN_PROGRESS) {
       if (session.status === SessionStatus.PROCESSING || session.status === SessionStatus.COMPLETED) {
+        if (session.status === SessionStatus.PROCESSING) {
+          ScoringWorker.ensureSessionScored(sessionId).catch((e) =>
+            console.error("Duplicate submit scoring error:", e)
+          );
+        }
         return {
           learnerTurn: session.turns[session.turns.length - 1] || null,
           examinerTurn: null,

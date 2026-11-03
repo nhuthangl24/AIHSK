@@ -126,12 +126,23 @@ export default function AssessmentSelectionPage() {
         body: JSON.stringify({ templateId }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Không thể bắt đầu bài thi");
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // Non-JSON response
+      }
+
+      if (!res.ok) throw new Error(data?.error || `Không thể bắt đầu bài thi (mã ${res.status})`);
+      if (!data?.session?.id) throw new Error("Không nhận được mã phiên thi hợp lệ.");
 
       router.push(`/dashboard/assessments/${data.session.id}`);
     } catch (err: any) {
-      alert(err.message || "Khởi động phòng thi thất bại");
+      console.error("Start exam error:", err);
+      const friendlyMsg = err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
+        ? "Máy chủ đang khởi động hoặc gián đoạn kết nối. Vui lòng bấm thử lại."
+        : (err?.message || "Khởi động phòng thi thất bại.");
+      alert(friendlyMsg);
       setStartingId(null);
     }
   };
@@ -157,12 +168,23 @@ export default function AssessmentSelectionPage() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Không thể tạo bài thi tự do");
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // Non-JSON response
+      }
+
+      if (!res.ok) throw new Error(data?.error || `Không thể tạo bài thi tự do (mã ${res.status})`);
+      if (!data?.session?.id) throw new Error("Không nhận được mã phiên thi hợp lệ.");
 
       router.push(`/dashboard/assessments/${data.session.id}`);
     } catch (err: any) {
-      alert(err.message || "Khởi tạo phòng thi tự do thất bại");
+      console.error("Start custom exam error:", err);
+      const friendlyMsg = err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
+        ? "Máy chủ đang khởi động hoặc gián đoạn kết nối. Vui lòng bấm thử lại."
+        : (err?.message || "Khởi tạo phòng thi tự do thất bại.");
+      alert(friendlyMsg);
       setIsStartingCustom(false);
     }
   };

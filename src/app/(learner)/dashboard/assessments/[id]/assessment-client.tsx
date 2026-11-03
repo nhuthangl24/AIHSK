@@ -151,6 +151,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -216,8 +217,19 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     if (!id) return;
     try {
       const res = await fetch(`/api/assessments/${id}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load session");
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // Non-JSON response (e.g. server starting up or HTML 500)
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error || `Không thể tải phòng thi (mã phản hồi ${res.status})`);
+      }
+      if (!data?.session) {
+        throw new Error("Không tìm thấy thông tin phòng thi.");
+      }
 
       setSession(data.session);
 
@@ -225,17 +237,24 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         router.push(`/dashboard/reports/${id}`);
       } else if (data.session.status === "PROCESSING") {
         setIsFinalizing(true);
-        const pollInterval = setInterval(async () => {
-          const pollRes = await fetch(`/api/assessments/${id}`);
-          const pollData = await pollRes.json();
-          if (pollData.session?.status === "COMPLETED") {
-            clearInterval(pollInterval);
-            router.push(`/dashboard/reports/${id}`);
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = setInterval(async () => {
+          try {
+            const pollRes = await fetch(`/api/assessments/${id}`);
+            if (!pollRes.ok) return;
+            const pollData = await pollRes.json();
+            if (pollData?.session?.status === "COMPLETED") {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+              router.push(`/dashboard/reports/${id}`);
+            }
+          } catch {
+            // Silence network glitch during background polling
           }
-        }, 1200);
+        }, 1500);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load assessment room");
+      console.error("fetchSession error:", err);
+      setError(err.message || "Không thể tải phòng thi.");
     } finally {
       setIsLoading(false);
     }
@@ -252,6 +271,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, [id]);
 
@@ -411,6 +431,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const handleSubmitTurn = async () => {
     if (!learnerTranscript.trim() || isSubmittingTurn) return;
 
+    if (session?.status === "PROCESSING" || session?.status === "COMPLETED" || isFinalizing) {
+      setIsFinalizing(true);
+      return;
+    }
+
     stopRecording();
     setIsSubmittingTurn(true);
 
@@ -426,28 +451,47 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Turn submission failed");
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // Non-JSON response
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error || `Gửi câu trả lời thất bại (mã phản hồi ${res.status}). Vui lòng thử lại.`);
+      }
 
       setLearnerTranscript("");
       setRecordingSeconds(0);
       setShowHint(false);
 
-      if (data.isCompleted) {
+      if (data?.isCompleted) {
         setIsFinalizing(true);
-        const pollInterval = setInterval(async () => {
-          const pollRes = await fetch(`/api/assessments/${id}`);
-          const pollData = await pollRes.json();
-          if (pollData.session?.status === "COMPLETED") {
-            clearInterval(pollInterval);
-            router.push(`/dashboard/reports/${id}`);
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = setInterval(async () => {
+          try {
+            const pollRes = await fetch(`/api/assessments/${id}`);
+            if (!pollRes.ok) return;
+            const pollData = await pollRes.json();
+            if (pollData?.session?.status === "COMPLETED") {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+              router.push(`/dashboard/reports/${id}`);
+            }
+          } catch (e) {
+            console.error("Poll error:", e);
           }
-        }, 1200);
+        }, 1500);
       } else {
         await fetchSession();
       }
     } catch (err: any) {
-      alert(err.message || "Failed to submit response");
+      console.error("Turn submission error:", err);
+      const friendlyMsg =
+        err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
+          ? "Máy chủ đang xử lý hoặc kết nối bị gián đoạn. Vui lòng bấm gửi lại."
+          : (err?.message || "Không thể gửi câu trả lời. Vui lòng thử lại.");
+      alert(friendlyMsg);
     } finally {
       setIsSubmittingTurn(false);
     }
@@ -866,13 +910,16 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                   ref={textareaRef}
                   value={learnerTranscript}
                   onChange={(e) => setLearnerTranscript(e.target.value)}
+                  disabled={isSubmittingTurn || isFinalizing || session?.status === "PROCESSING" || session?.status === "COMPLETED"}
                   placeholder={
-                    isRecording
+                    session?.status === "PROCESSING" || session?.status === "COMPLETED"
+                      ? "Kỳ thi khẩu ngữ đã hoàn tất. Đang chuyển hướng sang báo cáo kết quả..."
+                      : isRecording
                       ? "Đang nhận diện giọng nói tiếng Trung trực tiếp..."
                       : "Nhấn 'Bắt đầu nói' hoặc bạn có thể gõ câu trả lời bằng tiếng Trung tại đây..."
                   }
                   rows={4}
-                  className="w-full border-0 bg-transparent p-0 text-sm sm:text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none leading-relaxed font-medium"
+                  className="w-full border-0 bg-transparent p-0 text-sm sm:text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none leading-relaxed font-medium disabled:opacity-60"
                 />
 
                 {/* Subtitle helper inside textarea */}
@@ -1344,6 +1391,16 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 <Loader2 className="h-4 w-4 animate-spin text-rose-600" />
                 <span>Đang khởi tạo báo cáo chẩn đoán chi tiết...</span>
               </div>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                onClick={() => router.push(`/dashboard/reports/${id}`)}
+                className="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs h-10 rounded-xl font-semibold gap-2 shadow-sm"
+              >
+                <span>Xem Báo Cáo Đánh Giá Ngay</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
