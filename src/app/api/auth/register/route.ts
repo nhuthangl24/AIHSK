@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         email: normalizedEmail,
         passwordHash,
         name: validated.name,
-        role: isAdmin ? UserRole.SUPER_ADMIN : validated.role,
+        role: isAdmin ? UserRole.ADMIN : UserRole.USER,
         emailVerified: true,
         profile: {
           create: {

@@ -22,7 +22,7 @@ describe("Authentication & Security Unit Tests", () => {
     const payload = {
       userId: "user_test_123",
       email: "test@aihsk.com",
-      role: UserRole.LEARNER,
+      role: UserRole.USER,
       name: "Test Candidate",
     };
 
@@ -34,7 +34,7 @@ describe("Authentication & Security Unit Tests", () => {
     expect(decoded).not.toBeNull();
     expect(decoded?.userId).toBe(payload.userId);
     expect(decoded?.email).toBe(payload.email);
-    expect(decoded?.role).toBe(UserRole.LEARNER);
+    expect(decoded?.role).toBe(UserRole.USER);
   });
 
   it("should reject tampered or invalid JWT tokens", async () => {
@@ -46,7 +46,7 @@ describe("Authentication & Security Unit Tests", () => {
     const googleUser = {
       userId: "google_sub_987654",
       email: "vietnam.candidate@gmail.com",
-      role: UserRole.LEARNER,
+      role: UserRole.USER,
       name: "Google Learner",
     };
 
@@ -56,6 +56,6 @@ describe("Authentication & Security Unit Tests", () => {
     expect(verified).not.toBeNull();
     expect(verified?.email).toBe("vietnam.candidate@gmail.com");
     expect(verified?.name).toBe("Google Learner");
-    expect(verified?.role).toBe(UserRole.LEARNER);
+    expect(verified?.role).toBe(UserRole.USER);
   });
 });

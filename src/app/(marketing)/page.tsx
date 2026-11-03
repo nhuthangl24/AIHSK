@@ -11,7 +11,7 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ORG_ADMIN) {
+  if (user.role === UserRole.ADMIN) {
     redirect("/admin");
   }
 

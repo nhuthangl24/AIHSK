@@ -13,7 +13,7 @@ export default async function AuthLayout({
   const user = await getCurrentUser();
 
   if (user) {
-    if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ORG_ADMIN) redirect("/admin");
+    if (user.role === UserRole.ADMIN) redirect("/admin");
     redirect("/dashboard");
   }
 

@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
         email: normalizedEmail,
         name: normalizedEmail.split("@")[0],
         passwordHash,
-        role: isAdmin ? UserRole.SUPER_ADMIN : UserRole.LEARNER,
+        role: isAdmin ? UserRole.ADMIN : UserRole.USER,
         emailVerified: true,
         profile: {
           create: {
@@ -45,10 +45,10 @@ export async function GET(req: NextRequest) {
         },
       },
     });
-  } else if (isAdmin && user.role !== UserRole.SUPER_ADMIN) {
+  } else if (isAdmin && user.role !== UserRole.ADMIN) {
     user = await prisma.user.update({
       where: { id: user.id },
-      data: { role: UserRole.SUPER_ADMIN },
+      data: { role: UserRole.ADMIN },
     });
   }
 

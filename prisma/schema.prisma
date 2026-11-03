@@ -8,10 +8,8 @@ datasource db {
 }
 
 enum UserRole {
-  LEARNER
-  TEACHER
-  ORG_ADMIN
-  SUPER_ADMIN
+  USER
+  ADMIN
 }
 
 enum OrgRole {
@@ -98,7 +96,7 @@ model User {
   passwordHash  String
   name          String
   avatarUrl     String?
-  role          UserRole  @default(LEARNER)
+  role          UserRole  @default(USER)
   isActive      Boolean   @default(true)
   emailVerified Boolean   @default(false)
   suspendedAt   DateTime?

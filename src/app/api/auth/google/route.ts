@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
           passwordHash,
           avatarUrl,
           emailVerified: true,
-          role: isAdmin ? UserRole.SUPER_ADMIN : UserRole.LEARNER,
+          role: isAdmin ? UserRole.ADMIN : UserRole.USER,
           profile: {
             create: {
               targetLevel: "HSK 3",
@@ -76,10 +76,10 @@ export async function POST(req: NextRequest) {
         );
       }
       const isAdmin = ADMIN_EMAILS.includes(rawEmail);
-      if (isAdmin && user.role !== UserRole.SUPER_ADMIN) {
+      if (isAdmin && user.role !== UserRole.ADMIN) {
         user = await prisma.user.update({
           where: { id: user.id },
-          data: { role: UserRole.SUPER_ADMIN, emailVerified: true },
+          data: { role: UserRole.ADMIN, emailVerified: true },
         });
       } else if (!user.emailVerified) {
         user = await prisma.user.update({
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     });
 
     let redirectPath = "/dashboard";
-    if (user.role === "SUPER_ADMIN" || user.role === "ORG_ADMIN") redirectPath = "/admin";
+    if (user.role === "ADMIN") redirectPath = "/admin";
 
     const response = NextResponse.json({
       success: true,

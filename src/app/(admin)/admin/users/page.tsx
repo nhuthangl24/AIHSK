@@ -41,7 +41,7 @@ export default async function AdminUsersPage() {
                     <span className="text-slate-400 text-[11px]">{u.email}</span>
                   </td>
                   <td className="py-3 px-4">
-                    {u.role === "SUPER_ADMIN" || u.role === "ORG_ADMIN" ? (
+                    {u.role === "ADMIN" ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
                         Admin
                       </span>

@@ -66,7 +66,7 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
               email: normalizedEmail,
               name: normalizedEmail.split("@")[0],
               passwordHash,
-              role: isAdmin ? UserRole.SUPER_ADMIN : UserRole.LEARNER,
+              role: isAdmin ? UserRole.ADMIN : UserRole.USER,
               emailVerified: true,
               profile: {
                 create: {

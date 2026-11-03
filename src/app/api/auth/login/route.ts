@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     // Determine redirect route based on role (Admin -> /admin, User -> /dashboard)
     let redirectPath = "/dashboard";
-    if (user.role === "SUPER_ADMIN" || user.role === "ORG_ADMIN") redirectPath = "/admin";
+    if (user.role === "ADMIN") redirectPath = "/admin";
 
     const response = NextResponse.json({
       success: true,

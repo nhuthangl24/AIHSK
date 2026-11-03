@@ -18,7 +18,7 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>(UserRole.LEARNER);
+  const [role, setRole] = useState<UserRole>(UserRole.USER);
   const [targetLevel, setTargetLevel] = useState("HSK 3");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);

@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
           avatarUrl,
           passwordHash,
           emailVerified: true,
-          role: UserRole.LEARNER,
+          role: UserRole.USER,
           profile: {
             create: {
               targetLevel: "HSK 3",
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
     });
 
     let redirectPath = "/dashboard";
-    if (user.role === "SUPER_ADMIN" || user.role === "ORG_ADMIN") redirectPath = "/admin";
+    if (user.role === "ADMIN") redirectPath = "/admin";
 
     const response = NextResponse.redirect(new URL(redirectPath, origin));
 

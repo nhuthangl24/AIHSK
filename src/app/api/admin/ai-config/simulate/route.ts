@@ -6,7 +6,7 @@ import { ConversationTurnItem } from "@/lib/ai/types";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ORG_ADMIN)) {
+  if (!user || user.role !== UserRole.ADMIN) {
     return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
   }
 

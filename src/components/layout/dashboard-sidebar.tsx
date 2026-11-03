@@ -106,7 +106,7 @@ export function DashboardSidebar({ user }: { user?: { name: string; email: strin
           </div>
         </div>
 
-        {(user?.role === "SUPER_ADMIN" || user?.role === "ORG_ADMIN" || user?.role === "ADMIN") && (
+        {user?.role === "ADMIN" && (
           <Link
             href="/admin"
             className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300 transition-colors shadow-2xs"
