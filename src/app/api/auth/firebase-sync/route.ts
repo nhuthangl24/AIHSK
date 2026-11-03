@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
             id: uid || undefined,
             email: normalizedEmail,
             name,
+            passwordHash,
             avatarUrl: photoURL || null,
             role,
             emailVerified: true,
