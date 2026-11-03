@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShieldCheck, BookOpen, Award, CheckCircle2 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default function AboutPage() {
   return (
     <div className="py-16 md:py-24">
