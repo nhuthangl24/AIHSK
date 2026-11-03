@@ -15,11 +15,6 @@ export async function GET() {
       role: user.role,
       avatarUrl: user.avatarUrl,
       profile: user.profile,
-      organizations: user.organizationMembers.map((m) => ({
-        id: m.organization.id,
-        name: m.organization.name,
-        role: m.role,
-      })),
     },
   });
 }

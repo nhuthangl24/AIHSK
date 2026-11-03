@@ -6,8 +6,8 @@ import { AIClient } from "@/lib/ai/ai-client";
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user || user.role !== UserRole.SUPER_ADMIN) {
-    return NextResponse.json({ error: "Forbidden: Platform Super Admin required" }, { status: 403 });
+  if (!user || (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ORG_ADMIN)) {
+    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
   }
 
   const [

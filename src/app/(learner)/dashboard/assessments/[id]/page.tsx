@@ -621,7 +621,7 @@ export default function AssessmentExamRoomPage() {
             <CardContent className="p-6 space-y-5">
               {/* Examiner Profile Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3.5 min-w-0">
                   <div className="relative shrink-0">
                     <div
                       className={`h-12 w-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-all ${
@@ -644,49 +644,44 @@ export default function AssessmentExamRoomPage() {
                     )}
                   </div>
 
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                      <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-white whitespace-nowrap">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
                         Giám khảo Lý (考官李老师)
                       </span>
-                      <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/50 whitespace-nowrap shrink-0 inline-flex items-center">
+                      <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/50 shrink-0">
                         Giám Khảo Cao Cấp
                       </span>
-                      <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-900/60 whitespace-nowrap shrink-0 inline-flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        ✓ Google 國語（臺灣） (zh-TW)
-                      </span>
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate">
+                    <div className="text-[11px] text-slate-500 mt-0.5 truncate">
                       Tiếng Trung Chuẩn • Chặng {session.currentStage}/5: {currentStageInfo.name} ({currentStageInfo.zh})
                     </div>
                   </div>
                 </div>
 
                 {/* Quick Audio Controls */}
-                <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                  <button
+                    type="button"
                     onClick={() => {
                       const next = playbackSpeed === 0.95 ? 0.85 : playbackSpeed === 0.85 ? 1.05 : 0.95;
                       setPlaybackSpeed(next);
                       if (latestExaminerTurn) speakExaminerText(latestExaminerTurn.textContent, next);
                     }}
-                    className="h-8 px-2 text-xs font-semibold text-slate-600 dark:text-slate-300 rounded-lg whitespace-nowrap"
+                    className="h-8 px-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors"
                     title="Tốc độ giọng đọc"
                   >
                     {playbackSpeed}x
-                  </Button>
+                  </button>
 
                   <Button
                     variant={showPinyin ? "secondary" : "ghost"}
                     size="sm"
                     onClick={() => setShowPinyin(!showPinyin)}
-                    className="h-8 px-2.5 text-xs text-slate-700 dark:text-slate-300 rounded-lg whitespace-nowrap"
+                    className="h-8 px-2.5 text-xs text-slate-700 dark:text-slate-300 rounded-lg gap-1"
                     title="Bật/Tắt Pinyin"
                   >
-                    <Languages className="h-3.5 w-3.5 mr-1" />
+                    <Languages className="h-3.5 w-3.5" />
                     <span>{showPinyin ? "Ẩn Pinyin" : "Hiện Pinyin"}</span>
                   </Button>
 
@@ -697,9 +692,9 @@ export default function AssessmentExamRoomPage() {
                       if (latestExaminerTurn) speakExaminerText(latestExaminerTurn.textContent);
                     }}
                     disabled={isExaminerSpeaking}
-                    className="h-8 px-2.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 border-rose-200 dark:border-rose-900/50 rounded-lg whitespace-nowrap"
+                    className="h-8 px-3 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 border-rose-200 dark:border-rose-900/50 rounded-lg gap-1.5"
                   >
-                    <Volume2 className="h-3.5 w-3.5 mr-1" />
+                    <Volume2 className="h-3.5 w-3.5" />
                     <span>Nghe lại (重听)</span>
                   </Button>
                 </div>

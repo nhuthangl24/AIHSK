@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { UserRole } from "@prisma/client";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { getCurrentUser } from "@/lib/auth/session";
 
@@ -12,9 +13,7 @@ export default async function AuthLayout({
   const user = await getCurrentUser();
 
   if (user) {
-    if (user.role === "SUPER_ADMIN") redirect("/admin");
-    if (user.role === "TEACHER") redirect("/teacher");
-    if (user.role === "ORG_ADMIN") redirect("/organization");
+    if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ORG_ADMIN) redirect("/admin");
     redirect("/dashboard");
   }
 

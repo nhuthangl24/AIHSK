@@ -166,7 +166,7 @@ export default async function PlatformAdminPage() {
                 Tâm trắc học 7 chiều kích v1.0
               </h4>
               <p className="text-slate-500">
-                Trích xuất quy tắc & bằng chứng hội thoại theo chuẩn HSK & CEFR.
+                Trích xuất quy tắc & bằng chứng hội thoại theo chuẩn HSK & HSKK.
               </p>
             </div>
           </div>

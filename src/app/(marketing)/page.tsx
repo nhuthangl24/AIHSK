@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { UserRole } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -10,16 +11,8 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  if (user.role === "SUPER_ADMIN") {
+  if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ORG_ADMIN) {
     redirect("/admin");
-  }
-
-  if (user.role === "TEACHER") {
-    redirect("/teacher");
-  }
-
-  if (user.role === "ORG_ADMIN") {
-    redirect("/organization");
   }
 
   redirect("/dashboard");

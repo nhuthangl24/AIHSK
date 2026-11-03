@@ -197,7 +197,7 @@ async function main() {
       email: "learner@aihsk.com",
       passwordHash,
       name: "Alex Chen (陈明)",
-      role: UserRole.LEARNER,
+      role: UserRole.USER,
       emailVerified: true,
       profile: {
         create: {
@@ -260,7 +260,7 @@ async function main() {
       email: "superadmin@aihsk.com",
       passwordHash,
       name: "Platform Super Admin (系统管理员)",
-      role: UserRole.SUPER_ADMIN,
+      role: UserRole.ADMIN,
       emailVerified: true,
     },
   });

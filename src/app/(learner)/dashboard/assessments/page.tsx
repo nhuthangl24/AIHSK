@@ -82,12 +82,12 @@ const PRESET_TOPICS = [
 ];
 
 const HSK_LEVELS = [
-  { level: "HSK 1", label: "HSK 1 (Sơ cấp cơ bản)" },
-  { level: "HSK 2", label: "HSK 2 (Giao tiếp hàng ngày)" },
-  { level: "HSK 3", label: "HSK 3 (Trung cấp B1)" },
-  { level: "HSK 4", label: "HSK 4 (Trung cấp B2)" },
-  { level: "HSK 5", label: "HSK 5 (Cao cấp C1)" },
-  { level: "HSK 6", label: "HSK 6 (Thành thạo C2)" },
+  { level: "HSK 1", label: "HSK 1 (Sơ cấp 1 - Cơ bản)" },
+  { level: "HSK 2", label: "HSK 2 (Sơ cấp 2 - Giao tiếp)" },
+  { level: "HSK 3", label: "HSK 3 (Trung cấp 1 - Độc lập)" },
+  { level: "HSK 4", label: "HSK 4 (Trung cấp 2 - Thảo luận)" },
+  { level: "HSK 5", label: "HSK 5 (Cao cấp 1 - Diễn đạt lưu loát)" },
+  { level: "HSK 6", label: "HSK 6 (Cao cấp 2 - Thành thạo)" },
 ];
 
 export default function AssessmentSelectionPage() {
@@ -345,10 +345,10 @@ export default function AssessmentSelectionPage() {
         <div className="space-y-6 animate-in fade-in duration-200">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Đề Thi Khẩu Ngữ Chuẩn Hoá Theo Cấp Độ HSK & CEFR
+              Đề Thi Khẩu Ngữ Chuẩn Hoá Theo Cấp Độ HSK
             </h3>
             <p className="text-xs text-slate-500">
-              Các bài thi được thiết kế chuẩn mực theo khung khảo thí HSKK và CEFR quốc tế.
+              Các bài thi được thiết kế chuẩn mực theo khung khảo thí HSK và HSKK quốc tế.
             </p>
           </div>
 

@@ -205,7 +205,7 @@ export class AssessmentService {
 
     if (!session) return null;
 
-    // Authorization check: User can access if they own it or are teacher/admin
+    // Authorization check: User can access if they own it or are admin
     return session;
   }
 }

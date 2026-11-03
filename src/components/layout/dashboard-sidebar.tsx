@@ -11,8 +11,7 @@ import {
   User,
   LogOut,
   Globe,
-  Coins,
-  Sparkles,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/brand-logo";
@@ -89,31 +88,6 @@ export function DashboardSidebar({ user }: { user?: { name: string; email: strin
             );
           })}
         </nav>
-
-        {/* Credit Học Thử Widget */}
-        <div className="mt-6 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border border-amber-200/80 dark:border-amber-900/50 p-3.5 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-              <Coins className="h-4 w-4 text-amber-600" />
-              <span>Credit Học Thử</span>
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60">
-              Miễn Phí
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <div className="text-xl font-extrabold text-amber-950 dark:text-amber-200">
-              200 <span className="text-xs font-normal text-amber-700 dark:text-amber-400">/ 200 Credits</span>
-            </div>
-            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">100% Khả dụng</span>
-          </div>
-          <div className="h-1.5 w-full bg-amber-200/70 dark:bg-amber-900/50 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-amber-500 to-rose-500 rounded-full w-full" />
-          </div>
-          <p className="text-[10px] text-amber-800/80 dark:text-amber-300/70 leading-relaxed">
-            Mỗi tài khoản được cấp sẵn 200 Credit miễn phí để trải nghiệm trọn vẹn phòng thi khẩu ngữ.
-          </p>
-        </div>
       </div>
 
       {/* User Info & Actions */}
@@ -131,6 +105,16 @@ export function DashboardSidebar({ user }: { user?: { name: string; email: strin
             <p className="text-[11px] text-slate-500 truncate">{user?.email || "learner@aihsk.com"}</p>
           </div>
         </div>
+
+        {(user?.role === "SUPER_ADMIN" || user?.role === "ORG_ADMIN" || user?.role === "ADMIN") && (
+          <Link
+            href="/admin"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300 transition-colors shadow-2xs"
+          >
+            <Shield className="h-3.5 w-3.5 text-purple-600" />
+            <span>Trang Quản Trị (Admin)</span>
+          </Link>
+        )}
 
         <a
           href="https://classnia.id.vn"

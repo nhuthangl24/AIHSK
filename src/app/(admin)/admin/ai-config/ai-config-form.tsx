@@ -607,10 +607,10 @@ export function AIConfigForm({
                 onChange={(e) => setSimLevel(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs"
               >
-                <option value="HSK 2">HSK 2 / A2</option>
-                <option value="HSK 3">HSK 3 / B1 (Mặc định)</option>
-                <option value="HSK 4">HSK 4 / B2</option>
-                <option value="HSK 5">HSK 5 / C1</option>
+                <option value="HSK 2">HSK 2 (Sơ cấp)</option>
+                <option value="HSK 3">HSK 3 (Trung cấp - Mặc định)</option>
+                <option value="HSK 4">HSK 4 (Trung cấp nâng cao)</option>
+                <option value="HSK 5">HSK 5 (Cao cấp)</option>
               </select>
             </div>
           </div>

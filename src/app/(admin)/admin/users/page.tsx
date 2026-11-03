@@ -17,7 +17,7 @@ export default async function AdminUsersPage() {
           Quản Trị Người Dùng Nền Tảng
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Quản lý danh sách tài khoản thí sinh, giảng viên và tổ chức trên toàn hệ thống.
+          Quản lý danh sách tài khoản học viên (User) và quản trị viên (Admin) trên toàn hệ thống.
         </p>
       </div>
 
@@ -41,9 +41,15 @@ export default async function AdminUsersPage() {
                     <span className="text-slate-400 text-[11px]">{u.email}</span>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                      {u.role}
-                    </span>
+                    {u.role === "SUPER_ADMIN" || u.role === "ORG_ADMIN" ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                        Admin
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        User
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
                     {u.profile?.targetLevel || "—"}

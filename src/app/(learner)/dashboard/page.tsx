@@ -90,7 +90,7 @@ export default async function LearnerDashboardPage() {
     completedSessions.length > 0
       ? completedSessions.reduce((acc, s) => acc + (s.result?.overallScore || 0), 0) /
         completedSessions.length
-      : 84.5;
+      : null;
 
   return (
     <div className="space-y-8">
@@ -130,13 +130,15 @@ export default async function LearnerDashboardPage() {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                {latestSession?.result ? formatScore(latestSession.result.overallScore) : "84.5"}
+                {latestSession?.result ? formatScore(latestSession.result.overallScore) : "—"}
               </span>
               <span className="text-xs text-slate-400">/ 100</span>
             </div>
             <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
               <TrendingUp className="h-3.5 w-3.5" />
-              <span>{latestSession?.result?.hskEstimate || `Mục tiêu ${userTargetLevel}`}</span>
+              <span>
+                {latestSession?.result?.hskEstimate || (completedSessions.length > 0 ? `Mục tiêu ${userTargetLevel}` : "Chưa có bài thi")}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -149,12 +151,14 @@ export default async function LearnerDashboardPage() {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                {formatScore(avgScore)}
+                {avgScore !== null ? formatScore(avgScore) : "—"}
               </span>
               <span className="text-xs text-slate-400">/ 100</span>
             </div>
             <div className="text-[11px] text-slate-500">
-              Tổng hợp qua {completedSessions.length || 1} bài kiểm tra hoàn thành
+              {completedSessions.length > 0
+                ? `Tổng hợp qua ${completedSessions.length} bài kiểm tra hoàn thành`
+                : "Chưa có dữ liệu bài thi"}
             </div>
           </CardContent>
         </Card>
@@ -167,12 +171,14 @@ export default async function LearnerDashboardPage() {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                {completedSessions.length || 1}
+                {completedSessions.length}
               </span>
               <span className="text-xs text-slate-400">lượt thi</span>
             </div>
             <div className="text-[11px] text-slate-500">
-              Phỏng vấn khẩu ngữ 5 giai đoạn
+              {completedSessions.length > 0
+                ? "Phỏng vấn khẩu ngữ 5 giai đoạn"
+                : "Chưa làm bài thi nào"}
             </div>
           </CardContent>
         </Card>

@@ -27,7 +27,7 @@ export default function PricingPage() {
               features: [
                 "3 bài khảo thí mỗi tháng",
                 "Phỏng vấn AI tiêu chuẩn 5 giai đoạn",
-                "Ước tính trình độ CEFR & HSK",
+                "Ước tính trình độ HSK & HSKK",
                 "Đánh giá điểm mạnh & điểm yếu cơ bản",
                 "Hỗ trợ cộng đồng",
               ],

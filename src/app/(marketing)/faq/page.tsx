@@ -17,7 +17,7 @@ export default function FAQPage() {
     },
     {
       q: "Classnia AI có cấp chứng chỉ HSK chính thức không?",
-      a: "Không. Classnia AI cung cấp báo cáo chẩn đoán năng lực học thuật tham chiếu theo chuẩn HSK và CEFR, là công cụ ôn luyện đắc lực cho thí sinh trước kỳ thi thật nhưng không thay thế cho chứng chỉ chính thức của CTI.",
+      a: "Không. Classnia AI cung cấp báo cáo chẩn đoán năng lực học thuật tham chiếu theo chuẩn HSK và HSKK quốc tế, là công cụ ôn luyện đắc lực cho thí sinh trước kỳ thi thật nhưng không thay thế cho chứng chỉ chính thức của CTI.",
     },
     {
       q: "Bản ghi âm giọng nói của tôi có được bảo mật an toàn không?",

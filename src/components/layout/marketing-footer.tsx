@@ -62,7 +62,7 @@ export function MarketingFooter() {
               </li>
               <li>
                 <Link href="/about#cefr-hsk" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
-                  Chuẩn Khung CEFR & HSK
+                  Chuẩn Khung HSK & HSKK
                 </Link>
               </li>
               <li>
@@ -109,7 +109,7 @@ export function MarketingFooter() {
         {/* Disclaimer & Bottom Bar */}
         <div className="pt-8 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="max-w-2xl leading-relaxed text-center md:text-left">
-            <span className="font-semibold text-slate-600 dark:text-slate-400">Lưu ý:</span> Classnia AI cung cấp kết quả chẩn đoán và ước tính giáo dục đối chiếu theo chuẩn CEFR và HSK. Classnia AI là hệ thống độc lập, không liên kết hay đại diện chính thức cho cơ quan khảo thí HSK (CTI) hoặc Bộ Giáo dục Trung Quốc.
+            <span className="font-semibold text-slate-600 dark:text-slate-400">Lưu ý:</span> Classnia AI cung cấp kết quả chẩn đoán và ước tính giáo dục đối chiếu theo chuẩn HSK và HSKK. Classnia AI là hệ thống độc lập, không liên kết hay đại diện chính thức cho cơ quan khảo thí HSK (CTI) hoặc Bộ Giáo dục Trung Quốc.
           </p>
           <div className="flex items-center gap-1 text-slate-500">
             <span>&copy; {new Date().getFullYear()} Classnia AI. Bảo lưu mọi quyền.</span>

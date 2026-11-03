@@ -324,7 +324,7 @@ export class ScoringEngine {
       overallScore,
       cefrEstimate,
       hskEstimate,
-      performanceSummary: `The candidate completed a comprehensive 5-stage oral Mandarin examination, demonstrating an overall speaking proficiency score of ${overallScore}/100 (estimated at ${hskEstimate} / CEFR ${cefrEstimate}). Across ${learnerTurns.length} conversational turns, the candidate sustained active communication, articulated recognizable tones, and utilized ${foundConnectives.length} logical connective structures.`,
+      performanceSummary: `The candidate completed a comprehensive 5-stage oral Mandarin examination, demonstrating an overall speaking proficiency score of ${overallScore}/100 (estimated at ${hskEstimate}). Across ${learnerTurns.length} conversational turns, the candidate sustained active communication, articulated recognizable tones, and utilized ${foundConnectives.length} logical connective structures.`,
       confidenceLevel: 0.94,
       isAcousticAided: true,
       dimensions,

@@ -94,7 +94,7 @@ export default async function AssessmentReportPage({
                   {result.hskEstimate}
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  CEFR {result.cefrEstimate}
+                  Tiêu chuẩn HSK 3.0
                 </Badge>
                 {result.isAcousticAided && (
                   <Badge variant="success" className="text-[10px]">

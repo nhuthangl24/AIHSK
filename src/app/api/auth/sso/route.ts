@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         emailVerified: true,
         profile: {
           create: {
-            targetLevel: "HSK 3 / B1",
+            targetLevel: "HSK 3",
             nativeLanguage: "Tiếng Việt",
             studyHoursWeekly: 3,
           },

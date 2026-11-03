@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
           emailVerified: true,
           profile: {
             create: {
-              targetLevel: "HSK 3 / B1",
+              targetLevel: "HSK 3",
               nativeLanguage: "Vietnamese",
               studyHoursWeekly: 3,
             },
@@ -80,9 +80,9 @@ export async function POST(req: NextRequest) {
       name: user.name,
     });
 
-    // Routing destination
+    // Routing destination: Admin -> /admin, User -> /dashboard
     let redirectPath = "/dashboard";
-    if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ORG_ADMIN) redirectPath = "/admin";
+    if (user.role === "SUPER_ADMIN" || user.role === "ORG_ADMIN") redirectPath = "/admin";
 
     const response = NextResponse.json({
       success: true,

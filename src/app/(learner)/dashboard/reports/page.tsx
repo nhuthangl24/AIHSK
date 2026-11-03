@@ -80,7 +80,7 @@ export default async function ReportsListPage() {
                       {s.template.title}
                     </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      Trình độ CEFR: <span className="font-semibold text-slate-700 dark:text-slate-300">{s.result?.cefrEstimate || "B1"}</span>
+                      Cấp độ khảo thí: <span className="font-semibold text-slate-700 dark:text-slate-300">{s.result?.hskEstimate || s.template.targetLevel}</span>
                     </p>
                   </div>
 

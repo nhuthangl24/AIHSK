@@ -281,12 +281,12 @@ export default function RegisterPage() {
                 value={targetLevel}
                 onChange={(e) => setTargetLevel(e.target.value)}
               >
-                <option value="HSK 1">HSK 1 (Sơ cấp A1)</option>
-                <option value="HSK 2">HSK 2 (Sơ cấp A2)</option>
-                <option value="HSK 3">HSK 3 (Trung cấp B1)</option>
-                <option value="HSK 4">HSK 4 (Trung cấp B2)</option>
-                <option value="HSK 5">HSK 5 (Cao cấp C1)</option>
-                <option value="HSK 6">HSK 6 (Cao cấp C2)</option>
+                <option value="HSK 1">HSK 1 (Sơ cấp 1)</option>
+                <option value="HSK 2">HSK 2 (Sơ cấp 2)</option>
+                <option value="HSK 3">HSK 3 (Trung cấp 1)</option>
+                <option value="HSK 4">HSK 4 (Trung cấp 2)</option>
+                <option value="HSK 5">HSK 5 (Cao cấp 1)</option>
+                <option value="HSK 6">HSK 6 (Cao cấp 2)</option>
               </select>
             </div>
 

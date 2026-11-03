@@ -35,18 +35,18 @@ export default function AboutPage() {
           <Card className="border-slate-200 dark:border-slate-800">
             <CardContent className="p-8 space-y-4">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Chuẩn Hóa Theo Khung Năng Lực CEFR & HSK
+                Chuẩn Hóa Theo Tiêu Chuẩn Năng Lực HSK & HSKK
               </h2>
               <p>
-                Bộ tiêu chí chấm điểm được hiệu chuẩn theo Khung tham chiếu trình độ ngôn ngữ chung Châu Âu (CEFR A1 đến C2) và khung chuẩn năng lực HSK.
+                Bộ tiêu chí chấm điểm được hiệu chuẩn theo khung chuẩn năng lực HSK (HSK 1 đến HSK 6) và quy chuẩn khảo thí khẩu ngữ HSKK quốc tế.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                   <h4 className="font-bold text-slate-900 dark:text-white mb-1">
-                    Khung Tham Chiếu CEFR
+                    Khung Đánh Giá HSK
                   </h4>
                   <p className="text-xs text-slate-500">
-                    A1/A2 cho giao tiếp cơ bản hàng ngày; B1/B2 cho diễn đạt chủ đề độc lập; C1/C2 cho tư duy trừu tượng và phản xạ tự nhiên.
+                    HSK 1-2 cho giao tiếp hàng ngày; HSK 3-4 cho thảo luận chủ đề độc lập; HSK 5-6 cho tư duy trừu tượng và phản xạ tự nhiên.
                   </p>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">

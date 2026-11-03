@@ -22,7 +22,7 @@ export default function TermsPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">2. Miễn Trừ Trách Nhiệm Về Kết Quả Đánh Giá</h2>
           <p>
-            Điểm số, ước tính cấp độ CEFR và HSK do Classnia AI tạo ra là các chỉ số học thuật phục vụ tự rèn luyện và theo dõi giảng dạy trong lớp học. Các chỉ số này không cấu thành chứng chỉ chính thức được cấp bởi bất kỳ cơ quan chính phủ hay tổ chức khảo thí quốc gia nào.
+            Điểm số, ước tính cấp độ HSK và HSKK do Classnia AI tạo ra là các chỉ số học thuật phục vụ tự rèn luyện và theo dõi giảng dạy trong lớp học. Các chỉ số này không cấu thành chứng chỉ chính thức được cấp bởi bất kỳ cơ quan chính phủ hay tổ chức khảo thí quốc gia nào.
           </p>
         </section>
 

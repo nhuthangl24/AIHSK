@@ -70,7 +70,7 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
               emailVerified: true,
               profile: {
                 create: {
-                  targetLevel: "HSK 3 / B1",
+                  targetLevel: "HSK 3",
                   nativeLanguage: "Tiếng Việt",
                   studyHoursWeekly: 3,
                 },
@@ -102,9 +102,6 @@ export async function getCurrentUserWithProfile() {
     where: { id: session.userId },
     include: {
       profile: true,
-      organizationMembers: {
-        include: { organization: true },
-      },
     },
   });
 
