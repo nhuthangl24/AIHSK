@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import prisma from "@/lib/db/prisma";
 import ProfileClient from "./profile-client";
 
 export const dynamic = "force-dynamic";

@@ -1,5 +1,5 @@
 [build]
-  command = "cross-env NODE_ENV=production npm run build"
+  command = "npm run build"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

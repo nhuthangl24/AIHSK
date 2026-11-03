@@ -29,7 +29,7 @@ AZURE_SPEECH_REGION="your-azure-region"
 # S3-Compatible Object Storage (AWS S3 / Cloudflare R2 / MinIO)
 # Leave empty for local filesystem storage (/public/uploads/audio/)
 S3_ENDPOINT="https://<account_id>.r2.cloudflarestorage.com"
-S3_BUCKET="aihsk-audio-storage"
+S3_BUCKET="<your-audio-bucket-name>"
 S3_ACCESS_KEY="r2_access_key_id"
 S3_SECRET_KEY="r2_secret_access_key"
 S3_REGION="auto"
@@ -74,7 +74,7 @@ NODE_ENV="production"
 ## 4. Audio Storage (S3 / Cloudflare R2)
 
 When running in serverless environments (like Vercel), local disk writes are ephemeral. Configure an S3-compatible bucket (such as Cloudflare R2 or AWS S3):
-1. Create a private bucket: `aihsk-audio-storage`.
+1. Create a private bucket: `<your-audio-bucket-name>`.
 2. Generate an Access Key ID and Secret Access Key with Read/Write permissions.
 3. Configure CORS on the bucket to allow requests from your production domain:
    ```json

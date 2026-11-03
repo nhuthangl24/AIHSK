@@ -47,15 +47,24 @@ export default function LoginPage() {
 
           const syncData = await syncRes.json();
           if (syncRes.ok) {
-            router.push(syncData.redirectPath || "/dashboard");
-            router.refresh();
+            window.location.href = syncData.redirectPath || "/dashboard";
             return;
           }
         }
       } catch (fbErr: any) {
         console.log("Firebase login note:", fbErr.code);
         if (fbErr.code === "auth/wrong-password" || fbErr.code === "auth/invalid-credential") {
-          setError("Mật khẩu không chính xác. Vui lòng kiểm tra lại hoặc đăng nhập bằng Google.");
+          setError("Mật khẩu không chính xác. Nếu bạn đã đăng nhập qua Google trên Classnia, hãy nhấn nút 'Đăng nhập với Google' ở trên.");
+          setIsLoading(false);
+          return;
+        }
+        if (fbErr.code === "auth/user-not-found") {
+          setError("Email này chưa được tạo mật khẩu riêng trên Firebase. Vui lòng bấm 'Đăng nhập với Google' để đăng nhập tự động.");
+          setIsLoading(false);
+          return;
+        }
+        if (fbErr.code === "auth/too-many-requests") {
+          setError("Đăng nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút hoặc dùng Google.");
           setIsLoading(false);
           return;
         }
@@ -76,8 +85,8 @@ export default function LoginPage() {
         throw new Error(data.error || "Email hoặc mật khẩu không chính xác");
       }
 
-      router.push(data.redirectPath || "/dashboard");
-      router.refresh();
+      window.location.href = data.redirectPath || "/dashboard";
+      return;
     } catch (err: any) {
       setError(err.message || "Email hoặc mật khẩu không chính xác. Bạn có thể sử dụng nút Đăng nhập với Google để tiếp tục nhanh.");
     } finally {
@@ -113,8 +122,7 @@ export default function LoginPage() {
 
           const syncData = await syncRes.json();
           if (syncRes.ok) {
-            router.push(syncData.redirectPath || "/dashboard");
-            router.refresh();
+            window.location.href = syncData.redirectPath || "/dashboard";
             return;
           }
         }
@@ -153,8 +161,8 @@ export default function LoginPage() {
         throw new Error(data.error || "Đăng nhập bằng Google thất bại");
       }
 
-      router.push(data.redirectPath || "/dashboard");
-      router.refresh();
+      window.location.href = data.redirectPath || "/dashboard";
+      return;
     } catch (err: any) {
       setError(err.message || "Đăng nhập bằng Google thất bại");
     } finally {

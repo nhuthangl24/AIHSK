@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Lock, ArrowRight, Loader2, X, Globe } from "lucide-react";
-import { UserRole } from "@prisma/client";
+import type { UserRole } from "@/lib/auth/jwt";
 import { getFirebaseServices, googleAuthProvider } from "@/lib/firebase";
 import { createUserWithEmailAndPassword, signInWithPopup, updateProfile as fbUpdateProfile } from "firebase/auth";
 
@@ -18,7 +18,7 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>(UserRole.USER);
+  const [role, setRole] = useState<UserRole>("USER");
   const [targetLevel, setTargetLevel] = useState("HSK 3");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -65,8 +65,8 @@ export default function RegisterPage() {
         throw new Error(data.error || "Đăng ký không thành công");
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = data.redirectPath || "/dashboard";
+      return;
     } catch (err: any) {
       setError(err.message || "Tạo tài khoản thất bại");
     } finally {
@@ -97,8 +97,7 @@ export default function RegisterPage() {
 
           const syncData = await syncRes.json();
           if (syncRes.ok) {
-            router.push(syncData.redirectPath || "/dashboard");
-            router.refresh();
+            window.location.href = syncData.redirectPath || "/dashboard";
             return;
           }
         }
@@ -136,8 +135,8 @@ export default function RegisterPage() {
         throw new Error(data.error || "Đăng ký bằng Google thất bại");
       }
 
-      router.push(data.redirectPath || "/dashboard");
-      router.refresh();
+      window.location.href = data.redirectPath || "/dashboard";
+      return;
     } catch (err: any) {
       setError(err.message || "Đăng ký bằng Google thất bại");
     } finally {

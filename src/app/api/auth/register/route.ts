@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registerSchema } from "@/lib/validation/auth";
 import { hashPassword } from "@/lib/auth/password";
-import { signToken } from "@/lib/auth/jwt";
+import { signToken, type UserRole } from "@/lib/auth/jwt";
 import { getAuthCookieOptions, ADMIN_EMAILS } from "@/lib/auth/session";
-import { UserRole } from "@prisma/client";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
@@ -12,7 +11,7 @@ export async function POST(req: NextRequest) {
     const validated = registerSchema.parse(body);
     const normalizedEmail = validated.email.toLowerCase().trim();
     const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
-    const role: UserRole = isAdmin ? UserRole.ADMIN : UserRole.USER;
+    const role: UserRole = isAdmin ? "ADMIN" : "USER";
 
     // 1. Cố gắng ghi vào PostgreSQL nếu có
     let userId = `user_${crypto.randomUUID().slice(0, 12)}`;
@@ -79,7 +78,7 @@ export async function POST(req: NextRequest) {
       name: validated.name,
     });
 
-    const redirectPath = role === UserRole.ADMIN ? "/admin" : "/dashboard";
+    const redirectPath = role === "ADMIN" ? "/admin" : "/dashboard";
     const response = NextResponse.json({
       success: true,
       user: {

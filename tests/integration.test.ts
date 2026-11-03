@@ -91,4 +91,18 @@ describe("Assessment Lifecycle Integration Tests", () => {
     expect(updatedSession?.result?.scoreDimensions.length).toBe(7);
     expect(updatedSession?.result?.recommendations.length).toBeGreaterThan(0);
   });
+
+  it("should create assessment session for a synthetic Firebase or newly registered userId without FK constraint error", async () => {
+    const syntheticUid = `firebase_test_user_${Date.now()}`;
+    const session = await AssessmentService.startSession(syntheticUid, testTemplateId);
+    expect(session).toBeDefined();
+    expect(session.status).toBe(SessionStatus.IN_PROGRESS);
+    expect(session.userId).toBe(syntheticUid);
+
+    // Clean up
+    await prisma.conversationTurn.deleteMany({ where: { sessionId: session.id } });
+    await prisma.assessmentSession.delete({ where: { id: session.id } });
+    await prisma.userProfile.deleteMany({ where: { userId: session.userId } });
+    await prisma.user.delete({ where: { id: session.userId } });
+  });
 });

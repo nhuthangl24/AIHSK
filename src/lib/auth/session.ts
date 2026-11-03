@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import crypto from "crypto";
 import { UserRole, verifyToken, TokenPayload } from "./jwt";
 import { verifyClassniaToken } from "./classnia-token";
 
@@ -36,30 +37,81 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
   try {
     const cookieStore = await cookies();
 
+    let payload: TokenPayload | null = null;
+
     // 1. Check native AIHSK token
     const token = cookieStore.get(COOKIE_NAME)?.value;
     if (token) {
-      const payload = await verifyToken(token);
-      if (payload) return payload;
+      payload = await verifyToken(token);
     }
 
     // 2. Check Classnia session token (hsk_session_token) from classnia.id.vn
-    const classniaToken = cookieStore.get(CLASSNIA_COOKIE_NAME)?.value;
-    if (classniaToken) {
-      const classniaPayload = verifyClassniaToken(classniaToken);
-      if (classniaPayload && classniaPayload.email) {
-        const normalizedEmail = classniaPayload.email.toLowerCase().trim();
-        const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
-        return {
-          userId: `classnia_${normalizedEmail.replace(/[^a-z0-9]/g, "_")}`,
-          email: normalizedEmail,
-          role: isAdmin ? "ADMIN" : "USER",
-          name: normalizedEmail.split("@")[0],
-        };
+    if (!payload) {
+      const classniaToken = cookieStore.get(CLASSNIA_COOKIE_NAME)?.value;
+      if (classniaToken) {
+        const classniaPayload = verifyClassniaToken(classniaToken);
+        if (classniaPayload && classniaPayload.email) {
+          const normalizedEmail = classniaPayload.email.toLowerCase().trim();
+          const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
+          payload = {
+            userId: `classnia_${normalizedEmail.replace(/[^a-z0-9]/g, "_")}`,
+            email: normalizedEmail,
+            role: isAdmin ? "ADMIN" : "USER",
+            name: normalizedEmail.split("@")[0],
+          };
+        }
       }
     }
 
-    return null;
+    if (!payload) return null;
+
+    // 3. Ensure userId matches an existing User in the database so foreign key constraints never fail
+    try {
+      const { default: prisma } = await import("@/lib/db/prisma");
+      const normalizedEmail = payload.email.toLowerCase().trim();
+
+      let dbUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: payload.userId },
+            { email: normalizedEmail },
+          ],
+        },
+      });
+
+      if (!dbUser) {
+        const { hashPassword } = await import("@/lib/auth/password");
+        const passwordHash = await hashPassword(crypto.randomUUID() + "!AiHsk2025");
+        const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
+        dbUser = await prisma.user.create({
+          data: {
+            id: payload.userId.startsWith("cm") ? payload.userId : undefined,
+            email: normalizedEmail,
+            name: payload.name || normalizedEmail.split("@")[0],
+            passwordHash,
+            role: payload.role || (isAdmin ? "ADMIN" : "USER"),
+            emailVerified: true,
+            profile: {
+              create: {
+                targetLevel: "HSK 3",
+                nativeLanguage: "Tiếng Việt",
+                studyHoursWeekly: 3,
+              },
+            },
+          },
+        });
+      }
+
+      if (dbUser) {
+        payload.userId = dbUser.id;
+        payload.role = dbUser.role as any;
+        if (dbUser.name) payload.name = dbUser.name;
+      }
+    } catch {
+      // In edge/serverless without DB, continue with JWT payload
+    }
+
+    return payload;
   } catch {
     return null;
   }

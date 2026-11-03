@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loginSchema } from "@/lib/validation/auth";
-import { signToken } from "@/lib/auth/jwt";
+import { signToken, type UserRole } from "@/lib/auth/jwt";
 import { COOKIE_NAME, getAuthCookieOptions, ADMIN_EMAILS } from "@/lib/auth/session";
-import { UserRole } from "@prisma/client";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest) {

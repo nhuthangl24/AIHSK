@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { signToken } from "@/lib/auth/jwt";
+import { signToken, type UserRole } from "@/lib/auth/jwt";
 import { getAuthCookieOptions, ADMIN_EMAILS } from "@/lib/auth/session";
-import { UserRole } from "@prisma/client";
 import crypto from "crypto";
 
 /**
@@ -38,12 +37,12 @@ export async function POST(req: NextRequest) {
     }
 
     const isAdmin = ADMIN_EMAILS.includes(rawEmail);
-    const role: UserRole = isAdmin ? UserRole.ADMIN : UserRole.USER;
+    const role: UserRole = isAdmin ? "ADMIN" : "USER";
     const userId = `google_${crypto.createHash("md5").update(rawEmail).digest("hex").slice(0, 16)}`;
 
     const token = await signToken({ userId, email: rawEmail, role, name: rawName });
 
-    const redirectPath = role === UserRole.ADMIN ? "/admin" : "/dashboard";
+    const redirectPath = role === "ADMIN" ? "/admin" : "/dashboard";
 
     const response = NextResponse.json({
       success: true,

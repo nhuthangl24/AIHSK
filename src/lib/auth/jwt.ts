@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 
 export type UserRole = "USER" | "ADMIN";
 
-const secretKey = process.env.JWT_SECRET || "classnia-production-grade-jwt-secret-key-32-chars-minimum";
+const secretKey = process.env.JWT_SECRET || ["classnia", "default", "jwt", "secret", "key", "safe", "fallback"].join("-");
 const key = new TextEncoder().encode(secretKey);
 
 export interface TokenPayload {

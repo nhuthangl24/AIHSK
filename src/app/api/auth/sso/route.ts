@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db/prisma";
-import { signToken } from "@/lib/auth/jwt";
+import { signToken, type UserRole } from "@/lib/auth/jwt";
 import { hashPassword } from "@/lib/auth/password";
 import { getAuthCookieOptions, ADMIN_EMAILS } from "@/lib/auth/session";
 import { verifyClassniaToken } from "@/lib/auth/classnia-token";
-import { UserRole } from "@prisma/client";
+import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -22,51 +21,53 @@ export async function GET(req: NextRequest) {
 
   const normalizedEmail = payload.email.toLowerCase().trim();
   const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
+  const role: UserRole = isAdmin ? "ADMIN" : "USER";
+  let userId = `sso_${crypto.createHash("md5").update(normalizedEmail).digest("hex").slice(0, 16)}`;
+  const name = normalizedEmail.split("@")[0];
 
-  let user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-  });
+  try {
+    const { default: prisma } = await import("@/lib/db/prisma");
+    let user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
-  if (!user) {
-    const passwordHash = await hashPassword(crypto.randomUUID() + "!PassA1");
-    user = await prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        name: normalizedEmail.split("@")[0],
-        passwordHash,
-        role: isAdmin ? UserRole.ADMIN : UserRole.USER,
-        emailVerified: true,
-        profile: {
-          create: {
-            targetLevel: "HSK 3",
-            nativeLanguage: "Tiếng Việt",
-            studyHoursWeekly: 3,
+    if (!user) {
+      const passwordHash = await hashPassword(crypto.randomUUID() + "!PassA1");
+      user = await prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          name,
+          passwordHash,
+          role,
+          emailVerified: true,
+          profile: {
+            create: {
+              targetLevel: "HSK 3",
+              nativeLanguage: "Tiếng Việt",
+              studyHoursWeekly: 3,
+            },
           },
         },
-      },
-    });
-  } else if (isAdmin && user.role !== UserRole.ADMIN) {
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: { role: UserRole.ADMIN },
-    });
+      });
+    }
+    if (user) userId = user.id;
+  } catch (dbErr) {
+    console.warn("DB write during SSO skipped:", dbErr);
   }
 
-  // Issue aihsk_token
-  const aihskToken = await signToken({
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-    name: user.name,
+  const sessionToken = await signToken({
+    userId,
+    email: normalizedEmail,
+    role,
+    name,
   });
 
   const targetUrl = new URL(redirectPath.startsWith("/") ? redirectPath : "/dashboard", req.url);
   const response = NextResponse.redirect(targetUrl);
-
   const cookieOpts = getAuthCookieOptions();
   response.cookies.set({
     ...cookieOpts,
-    value: aihskToken,
+    value: sessionToken,
   });
 
   return response;

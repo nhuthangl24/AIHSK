@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { signToken } from "@/lib/auth/jwt";
+import crypto from "crypto";
+import { signToken, type UserRole } from "@/lib/auth/jwt";
 import { getAuthCookieOptions, ADMIN_EMAILS } from "@/lib/auth/session";
-import { UserRole } from "@prisma/client";
 
 /**
  * Firebase SSO Sync — No Database Required.
@@ -22,15 +22,62 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
     const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
-    const role: UserRole = isAdmin ? UserRole.ADMIN : UserRole.USER;
+    const role: UserRole = isAdmin ? "ADMIN" : "USER";
 
-    // Use Firebase UID as userId (no DB needed)
-    const userId = uid || `firebase_${normalizedEmail.replace(/[^a-z0-9]/g, "_")}`;
+    let userId = uid || `firebase_${normalizedEmail.replace(/[^a-z0-9]/g, "_")}`;
     const name = displayName || normalizedEmail.split("@")[0];
+
+    // Synchronize to PostgreSQL to guarantee relations like AssessmentSession never fail
+    try {
+      const { default: prisma } = await import("@/lib/db/prisma");
+      let dbUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: normalizedEmail },
+            ...(uid ? [{ id: uid }] : []),
+          ],
+        },
+      });
+
+      if (!dbUser) {
+        const { hashPassword } = await import("@/lib/auth/password");
+        const passwordHash = await hashPassword(crypto.randomUUID() + "!AiHsk2025");
+        dbUser = await prisma.user.create({
+          data: {
+            id: uid || undefined,
+            email: normalizedEmail,
+            name,
+            avatarUrl: photoURL || null,
+            role,
+            emailVerified: true,
+            profile: {
+              create: {
+                targetLevel: "HSK 3",
+                nativeLanguage: "Tiếng Việt",
+                learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
+              },
+            },
+          },
+        });
+      } else {
+        if (photoURL && !dbUser.avatarUrl) {
+          dbUser = await prisma.user.update({
+            where: { id: dbUser.id },
+            data: { avatarUrl: photoURL },
+          });
+        }
+      }
+
+      if (dbUser) {
+        userId = dbUser.id;
+      }
+    } catch (syncErr) {
+      console.warn("PostgreSQL user sync during firebase-sync skipped:", syncErr);
+    }
 
     const token = await signToken({ userId, email: normalizedEmail, role, name });
 
-    const redirectPath = role === UserRole.ADMIN ? "/admin" : "/dashboard";
+    const redirectPath = role === "ADMIN" ? "/admin" : "/dashboard";
 
     const response = NextResponse.json({
       success: true,
