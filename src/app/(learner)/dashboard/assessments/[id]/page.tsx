@@ -715,18 +715,30 @@ export default function AssessmentExamRoomPage() {
                     <span>{showPinyin ? "Ẩn Pinyin" : "Hiện Pinyin"}</span>
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (latestExaminerTurn) speakExaminerText(latestExaminerTurn.textContent);
-                    }}
-                    disabled={isExaminerSpeaking}
-                    className="h-8 px-3 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 border-rose-200 dark:border-rose-900/50 rounded-lg gap-1.5"
-                  >
-                    <Volume2 className="h-3.5 w-3.5" />
-                    <span>Nghe lại (重听)</span>
-                  </Button>
+                  {isExaminerSpeaking ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={stopExaminerVoice}
+                      className="h-8 px-3 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg gap-1.5 shadow-sm animate-pulse"
+                      title="Dừng phát giọng giám khảo (Phím tắt: Esc)"
+                    >
+                      <Square className="h-3.5 w-3.5 fill-current" />
+                      <span>Dừng đọc (停止)</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (latestExaminerTurn) speakExaminerText(latestExaminerTurn.textContent);
+                      }}
+                      className="h-8 px-3 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 border-rose-200 dark:border-rose-900/50 rounded-lg gap-1.5"
+                    >
+                      <Volume2 className="h-3.5 w-3.5" />
+                      <span>Nghe lại (重听)</span>
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -769,11 +781,24 @@ export default function AssessmentExamRoomPage() {
 
               {/* SoundWave visualizer during examiner speech */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-xs text-slate-500">
-                  {isExaminerSpeaking
-                    ? "Giám khảo đang đọc câu hỏi... Hãy chú ý lắng nghe"
-                    : "Giám khảo đang đợi câu trả lời từ bạn qua microphone"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">
+                    {isExaminerSpeaking
+                      ? "Giám khảo đang đọc câu hỏi... Hãy chú ý lắng nghe"
+                      : "Giám khảo đang đợi câu trả lời từ bạn qua microphone"}
+                  </span>
+                  {isExaminerSpeaking && (
+                    <button
+                      type="button"
+                      onClick={stopExaminerVoice}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 px-2 py-0.5 rounded-md transition-colors"
+                      title="Dừng đọc (Esc)"
+                    >
+                      <Square className="h-2.5 w-2.5 fill-current" />
+                      <span>Dừng đọc</span>
+                    </button>
+                  )}
+                </div>
                 <SoundWave isActive={isExaminerSpeaking} color="cinnabar" size="md" />
               </div>
             </CardContent>
@@ -998,13 +1023,25 @@ export default function AssessmentExamRoomPage() {
 
                         {isExaminer && (
                           <div className="mt-2 pt-1 border-t border-slate-200/50 dark:border-slate-700/50 flex justify-end">
-                            <button
-                              onClick={() => speakExaminerText(turn.textContent)}
-                              className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-rose-600 dark:text-slate-400 font-semibold"
-                            >
-                              <Volume2 className="h-3 w-3" />
-                              <span>Nghe lại</span>
-                            </button>
+                            {isExaminerSpeaking ? (
+                              <button
+                                type="button"
+                                onClick={stopExaminerVoice}
+                                className="inline-flex items-center gap-1 text-[10px] text-rose-600 hover:text-rose-700 font-bold"
+                              >
+                                <Square className="h-2.5 w-2.5 fill-current" />
+                                <span>Dừng đọc (Esc)</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => speakExaminerText(turn.textContent)}
+                                className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-rose-600 dark:text-slate-400 font-semibold"
+                              >
+                                <Volume2 className="h-3 w-3" />
+                                <span>Nghe lại</span>
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1200,12 +1237,25 @@ export default function AssessmentExamRoomPage() {
               {/* Test Audio Button */}
               <div className="pt-2">
                 <Button
-                  variant="outline"
+                  variant={isExaminerSpeaking ? "destructive" : "outline"}
                   onClick={handleTestVoiceSample}
-                  className="w-full text-xs h-10 rounded-xl gap-2 border-dashed border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className={`w-full text-xs h-10 rounded-xl gap-2 ${
+                    isExaminerSpeaking
+                      ? "bg-rose-600 hover:bg-rose-700 text-white animate-pulse"
+                      : "border-dashed border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
                 >
-                  <Volume2 className="h-4 w-4 text-rose-600" />
-                  <span>Nghe thử phát âm mẫu của giám khảo</span>
+                  {isExaminerSpeaking ? (
+                    <>
+                      <Square className="h-4 w-4 fill-current" />
+                      <span>Dừng phát âm mẫu của giám khảo</span>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="h-4 w-4 text-rose-600" />
+                      <span>Nghe thử phát âm mẫu của giám khảo</span>
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
