@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "cross-env NODE_ENV=production prisma generate && cross-env NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
