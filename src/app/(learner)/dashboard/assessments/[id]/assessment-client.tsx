@@ -223,6 +223,16 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
       if (data.session.status === "COMPLETED") {
         router.push(`/dashboard/reports/${id}`);
+      } else if (data.session.status === "PROCESSING") {
+        setIsFinalizing(true);
+        const pollInterval = setInterval(async () => {
+          const pollRes = await fetch(`/api/assessments/${id}`);
+          const pollData = await pollRes.json();
+          if (pollData.session?.status === "COMPLETED") {
+            clearInterval(pollInterval);
+            router.push(`/dashboard/reports/${id}`);
+          }
+        }, 1200);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load assessment room");
@@ -881,7 +891,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                   {!isRecording ? (
                     <Button
                       onClick={startRecording}
-                      disabled={isSubmittingTurn || isExaminerSpeaking}
+                      disabled={isSubmittingTurn || isExaminerSpeaking || isFinalizing || session?.status === "PROCESSING"}
                       className="bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 shadow-xs text-xs h-10 px-5 rounded-xl transition-all"
                     >
                       <Mic className="h-4 w-4" />
@@ -914,7 +924,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 {/* Right: Submit Button */}
                 <Button
                   onClick={handleSubmitTurn}
-                  disabled={!learnerTranscript.trim() || isSubmittingTurn || isRecording}
+                  disabled={!learnerTranscript.trim() || isSubmittingTurn || isRecording || isFinalizing || session?.status === "PROCESSING"}
                   className={`font-semibold text-xs h-10 px-6 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all ${
                     learnerTranscript.trim() && !isRecording
                       ? "bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700"

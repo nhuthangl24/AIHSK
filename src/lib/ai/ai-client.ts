@@ -256,6 +256,7 @@ export class AIClient {
         Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(15000),
     });
 
     // If 400 bad request due to response_format not supported by proxy model, retry without response_format
@@ -271,6 +272,7 @@ export class AIClient {
           Authorization: `Bearer ${config.apiKey}`,
         },
         body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(15000),
       });
     }
 

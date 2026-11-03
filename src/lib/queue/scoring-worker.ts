@@ -27,7 +27,22 @@ export class ScoringWorker {
   }
 
   /**
-   * Processes a scoring job
+   * Ensures that a session in PROCESSING status has its scoring pipeline completed.
+   */
+  static async ensureSessionScored(sessionId: string): Promise<void> {
+    const session = await prisma.assessmentSession.findUnique({
+      where: { id: sessionId },
+      include: { result: true },
+    });
+
+    if (!session) return;
+    if (session.status === SessionStatus.COMPLETED && session.result) return;
+
+    await this.processSession(sessionId);
+  }
+
+  /**
+   * Processes a scoring job by Job ID
    */
   static async processJob(jobId: string): Promise<void> {
     const job = await prisma.backgroundJob.findUnique({
@@ -42,8 +57,23 @@ export class ScoringWorker {
     });
 
     const payload = job.payloadJson as { sessionId: string };
-    const sessionId = payload.sessionId;
+    const sessionId = payload?.sessionId;
 
+    if (!sessionId) {
+      await prisma.backgroundJob.update({
+        where: { id: jobId },
+        data: { status: JobStatus.FAILED, lastError: "Missing sessionId in payload" },
+      });
+      return;
+    }
+
+    await this.processSession(sessionId, jobId);
+  }
+
+  /**
+   * Directly processes and finalizes scoring for an assessment session
+   */
+  static async processSession(sessionId: string, jobId?: string): Promise<void> {
     try {
       const session = await prisma.assessmentSession.findUnique({
         where: { id: sessionId },
@@ -54,11 +84,22 @@ export class ScoringWorker {
           },
           template: true,
           user: true,
+          result: true,
         },
       });
 
       if (!session) {
         throw new Error(`Session ${sessionId} not found`);
+      }
+
+      if (session.status === SessionStatus.COMPLETED && session.result) {
+        if (jobId) {
+          await prisma.backgroundJob.update({
+            where: { id: jobId },
+            data: { status: JobStatus.COMPLETED, processedAt: new Date() },
+          });
+        }
+        return;
       }
 
       // Convert turns to ConversationTurnItem
@@ -200,23 +241,27 @@ export class ScoringWorker {
         });
       });
 
-      // Mark job as COMPLETED
-      await prisma.backgroundJob.update({
-        where: { id: jobId },
-        data: {
-          status: JobStatus.COMPLETED,
-          processedAt: new Date(),
-        },
-      });
+      // Mark job as COMPLETED if jobId provided
+      if (jobId) {
+        await prisma.backgroundJob.update({
+          where: { id: jobId },
+          data: {
+            status: JobStatus.COMPLETED,
+            processedAt: new Date(),
+          },
+        });
+      }
     } catch (err: any) {
-      console.error(`Background job ${jobId} failed:`, err);
-      await prisma.backgroundJob.update({
-        where: { id: jobId },
-        data: {
-          status: JobStatus.FAILED,
-          lastError: err?.message || String(err),
-        },
-      });
+      console.error(`Scoring processing for session ${sessionId} failed:`, err);
+      if (jobId) {
+        await prisma.backgroundJob.update({
+          where: { id: jobId },
+          data: {
+            status: JobStatus.FAILED,
+            lastError: err?.message || String(err),
+          },
+        });
+      }
       await prisma.assessmentSession.update({
         where: { id: sessionId },
         data: {
@@ -224,6 +269,7 @@ export class ScoringWorker {
           failureReason: err?.message || "Scoring pipeline error",
         },
       });
+      throw err;
     }
   }
 }

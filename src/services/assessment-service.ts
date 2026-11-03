@@ -79,6 +79,14 @@ export class AssessmentService {
     }
 
     if (session.status !== SessionStatus.IN_PROGRESS) {
+      if (session.status === SessionStatus.PROCESSING || session.status === SessionStatus.COMPLETED) {
+        return {
+          learnerTurn: session.turns[session.turns.length - 1] || null,
+          examinerTurn: null,
+          isCompleted: true,
+          stage: 5,
+        };
+      }
       throw new Error(`Cannot submit turn. Session status is ${session.status}`);
     }
 
