@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "cross-env NODE_ENV=production prisma generate && cross-env NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
@@ -23,6 +23,7 @@
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cross-env": "^10.1.0",
     "firebase": "^13.2.0",
     "jose": "^5.9.6",
     "lucide-react": "^0.475.0",
