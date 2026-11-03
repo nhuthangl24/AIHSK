@@ -37,3 +37,6 @@ next-env.d.ts
 *.db
 *.db-journal
 /public/uploads/audio
+
+# Antigravity agent skills (internal tooling - not for deployment)
+.agents/
