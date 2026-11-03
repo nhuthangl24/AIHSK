@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
-import { UserRole } from "@prisma/client";
+
+export type UserRole = "USER" | "ADMIN";
 
 const secretKey = process.env.JWT_SECRET || "classnia-production-grade-jwt-secret-key-32-chars-minimum";
 const key = new TextEncoder().encode(secretKey);

@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
-import { UserRole } from "@prisma/client";
-import { verifyToken, TokenPayload } from "./jwt";
+import { UserRole, verifyToken, TokenPayload } from "./jwt";
 import { verifyClassniaToken } from "./classnia-token";
 
 export const COOKIE_NAME = "aihsk_token";
@@ -54,7 +53,7 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
         return {
           userId: `classnia_${normalizedEmail.replace(/[^a-z0-9]/g, "_")}`,
           email: normalizedEmail,
-          role: isAdmin ? UserRole.ADMIN : UserRole.USER,
+          role: isAdmin ? "ADMIN" : "USER",
           name: normalizedEmail.split("@")[0],
         };
       }

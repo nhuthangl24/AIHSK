@@ -9,7 +9,12 @@ export default async function LearnerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    user = null;
+  }
 
   if (!user) {
     redirect("/login");

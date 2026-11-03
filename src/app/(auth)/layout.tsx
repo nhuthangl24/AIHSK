@@ -9,11 +9,15 @@ export default async function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    user = null;
+  }
 
   if (user) {
-    if (user.role === "ADMIN") redirect("/admin");
-    redirect("/dashboard");
+    redirect(user.role === "ADMIN" ? "/admin" : "/dashboard");
   }
 
   return (
