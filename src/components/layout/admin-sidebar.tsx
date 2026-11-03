@@ -100,7 +100,7 @@ export function AdminSidebar({ user }: { user?: { name: string; email: string; r
         </Link>
 
         <a
-          href="https://classnia.id.vn"
+          href={process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://classnia.id.vn"}
           target="_blank"
           rel="noopener noreferrer"
           className="w-full mb-2 flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50/50 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100/50 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-300 transition-colors"

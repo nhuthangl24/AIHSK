@@ -44,7 +44,7 @@ export function MarketingHeader() {
         {/* Action Buttons */}
         <div className="hidden md:flex items-center gap-3">
           <a
-            href="https://classnia.id.vn"
+            href={process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://classnia.id.vn"}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs font-semibold px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5"

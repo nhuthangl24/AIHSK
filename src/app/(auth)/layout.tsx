@@ -20,7 +20,7 @@ export default async function AuthLayout({
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-slate-50 dark:bg-slate-950">
       <a
-        href="https://classnia.id.vn"
+        href={process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://classnia.id.vn"}
         className="flex items-center gap-2.5 mb-8 group hover:opacity-90 transition-opacity"
         title="Về Classnia.id.vn"
       >

@@ -117,7 +117,7 @@ export function DashboardSidebar({ user }: { user?: { name: string; email: strin
         )}
 
         <a
-          href="https://classnia.id.vn"
+          href={process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://classnia.id.vn"}
           target="_blank"
           rel="noopener noreferrer"
           className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/60 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100/60 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 transition-colors shadow-2xs"

@@ -24,7 +24,7 @@ AI_DEFAULT_MODEL="gpt-4o-mini"
 
 # Speech-to-Text & Text-to-Speech
 AZURE_SPEECH_KEY=""
-AZURE_SPEECH_REGION="eastus"
+AZURE_SPEECH_REGION="your-azure-region"
 
 # S3-Compatible Object Storage (AWS S3 / Cloudflare R2 / MinIO)
 # Leave empty for local filesystem storage (/public/uploads/audio/)

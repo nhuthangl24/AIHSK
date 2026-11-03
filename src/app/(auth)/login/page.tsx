@@ -159,7 +159,7 @@ export default function LoginPage() {
     <>
       <div className="mb-3 flex items-center text-xs">
         <a
-          href="https://classnia.id.vn"
+          href={process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://classnia.id.vn"}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
