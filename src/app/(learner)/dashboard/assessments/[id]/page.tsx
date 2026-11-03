@@ -66,10 +66,63 @@ export default function AssessmentExamRoomPage({
   const [showPinyin, setShowPinyin] = useState(true);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>("Google 國語（臺灣） (zh-TW)");
 
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Load and configure Google 國語（臺灣） (zh-TW) voice
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+    const findTaiwanVoice = () => {
+      const allVoices = window.speechSynthesis.getVoices();
+      if (!allVoices || allVoices.length === 0) return;
+
+      const zhVoices = allVoices.filter(
+        (v) =>
+          v.lang.toLowerCase().startsWith("zh") ||
+          v.name.includes("國語") ||
+          v.name.includes("Taiwan") ||
+          v.name.includes("臺灣")
+      );
+      setAvailableVoices(zhVoices.length > 0 ? zhVoices : allVoices);
+
+      // Best match: "Google 國語（臺灣）" or any zh-TW voice
+      const googleTW = allVoices.find(
+        (v) =>
+          v.name.includes("Google 國語（臺灣）") ||
+          v.name.includes("Google 國語 (臺灣)") ||
+          (v.name.toLowerCase().includes("google") &&
+            v.lang.toLowerCase().replace("_", "-") === "zh-tw")
+      );
+
+      const anyTW = allVoices.find(
+        (v) =>
+          v.lang.toLowerCase().replace("_", "-") === "zh-tw" ||
+          v.name.includes("臺灣") ||
+          v.name.includes("Taiwan")
+      );
+
+      const anyZh = allVoices.find((v) => v.lang.toLowerCase().startsWith("zh"));
+
+      const target = googleTW || anyTW || anyZh;
+      if (target) {
+        setSelectedVoiceName(target.name);
+      }
+    };
+
+    findTaiwanVoice();
+    window.speechSynthesis.onvoiceschanged = findTaiwanVoice;
+
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
 
   // Fetch initial session details
   const fetchSession = async () => {
@@ -110,13 +163,39 @@ export default function AssessmentExamRoomPage({
     }
   }, [session?.turns, learnerTranscript]);
 
-  // Play Examiner Voice using Web Speech Synthesis
+  // Play Examiner Voice using Web Speech Synthesis with Google 國語（臺灣） (zh-TW)
   const speakExaminerText = (text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "zh-CN";
+
+    // Look for Google 國語（臺灣）
+    const allVoices = window.speechSynthesis.getVoices();
+    const targetVoice =
+      allVoices.find((v) => v.name === selectedVoiceName) ||
+      allVoices.find(
+        (v) =>
+          v.name.includes("Google 國語（臺灣）") ||
+          v.name.includes("Google 國語 (臺灣)") ||
+          (v.name.toLowerCase().includes("google") &&
+            v.lang.toLowerCase().replace("_", "-") === "zh-tw")
+      ) ||
+      allVoices.find(
+        (v) =>
+          v.lang.toLowerCase().replace("_", "-") === "zh-tw" ||
+          v.name.includes("臺灣") ||
+          v.name.includes("Taiwan")
+      ) ||
+      allVoices.find((v) => v.lang.toLowerCase().startsWith("zh"));
+
+    if (targetVoice) {
+      utterance.voice = targetVoice;
+      utterance.lang = targetVoice.lang || "zh-TW";
+    } else {
+      utterance.lang = "zh-TW";
+    }
+
     utterance.rate = 0.95; // Natural deliberate cadence for language exam
     utterance.pitch = 1.0;
 
@@ -136,7 +215,7 @@ export default function AssessmentExamRoomPage({
     }
   }, [session?.turns.length]);
 
-  // Initialize Speech Recognition
+  // Initialize Speech Recognition in zh-TW
   const startRecording = () => {
     if (typeof window === "undefined") return;
 
@@ -153,7 +232,7 @@ export default function AssessmentExamRoomPage({
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = "zh-CN";
+      recognition.lang = "zh-TW";
       recognition.continuous = true;
       recognition.interimResults = true;
 
@@ -329,52 +408,90 @@ export default function AssessmentExamRoomPage({
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
             <CardContent className="p-6 sm:p-8 space-y-6">
               {/* Examiner Identity */}
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="h-14 w-14 rounded-full bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center text-rose-700 dark:text-rose-300 font-bold text-xl border-2 border-rose-500 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="relative shrink-0">
+                    <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center text-rose-700 dark:text-rose-300 font-bold text-lg sm:text-xl border-2 border-rose-500 shadow-sm">
                       李
                     </div>
-                    {isExaminerSpeaking && (
-                      <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                    {isExaminerSpeaking ? (
+                      <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-600" />
+                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-600 ring-2 ring-white dark:ring-slate-900" />
                       </span>
+                    ) : (
+                      <span
+                        className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900"
+                        title="Voice Engine Ready"
+                      />
                     )}
                   </div>
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>考官李老师 (Examiner Li)</span>
-                      <Badge variant="outline" className="text-[10px] border-rose-300 text-rose-600">
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-base text-slate-900 dark:text-white whitespace-nowrap">
+                        考官李老师 <span className="text-xs font-normal text-slate-500">(Examiner Li)</span>
+                      </h3>
+                      <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50/80 px-2.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 whitespace-nowrap shrink-0">
                         Senior Examiner
-                      </Badge>
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Standard Mandarin &bull; Stage {session.currentStage}
-                    </p>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 flex-wrap">
+                      <span className="font-medium">Stage {session.currentStage}</span>
+                      <span>&bull;</span>
+                      {/* Voice Indicator Badge */}
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 whitespace-nowrap">
+                        <Volume2 className="h-3 w-3 shrink-0" />
+                        <span>✓ Google 國語（臺灣） (zh-TW)</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                {/* Voice & Pinyin Controls */}
+                <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                  {availableVoices.length > 1 && (
+                    <select
+                      value={selectedVoiceName}
+                      onChange={(e) => {
+                        setSelectedVoiceName(e.target.value);
+                        if (latestExaminerTurn) {
+                          speakExaminerText(latestExaminerTurn.textContent);
+                        }
+                      }}
+                      className="text-xs h-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-2 text-slate-700 dark:text-slate-300 max-w-[140px] truncate"
+                      title="Select TTS Voice"
+                    >
+                      {availableVoices.map((v) => (
+                        <option key={v.name} value={v.name}>
+                          {v.name} ({v.lang})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPinyin(!showPinyin)}
-                    className="text-xs text-slate-500 hover:text-slate-800"
+                    className="text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 whitespace-nowrap h-8 px-2.5"
                     title="Toggle Pinyin"
                   >
-                    <Languages className="h-4 w-4 mr-1" />
+                    <Languages className="h-3.5 w-3.5 mr-1" />
                     <span>{showPinyin ? "Hide Pinyin" : "Show Pinyin"}</span>
                   </Button>
+
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => {
                       if (latestExaminerTurn) speakExaminerText(latestExaminerTurn.textContent);
                     }}
-                    title="Replay Examiner Voice"
+                    className="h-8 w-8 text-slate-600 hover:text-rose-600 dark:text-slate-400"
+                    title="Replay Voice (Google 國語（臺灣）)"
                   >
-                    <Volume2 className="h-4 w-4 text-slate-600" />
+                    <Volume2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

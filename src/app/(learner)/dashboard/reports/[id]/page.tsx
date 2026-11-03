@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { formatDate, formatScore, getScoreBadgeColor } from "@/lib/utils";
 
+import { PrintButton } from "@/components/reports/print-button";
+
 export const dynamic = "force-dynamic";
 
 export default async function AssessmentReportPage({
@@ -78,15 +80,7 @@ export default async function AssessmentReportPage({
         </Link>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {}}
-            className="text-xs flex items-center gap-1.5"
-          >
-            <Printer className="h-3.5 w-3.5" />
-            <span>Print / Save PDF</span>
-          </Button>
+          <PrintButton />
         </div>
       </div>
 
