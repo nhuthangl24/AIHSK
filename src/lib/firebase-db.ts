@@ -106,4 +106,28 @@ export class FirebaseDb {
       return null;
     }
   }
+
+  /**
+   * Update user in Firestore by UID/id
+   */
+  static async updateUser(userId: string, data: Partial<FirebaseUserDoc>): Promise<boolean> {
+    try {
+      const db = getFirestoreDb();
+      if (!db) return false;
+
+      const userDocRef = doc(db, "users", userId);
+      await setDoc(
+        userDocRef,
+        {
+          ...data,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+      return true;
+    } catch (e) {
+      console.warn("FirebaseDb updateUser note:", e);
+      return false;
+    }
+  }
 }

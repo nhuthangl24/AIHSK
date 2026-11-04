@@ -54,6 +54,18 @@ export async function PUT(req: NextRequest) {
 
     assessmentStore.saveProfile(profileData);
 
+    // Persist to Firebase Firestore if configured
+    await FirebaseDb.updateUser(user.userId, {
+      name: profileData.name,
+      targetLevel: profileData.targetLevel,
+      targetHsk: parseInt(profileData.targetLevel.replace(/\D/g, ""), 10) || 3,
+      nativeLanguage: profileData.nativeLanguage,
+      studyHoursWeekly: profileData.studyHoursWeekly,
+      learningGoal: profileData.learningGoal,
+    }).catch((err) => {
+      console.warn("Firestore profile sync warning:", err);
+    });
+
     return NextResponse.json({
       success: true,
       message: "Cập nhật hồ sơ học tập thành công!",

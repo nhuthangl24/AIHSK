@@ -1,6 +1,16 @@
 import { ConversationTurnItem, StageDefinition } from "./types";
-import { CHINESE_EXAMINER_SYSTEM_PROMPT } from "./prompts";
 import { AIClient, ChatMessage, LLMConfig } from "./ai-client";
+import { pinyin } from "pinyin-pro";
+
+export function generatePinyin(text: string): string {
+  if (!text) return "";
+  try {
+    return pinyin(text, { toneType: "symbol" });
+  } catch (e) {
+    console.error("Pinyin generation error:", e);
+    return "";
+  }
+}
 
 export interface NextTurnResult {
   stage: number;

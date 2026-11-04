@@ -104,6 +104,7 @@ describe("Free Talk (Trò Chuyện Tự Do) Unit Tests", () => {
     it("should return 400 when messages array is missing or invalid", async () => {
       vi.spyOn(sessionModule, "getCurrentUser").mockResolvedValueOnce({
         userId: "user_test",
+        name: "Test User",
         email: "test@aihsk.com",
         role: "USER" as any,
       });
@@ -124,6 +125,7 @@ describe("Free Talk (Trò Chuyện Tự Do) Unit Tests", () => {
     it("should return successful response with reply and suggestions when authenticated", async () => {
       vi.spyOn(sessionModule, "getCurrentUser").mockResolvedValueOnce({
         userId: "user_test",
+        name: "Test User",
         email: "test@aihsk.com",
         role: "USER" as any,
       });
@@ -186,6 +188,7 @@ describe("Free Talk (Trò Chuyện Tự Do) Unit Tests", () => {
     it("should handle POST /api/free-talk/evaluate and persist session", async () => {
       vi.spyOn(sessionModule, "getCurrentUser").mockResolvedValueOnce({
         userId: "user_test_free_talk",
+        name: "Test User",
         email: "freetalk@aihsk.com",
         role: "USER" as any,
       });

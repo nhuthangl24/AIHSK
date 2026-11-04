@@ -101,12 +101,12 @@ export default async function LearningProgressPage() {
           const initialSession = sessions[0];
           const initialScore = initialSession.result?.overallScore || 0;
           const initialLevel =
-            initialSession.result?.hskEstimate || initialSession.template.targetLevel || "HSK 1";
+            (initialSession.result as any)?.hskEstimate || (initialSession.template as any)?.targetLevel || "HSK 1";
 
           const latestSession = sessions[sessions.length - 1];
           const latestScore = latestSession.result?.overallScore || 0;
           const currentLevel =
-            latestSession.result?.hskEstimate || profile?.targetLevel || "HSK 1";
+            (latestSession.result as any)?.hskEstimate || profile?.targetLevel || "HSK 1";
 
           const highestScore = Math.max(
             ...sessions.map((s) => s.result?.overallScore || 0)

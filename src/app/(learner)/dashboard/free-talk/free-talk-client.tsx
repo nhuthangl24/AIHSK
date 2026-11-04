@@ -16,20 +16,17 @@ import {
   RotateCcw,
   Lightbulb,
   Keyboard,
-  ArrowLeft,
   Settings,
   Smile,
-  BookOpen,
-  MessageCircle,
   CheckCircle2,
-  HelpCircle,
   Loader2,
   X,
   Award,
-  ChevronRight,
+  ChevronDown,
   BarChart3,
-  ThumbsUp,
   FileText,
+  MessageSquare,
+  VolumeX,
 } from "lucide-react";
 import {
   FREE_TALK_PERSONAS,
@@ -78,6 +75,7 @@ export default function FreeTalkClient() {
   const [showTranslation, setShowTranslation] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(0.95);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showIntroBanner, setShowIntroBanner] = useState(true);
 
   // Evaluation state
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -328,95 +326,165 @@ export default function FreeTalkClient() {
     }
   };
 
+  const handleRestartChat = () => {
+    if (confirm("Bắt đầu cuộc trò chuyện mới từ đầu?")) {
+      handleSelectPersona(selectedPersonaId);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto space-y-3 pb-2">
+    <div className="flex flex-col h-[calc(100vh-5rem)] max-w-5xl w-full mx-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden select-none">
       {/* ==================================================================== */}
-      {/* 1. TOP BAR: Persona Selector & Level Settings                        */}
+      {/* 1. TOP HEADER BAR: Persona Selector & Quick Actions                   */}
       {/* ==================================================================== */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-        {/* Left: Persona Switcher */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden md:inline shrink-0 mr-1">
-            Bạn trò chuyện:
-          </span>
+      <header className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 shrink-0 z-20">
+        {/* Left: Persona Switcher Tabs */}
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/60 overflow-x-auto max-w-full">
           {Object.values(FREE_TALK_PERSONAS).map((p) => {
             const isSelected = p.id === selectedPersonaId;
             return (
               <button
                 key={p.id}
                 onClick={() => handleSelectPersona(p.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 shrink-0 ${
                   isSelected
-                    ? "bg-rose-600 text-white shadow-xs scale-102"
-                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50"
                 }`}
+                title={p.description}
               >
                 <div
-                  className={`h-5 w-5 rounded-lg bg-gradient-to-br ${p.avatarColor} text-white flex items-center justify-center text-[10px] font-serif`}
+                  className={`h-5 w-5 rounded-lg bg-gradient-to-br ${p.avatarColor} text-white flex items-center justify-center text-[10px] font-serif shadow-2xs font-bold shrink-0`}
                 >
                   {p.avatarText}
                 </div>
-                <span>{p.name}</span>
+                <div className="flex flex-col items-start leading-tight text-left">
+                  <span className="truncate max-w-[90px] sm:max-w-none">{p.name}</span>
+                  <span className="text-[9px] font-normal text-slate-400 hidden md:inline">
+                    {p.role}
+                  </span>
+                </div>
               </button>
             );
           })}
         </div>
 
-        {/* Right: Level dropdown & Controls */}
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-          <select
-            value={selectedLevel}
-            onChange={(e) => setSelectedLevel(e.target.value)}
-            className="h-8 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
-          >
-            {HSK_LEVELS.map((lvl) => (
-              <option key={lvl} value={lvl}>
-                {lvl}
-              </option>
-            ))}
-          </select>
+        {/* Right: Controls, Level, Evaluation */}
+        <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
+          {/* Level Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+              aria-label="Chọn trình độ HSK khảo thí"
+              className="h-8 pl-2.5 pr-7 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-200 appearance-none focus:outline-none focus:ring-2 focus:ring-rose-500 cursor-pointer transition-colors"
+            >
+              {HSK_LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  {lvl}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="h-3 w-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
 
+          {/* Quick Display Toggles */}
+          <button
+            type="button"
+            onClick={() => setShowPinyin(!showPinyin)}
+            className={`h-8 px-2.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1 ${
+              showPinyin
+                ? "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/50 dark:border-rose-900/60 dark:text-rose-300"
+                : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+            title="Bật/Tắt Pinyin"
+          >
+            <Languages className="h-3 w-3" />
+            <span className="hidden md:inline">Pinyin</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowTranslation(!showTranslation)}
+            className={`h-8 px-2.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1 ${
+              showTranslation
+                ? "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/50 dark:border-rose-900/60 dark:text-rose-300"
+                : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+            title="Bật/Tắt dịch nghĩa tiếng Việt"
+          >
+            <span>Dịch</span>
+          </button>
+
+          {/* Restart Session */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRestartChat}
+            className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl"
+            title="Làm mới cuộc trò chuyện"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+
+          {/* Evaluation Trigger Button */}
           <Button
             size="sm"
             onClick={handleEvaluateSession}
             disabled={isEvaluating}
-            className="h-8 px-3 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
-            title="Kết thúc và xem bảng điểm AI đánh giá chi tiết"
+            className="h-8 px-3 text-[11px] font-bold text-white bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
+            title="Kết thúc và xem báo cáo AI đánh giá trình độ"
           >
             {isEvaluating ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Đang chấm điểm...</span>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Đang chấm...</span>
               </>
             ) : (
               <>
-                <Award className="h-3.5 w-3.5" />
-                <span>Kết Thúc & Chấm Điểm ({userTurnCount})</span>
+                <Sparkles className="h-3 w-3" />
+                <span>Đánh giá</span>
+                {userTurnCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-white/25 rounded-md text-[10px]">
+                    {userTurnCount}
+                  </span>
+                )}
               </>
             )}
           </Button>
         </div>
-      </div>
+      </header>
 
       {/* ==================================================================== */}
-      {/* 2. CHAT STREAM (Generous, conversational, no rigid exam pressure)    */}
+      {/* 2. CHAT STREAM (Fluid, spacious, elegant typography)                  */}
       {/* ==================================================================== */}
       <div
         ref={chatScrollRef}
-        className="flex-1 min-h-0 overflow-y-auto px-2 sm:px-4 py-2 space-y-4 rounded-2xl bg-gradient-to-b from-slate-50/70 via-white to-slate-50/70 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 border border-slate-200/80 dark:border-slate-800 shadow-inner"
+        className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 py-5 space-y-5 bg-slate-50/50 dark:bg-slate-950/50"
       >
-        {/* Intro Banner */}
-        <div className="rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/70 dark:border-rose-900/50 p-3 sm:p-4 text-center space-y-1">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 dark:text-rose-300">
-            <Smile className="h-4 w-4" />
-            <span>Phòng Trò Chuyện Tự Do &bull; Không Áp Lực Điểm Số</span>
+        {/* Subtle Welcome Pill (Dismissible) */}
+        {showIntroBanner && (
+          <div className="rounded-2xl bg-gradient-to-r from-rose-50/80 via-white to-rose-50/80 dark:from-rose-950/20 dark:via-slate-900 dark:to-rose-950/20 border border-rose-200/60 dark:border-rose-900/40 px-4 py-2.5 flex items-center justify-between gap-3 text-xs shadow-2xs">
+            <div className="flex items-center gap-2.5 text-slate-700 dark:text-slate-300 min-w-0">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="font-semibold text-rose-700 dark:text-rose-300 shrink-0">
+                {currentPersona.name}:
+              </span>
+              <p className="truncate text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
+                {currentPersona.description} Cứ nói tự nhiên, không áp lực điểm số nhé!
+              </p>
+            </div>
+            <button
+              onClick={() => setShowIntroBanner(false)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 shrink-0"
+              title="Đóng thông báo"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl mx-auto leading-relaxed">
-            Bạn có thể thoải mái tán gẫu về bất kỳ điều gì (ăn uống, thời tiết, sở thích, phim ảnh, kể chuyện...). Cứ nói tự nhiên, không sợ sai nhé!
-          </p>
-        </div>
+        )}
 
-        {/* Messages List */}
+        {/* Message Stream */}
         {messages.map((msg, index) => {
           const isAI = msg.role === "assistant";
           const isLatestAI = isAI && index === messages.length - 1;
@@ -425,114 +493,126 @@ export default function FreeTalkClient() {
             <div key={index} className="space-y-2">
               {isAI ? (
                 /* AI PARTNER MESSAGE BUBBLE */
-                <div className="flex items-start gap-2.5 sm:gap-3 max-w-[94%] sm:max-w-[85%]">
-                  <div
-                    className={`h-9 w-9 rounded-2xl bg-gradient-to-br ${currentPersona.avatarColor} text-white flex items-center justify-center font-bold text-sm font-serif shadow-xs shrink-0 mt-0.5`}
-                  >
-                    {currentPersona.avatarText}
+                <div className="flex items-start gap-3 max-w-[96%] sm:max-w-[85%] animate-in fade-in slide-in-from-bottom-1 duration-200">
+                  {/* Persona Avatar */}
+                  <div className="relative shrink-0 mt-0.5">
+                    <div
+                      className={`h-9 w-9 rounded-2xl bg-gradient-to-br ${currentPersona.avatarColor} text-white flex items-center justify-center font-bold text-sm font-serif shadow-xs`}
+                    >
+                      {currentPersona.avatarText}
+                    </div>
+                    {isLatestAI && isSpeaking && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600" />
+                      </span>
+                    )}
                   </div>
 
-                  <div className="rounded-2xl p-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-2 flex-1">
-                    {/* Header line: Partner name + controls */}
-                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                      <span className="font-bold text-xs text-slate-900 dark:text-white">
-                        {currentPersona.name}
-                      </span>
+                  {/* AI Bubble Card */}
+                  <div className="flex-1 rounded-2xl rounded-tl-xs p-4 sm:p-5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-2.5">
+                    {/* Header line: Name + Role + Audio Controls */}
+                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800/80">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                          {currentPersona.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">
+                          &bull; {currentPersona.role}
+                        </span>
+                      </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Speed switch */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* Speed Toggle */}
                         <button
                           type="button"
                           onClick={() => {
-                            const next = playbackSpeed === 0.95 ? 0.85 : playbackSpeed === 0.85 ? 1.05 : 0.95;
+                            const next = playbackSpeed === 0.95 ? 0.85 : playbackSpeed === 0.85 ? 1.1 : 0.95;
                             setPlaybackSpeed(next);
                             speakText(msg.content, next);
                           }}
-                          className="h-6 px-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-md transition-colors"
-                          title="Tốc độ đọc"
+                          className="h-6 px-1.5 text-[10px] font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 rounded-md transition-colors"
+                          title="Tốc độ đọc câu"
                         >
                           {playbackSpeed}x
                         </button>
 
-                        {/* Pinyin toggle */}
+                        {/* Audio Speak Button */}
                         <button
                           type="button"
-                          onClick={() => setShowPinyin(!showPinyin)}
-                          className="h-6 px-1.5 text-[10px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1"
-                          title="Bật/Tắt Pinyin"
+                          onClick={() => {
+                            if (isSpeaking) {
+                              stopTTS();
+                            } else {
+                              speakText(msg.content);
+                            }
+                          }}
+                          className={`h-6 px-2 text-[10px] font-semibold rounded-md flex items-center gap-1 transition-all ${
+                            isSpeaking
+                              ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                              : "text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                          }`}
+                          title={isSpeaking ? "Dừng đọc" : "Nghe phát âm chuẩn"}
                         >
-                          <Languages className="h-3 w-3" />
-                          <span>{showPinyin ? "Pinyin" : "Ẩn"}</span>
+                          {isSpeaking ? (
+                            <>
+                              <Square className="h-2.5 w-2.5 fill-current animate-pulse text-rose-600" />
+                              <span>Dừng</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="h-3 w-3" />
+                              <span>Nghe</span>
+                            </>
+                          )}
                         </button>
-
-                        {/* Translation toggle */}
-                        <button
-                          type="button"
-                          onClick={() => setShowTranslation(!showTranslation)}
-                          className="h-6 px-1.5 text-[10px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
-                          title="Bật/Tắt dịch nghĩa tiếng Việt"
-                        >
-                          <span>{showTranslation ? "Dịch" : "Ẩn dịch"}</span>
-                        </button>
-
-                        {/* Voice Listen Button */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => speakText(msg.content)}
-                          className="h-6 px-2 text-[10px] font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md gap-1"
-                          title="Nghe phát âm"
-                        >
-                          <Volume2 className="h-3 w-3" />
-                          <span>Nghe</span>
-                        </Button>
                       </div>
                     </div>
 
                     {/* Chinese Hanzi Text */}
-                    <p className="font-bold text-base sm:text-lg text-slate-900 dark:text-white leading-relaxed tracking-wide">
+                    <p className="text-base sm:text-lg font-medium text-slate-900 dark:text-slate-100 leading-relaxed font-sans tracking-wide">
                       {msg.content}
                     </p>
 
-                    {/* Pinyin */}
+                    {/* Pinyin (Calm neutral color, NOT neon pink) */}
                     {showPinyin && msg.pinyin && (
-                      <p className="text-xs sm:text-sm text-rose-600/90 dark:text-rose-400 font-sans tracking-wide leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-sans tracking-wide leading-relaxed">
                         {msg.pinyin}
                       </p>
                     )}
 
                     {/* Vietnamese Translation */}
                     {showTranslation && msg.translation && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 italic pt-1 border-t border-slate-100 dark:border-slate-800/60">
-                        🇻🇳 {msg.translation}
+                      <p className="text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/60 leading-relaxed">
+                        {msg.translation}
                       </p>
                     )}
 
-                    {/* Gentle Linguistic Tip / Grammar correction */}
+                    {/* Linguistic Tip / Helpful Grammar Note */}
                     {msg.tip && (
-                      <div className="p-2.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
+                      <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
                         <Lightbulb className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
                         <span className="leading-relaxed">{msg.tip}</span>
                       </div>
                     )}
 
-                    {/* Suggested Replies Chips (Only on Latest Message) */}
+                    {/* Interactive Quick Reply Suggestion Chips */}
                     {isLatestAI && msg.suggestions && msg.suggestions.length > 0 && (
-                      <div className="pt-2 space-y-1.5 border-t border-slate-100 dark:border-slate-800">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                          💡 Gợi ý câu bạn có thể trả lời (Chạm để gửi):
+                      <div className="pt-2.5 space-y-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Gợi ý câu phản xạ (Chạm để gửi ngay):
                         </span>
-                        <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-wrap gap-2">
                           {msg.suggestions.map((sug, sIdx) => (
                             <button
                               key={sIdx}
                               onClick={() => handleSendMessage(sug.zh)}
-                              className="text-left p-2 rounded-xl bg-slate-50 hover:bg-rose-50 dark:bg-slate-800/60 dark:hover:bg-rose-950/40 border border-slate-200/70 hover:border-rose-300 dark:border-slate-700/60 dark:hover:border-rose-900/60 transition-all group"
+                              className="text-left px-3 py-2 rounded-xl bg-slate-50 hover:bg-rose-50 dark:bg-slate-800/60 dark:hover:bg-rose-950/40 border border-slate-200/80 hover:border-rose-300 dark:border-slate-700/60 dark:hover:border-rose-900/60 transition-all shadow-2xs group cursor-pointer"
                             >
-                              <div className="font-semibold text-xs text-slate-900 dark:text-white group-hover:text-rose-600 transition-colors">
+                              <div className="font-semibold text-xs text-slate-800 dark:text-slate-200 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
                                 {sug.zh}
                               </div>
-                              <div className="text-[10px] text-slate-500 line-clamp-1">
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
                                 {sug.vi}
                               </div>
                             </button>
@@ -544,11 +624,11 @@ export default function FreeTalkClient() {
                 </div>
               ) : (
                 /* USER MESSAGE BUBBLE */
-                <div className="flex flex-col items-end space-y-1 ml-auto max-w-[92%] sm:max-w-[80%]">
+                <div className="flex flex-col items-end space-y-1 ml-auto max-w-[92%] sm:max-w-[80%] animate-in fade-in slide-in-from-bottom-1 duration-200">
                   <span className="text-[10px] font-semibold text-slate-400 px-1">
                     Bạn
                   </span>
-                  <div className="rounded-2xl rounded-tr-xs p-3.5 bg-rose-600 text-white shadow-xs">
+                  <div className="rounded-2xl rounded-tr-xs px-4 py-3 bg-gradient-to-br from-rose-600 to-rose-700 text-white shadow-xs">
                     <p className="font-medium text-sm sm:text-base leading-relaxed tracking-wide">
                       {msg.content}
                     </p>
@@ -559,148 +639,205 @@ export default function FreeTalkClient() {
           );
         })}
 
-        {/* Loading Indicator */}
+        {/* AI Typing Indicator */}
         {isLoadingReply && (
-          <div className="flex items-center gap-2 text-xs text-slate-400 pl-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-600" />
+          <div className="flex items-center gap-2.5 text-xs text-slate-400 pl-2 animate-in fade-in">
+            <div className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            </div>
             <span>{currentPersona.name} đang suy nghĩ câu trả lời...</span>
           </div>
         )}
       </div>
 
       {/* ==================================================================== */}
-      {/* 3. BOTTOM INTERACTION CONSOLE (Speech & Keyboard)                   */}
+      {/* 3. BOTTOM INTERACTION CONSOLE (Modern Tactile Voice Orb & Text Input) */}
       {/* ==================================================================== */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 shadow-xs space-y-2 shrink-0">
-        {inputMode === "voice" ? (
-          /* VOICE MODE */
-          <div className="space-y-2">
-            {learnerInput && (
-              <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-2.5 flex items-center justify-between gap-2">
-                <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                  {learnerInput}
-                </span>
+      <footer className="border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 sm:px-6 sm:py-3.5 shrink-0 z-20">
+        <div className="max-w-3xl mx-auto">
+          {inputMode === "voice" ? (
+            /* VOICE MODE: Tactile & Modern */
+            <div className="flex flex-col items-center space-y-3">
+              {/* Interim Live Transcript Preview Bubble */}
+              {learnerInput && (
+                <div className="w-full max-w-lg rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 px-3.5 py-2.5 flex items-center justify-between gap-2.5 shadow-2xs animate-in fade-in">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="h-2 w-2 rounded-full bg-rose-600 animate-pulse shrink-0" />
+                    <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white truncate">
+                      {learnerInput}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => setLearnerInput("")}
+                      className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                      title="Xóa câu nhận diện"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                    {!isRecording && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleSendMessage()}
+                        disabled={isLoadingReply}
+                        className="h-7 px-2.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg gap-1 shadow-xs"
+                      >
+                        <span>Gửi</span>
+                        <Send className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Main Interactive Mic Console */}
+              <div className="flex items-center justify-center gap-6 w-full">
+                {/* Switch to Keyboard */}
                 <button
-                  onClick={() => setLearnerInput("")}
-                  className="text-xs text-slate-400 hover:text-rose-600 shrink-0"
+                  type="button"
+                  onClick={() => {
+                    setInputMode("text");
+                    setTimeout(() => textareaRef.current?.focus(), 100);
+                  }}
+                  className="h-10 px-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 transition-all shadow-2xs hover:scale-102"
+                  title="Chuyển sang gõ phím"
                 >
-                  <RotateCcw className="h-3 w-3" />
+                  <Keyboard className="h-4 w-4 text-slate-500" />
+                  <span className="hidden sm:inline">Gõ phím</span>
+                </button>
+
+                {/* Central Glowing Mic Orb */}
+                {!isRecording ? (
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    disabled={isLoadingReply}
+                    className="relative group focus:outline-none"
+                    title="Bấm vào để nói tiếng Trung"
+                  >
+                    <div className="h-16 w-16 sm:h-18 sm:w-18 rounded-full bg-gradient-to-tr from-rose-600 via-rose-500 to-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 group-hover:scale-105 group-hover:shadow-rose-600/40 active:scale-95 transition-all cursor-pointer">
+                      <Mic className="h-7 w-7 sm:h-8 sm:w-8 group-hover:animate-pulse" />
+                    </div>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="relative group focus:outline-none"
+                    title="Bấm để dừng ghi âm"
+                  >
+                    <div className="h-16 w-16 sm:h-18 sm:w-18 rounded-full bg-gradient-to-tr from-amber-500 to-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 animate-pulse cursor-pointer">
+                      <Square className="h-6 w-6 fill-current" />
+                    </div>
+                  </button>
+                )}
+
+                {/* Fast Tips Hint */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sample = currentPersona.initialSuggestions[0]?.zh;
+                    if (sample) handleSendMessage(sample);
+                  }}
+                  className="h-10 px-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 transition-all shadow-2xs hover:scale-102"
+                  title="Gửi câu chào mẫu nhanh"
+                >
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <span className="hidden sm:inline">Câu mẫu</span>
                 </button>
               </div>
-            )}
 
-            <div className="flex items-center gap-2">
-              {!isRecording ? (
+              {/* Status Hint under Mic */}
+              <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5">
+                {isRecording ? (
+                  <span className="text-rose-600 font-semibold flex items-center gap-1.5 animate-pulse">
+                    <span className="h-2 w-2 rounded-full bg-rose-600" />
+                    Đang lắng nghe... ({recordingSeconds}s) &bull; Bấm lại để gửi
+                  </span>
+                ) : (
+                  <span>Chạm Micro để bắt đầu nói tiếng Trung tự do</span>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* TEXT MODE: Sleek Messaging Bar */
+            <div className="space-y-2">
+              <div className="relative rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 p-2.5 focus-within:ring-2 focus-within:ring-rose-500 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all flex items-end gap-2">
                 <Button
-                  onClick={startRecording}
-                  disabled={isLoadingReply}
-                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm h-11 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all"
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setInputMode("voice")}
+                  className="h-9 w-9 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl shrink-0"
+                  title="Chuyển về chế độ Micro"
                 >
                   <Mic className="h-4 w-4" />
-                  <span>{learnerInput ? "Nói thêm vào câu" : "Bấm Micro để nói (Bắt đầu nói)"}</span>
                 </Button>
-              ) : (
-                <Button
-                  onClick={stopRecording}
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm h-11 rounded-xl flex items-center justify-center gap-2 shadow-xs animate-pulse transition-all"
-                >
-                  <MicOff className="h-4 w-4" />
-                  <span>Dừng nói ({recordingSeconds}s)</span>
-                </Button>
-              )}
 
-              {learnerInput && !isRecording && (
-                <Button
-                  onClick={() => handleSendMessage()}
+                <textarea
+                  ref={textareaRef}
+                  value={learnerInput}
+                  onChange={(e) => setLearnerInput(e.target.value)}
                   disabled={isLoadingReply}
-                  className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700 font-bold text-xs sm:text-sm h-11 px-5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs shrink-0 transition-all"
+                  placeholder="Gõ tiếng Trung hoặc Pinyin vào đây (nhấn Enter để gửi)..."
+                  rows={2}
+                  className="flex-1 border-0 bg-transparent p-1 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none leading-relaxed font-medium"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                />
+
+                <Button
+                  type="button"
+                  onClick={() => handleSendMessage()}
+                  disabled={!learnerInput.trim() || isLoadingReply}
+                  className={`h-9 w-9 p-0 rounded-xl font-bold flex items-center justify-center shrink-0 transition-all ${
+                    learnerInput.trim()
+                      ? "bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
+                      : "bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600"
+                  }`}
+                  title="Gửi tin nhắn"
                 >
-                  <span>Gửi</span>
-                  <Send className="h-3.5 w-3.5" />
+                  <Send className="h-4 w-4" />
                 </Button>
-              )}
+              </div>
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setInputMode("text");
-                  setTimeout(() => textareaRef.current?.focus(), 100);
-                }}
-                className="h-11 px-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 shrink-0"
-                title="Gõ phím tiếng Trung"
-              >
-                <Keyboard className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Bàn phím</span>
-              </Button>
+              <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+                <span>Nhấn Enter để gửi &bull; Shift + Enter xuống dòng</span>
+                <button
+                  type="button"
+                  onClick={() => setInputMode("voice")}
+                  className="text-rose-600 font-semibold hover:underline"
+                >
+                  Quay lại Micro
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          /* TEXT MODE */
-          <div className="space-y-2">
-            <div className="relative rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/50 p-2.5 focus-within:ring-2 focus-within:ring-rose-500 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
-              <textarea
-                ref={textareaRef}
-                value={learnerInput}
-                onChange={(e) => setLearnerInput(e.target.value)}
-                disabled={isLoadingReply}
-                placeholder="Gõ bất kỳ điều gì bạn muốn nói bằng tiếng Trung..."
-                rows={2}
-                className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none leading-relaxed font-medium"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setInputMode("voice")}
-                className="h-8 px-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg gap-1"
-              >
-                <Mic className="h-3.5 w-3.5" />
-                <span>Chuyển sang Micro</span>
-              </Button>
-
-              <Button
-                onClick={() => handleSendMessage()}
-                disabled={!learnerInput.trim() || isLoadingReply}
-                className={`h-8 px-4 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
-                  learnerInput.trim()
-                    ? "bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
-                    : "bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600"
-                }`}
-              >
-                <span>Gửi</span>
-                <Send className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </footer>
 
       {/* ==================================================================== */}
-      {/* 4. EVALUATION & SUMMARY MODAL                                        */}
+      {/* 4. EVALUATION & SUMMARY MODAL (Clean, Inspiring, High-End)            */}
       {/* ==================================================================== */}
       {showSummaryModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
           <div className="max-w-xl w-full max-h-[90vh] rounded-3xl bg-white dark:bg-slate-900 flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 flex items-center justify-center">
-                  <Award className="h-4 w-4" />
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-white flex items-center justify-center shadow-xs">
+                  <Award className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                    Bảng Đánh Giá & Chấm Điểm Khẩu Ngữ
+                    Báo Cáo Đánh Giá Khẩu Ngữ Tự Do
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Phân tích phản xạ cùng {currentPersona.name} ({userTurnCount} câu đã nói)
+                    Phản xạ tự nhiên cùng {currentPersona.name} ({userTurnCount} câu đã giao tiếp)
                   </p>
                 </div>
               </div>
@@ -708,7 +845,7 @@ export default function FreeTalkClient() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowSummaryModal(false)}
-                className="h-8 w-8 text-slate-400 hover:text-slate-700 rounded-xl"
+                className="h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -720,10 +857,10 @@ export default function FreeTalkClient() {
                 <div className="py-12 flex flex-col items-center justify-center space-y-3 text-center">
                   <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
                   <p className="text-sm font-bold text-slate-900 dark:text-white">
-                    Giám khảo AI đang chấm điểm khẩu ngữ...
+                    Giám khảo AI đang phân tích toàn diện cuộc trò chuyện...
                   </p>
                   <p className="text-xs text-slate-500 max-w-xs">
-                    Đang rà soát ngữ pháp, từ vựng, độ trôi chảy và đối chiếu chuẩn HSK.
+                    Rà soát ngữ pháp, độ đa dạng từ vựng, tính tự nhiên và đối chiếu chuẩn HSK.
                   </p>
                 </div>
               ) : evaluationResult ? (
@@ -733,7 +870,7 @@ export default function FreeTalkClient() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] uppercase tracking-wider font-extrabold text-rose-100">
-                          Điểm Khẩu Ngữ Tự Do
+                          Điểm Khẩu Ngữ Đạt Được
                         </span>
                         <Badge variant="secondary" className="bg-white/20 text-white border-0 text-[10px] font-bold">
                           Ước lượng {evaluationResult.hskEstimate}
@@ -754,13 +891,13 @@ export default function FreeTalkClient() {
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
                     <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                       <BarChart3 className="h-3.5 w-3.5 text-rose-600" />
-                      <span>3 Trụ Cột Đánh Giá Khẩu Ngữ</span>
+                      <span>3 Trụ Cột Năng Lực Khẩu Ngữ</span>
                     </h4>
 
                     {/* Fluency */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                        <span>Độ Lưu Loát & Phản Xạ</span>
+                        <span>Độ Lưu Loát & Phản Xạ Tự Nhiên</span>
                         <span className="font-bold text-rose-600">{evaluationResult.fluencyScore} / 100</span>
                       </div>
                       <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -774,7 +911,7 @@ export default function FreeTalkClient() {
                     {/* Grammar */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                        <span>Độ Chuẩn Ngữ Pháp & Cấu Trúc</span>
+                        <span>Độ Chuẩn Ngữ Pháp & Cấu Trúc Câu</span>
                         <span className="font-bold text-indigo-600">{evaluationResult.grammarScore} / 100</span>
                       </div>
                       <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -788,7 +925,7 @@ export default function FreeTalkClient() {
                     {/* Vocabulary */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                        <span>Vốn Từ Vựng & Diễn Đạt Tự Nhiên</span>
+                        <span>Vốn Từ Vựng & Diễn Đạt Bản Xứ</span>
                         <span className="font-bold text-emerald-600">{evaluationResult.vocabularyScore} / 100</span>
                       </div>
                       <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -805,7 +942,7 @@ export default function FreeTalkClient() {
                     <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 space-y-1.5">
                       <div className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
                         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        <span>Điểm Sáng Bạn Đã Làm Tốt:</span>
+                        <span>Điểm Sáng Bạn Đã Thể Hiện Tốt:</span>
                       </div>
                       <ul className="space-y-1 text-slate-700 dark:text-slate-300 pl-5 list-disc text-[11px]">
                         {evaluationResult.strengths.map((str, i) => (
