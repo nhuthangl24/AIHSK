@@ -91,7 +91,7 @@ export function TeacherSidebar({ user }: { user?: { name: string; email: string;
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
               {user?.name || "Thầy Trương"}
             </p>
-            <p className="text-xs text-slate-500 truncate">{user?.email || "teacher@aihsk.com"}</p>
+            <p className="text-xs text-slate-500 truncate">{user?.email || "Giáo viên"}</p>
           </div>
           <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
             Giáo viên

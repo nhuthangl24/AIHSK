@@ -203,7 +203,7 @@ export function AdminSidebar({ user }: { user?: { name: string; email: string; r
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                 {user?.name || "Quản trị viên"}
               </p>
-              <p className="text-xs text-slate-500 truncate">{user?.email || "superadmin@aihsk.com"}</p>
+              <p className="text-xs text-slate-500 truncate">{user?.email || "Quản trị viên"}</p>
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
               Admin

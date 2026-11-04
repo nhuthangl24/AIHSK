@@ -319,7 +319,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc pl-5 space-y-1 text-xs">
             <li>Người học dưới 16 tuổi khi đăng ký cần có sự đồng thuận hoặc giám sát của cha mẹ hoặc người giám hộ hợp pháp.</li>
-            <li>Cha mẹ hoặc người giám hộ có toàn quyền xem, yêu cầu chỉnh sửa hoặc xóa bỏ toàn bộ dữ liệu khảo thí của con em mình bất kỳ lúc nào bằng cách gửi yêu cầu tới địa chỉ email hỗ trợ.</li>
+            <li>Cha mẹ hoặc người giám hộ có toàn quyền xem, yêu cầu chỉnh sửa hoặc xóa bỏ toàn bộ dữ liệu khảo thí của con em mình bất kỳ lúc nào bằng cách gửi yêu cầu tới email pháp lý & bảo mật privacy@classnia.id.vn hoặc qua Trung Tâm Hỗ Trợ.</li>
           </ul>
         </section>
 

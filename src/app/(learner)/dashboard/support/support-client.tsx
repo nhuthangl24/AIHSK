@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   HelpCircle,
@@ -25,6 +26,9 @@ import {
   ShieldAlert,
   Flame,
   Check,
+  RotateCcw,
+  ShieldCheck,
+  Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -190,13 +194,11 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
           try {
             const parsed: StoredSupportTicket[] = JSON.parse(cached);
             setTickets((prev) => {
-              const combined = [...prev];
-              parsed.forEach((localT) => {
-                if (!combined.some((t) => t.id === localT.id)) {
-                  combined.push(localT);
-                }
-              });
-              return combined.sort(
+              const map = new Map<string, StoredSupportTicket>();
+              parsed.forEach((t) => map.set(t.id, t));
+              // Server state is source of truth and overrides local cache
+              prev.forEach((t) => map.set(t.id, t));
+              return Array.from(map.values()).sort(
                 (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
               );
             });
@@ -205,6 +207,19 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
           }
         }
       }
+
+      // Always fetch latest tickets from server to get admin response updates
+      fetch("/api/support/ticket")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.tickets && Array.isArray(data.tickets)) {
+            setTickets(data.tickets);
+            try {
+              localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(data.tickets));
+            } catch {}
+          }
+        })
+        .catch(() => {});
     } catch (e) {
       console.warn("Diagnostics note:", e);
     }
@@ -309,13 +324,6 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
 
           {/* Quick contact shortcuts */}
           <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
-            <a
-              href="mailto:support@classnia.id.vn"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white transition-all shadow-sm"
-            >
-              <Mail className="h-4 w-4 text-rose-400 shrink-0" />
-              <span>support@classnia.id.vn</span>
-            </a>
             <a
               href={process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://classnia.id.vn"}
               target="_blank"
@@ -633,40 +641,62 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
           <Card className="p-5 rounded-3xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Yêu Cầu Đã Gửi Của Bạn ({tickets.length})
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Yêu Cầu Đã Gửi Của Bạn ({tickets.length})</span>
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Lịch sử theo dõi tiến độ xử lý của kỹ thuật viên
+                  Lịch sử theo dõi tiến độ xử lý và phản hồi từ kỹ thuật viên
                 </p>
               </div>
 
-              {/* Filter tabs */}
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[10px]">
+              {/* Filter tabs & Refresh button */}
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setTicketFilter("ALL")}
-                  className={cn(
-                    "px-2 py-1 rounded-lg font-bold transition-all",
-                    ticketFilter === "ALL"
-                      ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
-                      : "text-slate-500 hover:text-slate-900"
-                  )}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/support/ticket");
+                      const data = await res.json();
+                      if (data.tickets) {
+                        setTickets(data.tickets);
+                        try {
+                          localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(data.tickets));
+                        } catch {}
+                      }
+                    } catch {}
+                  }}
+                  title="Cập nhật trạng thái mới nhất"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
-                  Tất cả
+                  <RefreshCw className="h-3.5 w-3.5" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setTicketFilter("OPEN")}
-                  className={cn(
-                    "px-2 py-1 rounded-lg font-bold transition-all",
-                    ticketFilter === "OPEN"
-                      ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-2xs"
-                      : "text-slate-500 hover:text-slate-900"
-                  )}
-                >
-                  Chờ xử lý
-                </button>
+
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setTicketFilter("ALL")}
+                    className={cn(
+                      "px-2 py-1 rounded-lg font-bold transition-all",
+                      ticketFilter === "ALL"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTicketFilter("OPEN")}
+                    className={cn(
+                      "px-2 py-1 rounded-lg font-bold transition-all",
+                      ticketFilter === "OPEN"
+                        ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-2xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    Chờ xử lý
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -681,7 +711,7 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+              <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
                 {filteredTickets.map((t) => {
                   const isResolved = t.status === "RESOLVED" || t.status === "CLOSED";
                   const isUrgent = t.priority === "URGENT";
@@ -690,9 +720,9 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
                     <div
                       key={t.id}
                       className={cn(
-                        "p-3.5 rounded-2xl border transition-all text-xs space-y-2",
+                        "p-4 rounded-2xl border transition-all text-xs space-y-2.5",
                         isResolved
-                          ? "bg-emerald-50/30 border-emerald-200/80 dark:bg-emerald-950/20 dark:border-emerald-900"
+                          ? "bg-emerald-50/40 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-800 shadow-2xs"
                           : isUrgent
                           ? "bg-rose-50/40 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900"
                           : "bg-slate-50/50 border-slate-200/80 dark:bg-slate-950/50 dark:border-slate-800"
@@ -717,16 +747,16 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
                             className={cn(
                               "text-[10px] font-bold px-2 py-0.5",
                               isResolved
-                                ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300"
+                                ? "bg-emerald-600 text-white border-transparent"
                                 : t.status === "IN_PROGRESS"
                                 ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
                                 : "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
                             )}
                           >
                             {isResolved
-                              ? "Đã giải quyết"
+                              ? "✓ Đã xử lý xong"
                               : t.status === "IN_PROGRESS"
-                              ? "Đang xử lý"
+                              ? "⏳ Đang xử lý"
                               : "Đã tiếp nhận"}
                           </Badge>
                         </div>
@@ -736,22 +766,78 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
                         {t.title}
                       </h4>
 
-                      <p className="text-slate-600 dark:text-slate-300 text-[11px] line-clamp-2 leading-relaxed">
+                      <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
                         {t.description}
                       </p>
 
-                      {t.adminResponse && (
-                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-900 dark:text-emerald-200 space-y-1">
-                          <span className="font-bold block text-emerald-700 dark:text-emerald-400">
+                      {/* Prominent Resolution Box when ticket is resolved or admin responded */}
+                      {isResolved ? (
+                        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 text-xs">
+                              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                              <span>Kết quả xử lý từ Đội Ngũ Kỹ Thuật Classnia AI</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : ""}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed bg-emerald-50/50 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
+                            {t.adminResponse || "Kỹ thuật viên đã kiểm tra và khắc phục sự cố cho tài khoản của bạn. Bạn có thể an tâm tiếp tục luyện tập!"}
+                          </p>
+
+                          {/* Direct actionable buttons for learner */}
+                          <div className="flex items-center gap-2 pt-1 flex-wrap">
+                            {t.relatedSessionId ? (
+                              <>
+                                <Link
+                                  href={`/dashboard/assessments/${t.relatedSessionId}`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition-colors"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  <span>Vào Lại Phòng Thi #{t.relatedSessionId.substring(0, 8)}</span>
+                                </Link>
+                                <Link
+                                  href="/dashboard/assessments"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] transition-colors"
+                                >
+                                  <Mic className="h-3.5 w-3.5 text-rose-600" />
+                                  <span>Thi Đề Mới</span>
+                                </Link>
+                              </>
+                            ) : (
+                              <>
+                                <Link
+                                  href="/dashboard/assessments"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition-colors"
+                                >
+                                  <Mic className="h-3.5 w-3.5" />
+                                  <span>Vào Phòng Khảo Thí Khẩu Ngữ</span>
+                                </Link>
+                                <Link
+                                  href="/dashboard/free-talk"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] transition-colors"
+                                >
+                                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                                  <span>Đối Thoại Tự Do Với Giám Khảo</span>
+                                </Link>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ) : t.adminResponse ? (
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-900 dark:text-blue-200 space-y-1">
+                          <span className="font-bold block text-blue-700 dark:text-blue-400">
                             Phản hồi từ Kỹ thuật viên:
                           </span>
                           <p>{t.adminResponse}</p>
                         </div>
-                      )}
+                      ) : null}
 
                       <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800/80">
                         <span>
-                          {new Date(t.createdAt).toLocaleDateString("vi-VN", {
+                          Gửi lúc: {new Date(t.createdAt).toLocaleDateString("vi-VN", {
                             day: "2-digit",
                             month: "2-digit",
                             hour: "2-digit",

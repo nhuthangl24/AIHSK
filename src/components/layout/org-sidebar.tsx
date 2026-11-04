@@ -93,7 +93,7 @@ export function OrgSidebar({ user }: { user?: { name: string; email: string; rol
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
               {user?.name || "Thầy Vương"}
             </p>
-            <p className="text-xs text-slate-500 truncate">{user?.email || "admin@oriental-edu.com"}</p>
+            <p className="text-xs text-slate-500 truncate">{user?.email || "Tổ chức đào tạo"}</p>
           </div>
           <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
             Quản trị

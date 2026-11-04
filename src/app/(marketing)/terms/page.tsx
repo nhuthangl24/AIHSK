@@ -361,9 +361,9 @@ export default function TermsPage() {
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-1.5 mt-4">
             <p><strong>Cơ quan Đại diện Pháp lý & Điều hành Nền tảng:</strong> Ban Quản trị Dự án Classnia AI</p>
             <p>
-              <strong>Email pháp lý & Bản quyền:</strong>{" "}
-              <a href="mailto:support@classnia.id.vn" className="text-rose-600 font-semibold hover:underline">
-                support@classnia.id.vn
+              <strong>Email pháp lý & bảo mật:</strong>{" "}
+              <a href="mailto:privacy@classnia.id.vn" className="text-rose-600 font-semibold hover:underline">
+                privacy@classnia.id.vn
               </a>
             </p>
             <p>

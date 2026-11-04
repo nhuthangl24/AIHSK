@@ -330,7 +330,7 @@ export function DashboardSidebar({
                   {user?.name || "Học Viên"}
                 </p>
               </div>
-              <p className="text-[11px] text-slate-500 truncate">{user?.email || "learner@aihsk.com"}</p>
+              <p className="text-[11px] text-slate-500 truncate">{user?.email || "Học Viên"}</p>
             </div>
           </div>
 

@@ -320,6 +320,7 @@ class AssessmentStore {
         if (parsed.profiles) Object.assign(this.data.profiles, parsed.profiles);
         if (parsed.tickets) Object.assign(this.data.tickets, parsed.tickets);
       }
+      this.scanTicketsDir();
     } catch (e) {
       console.warn("Could not load assessment store from disk:", e);
     }
@@ -364,7 +365,7 @@ class AssessmentStore {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      // If file exists on disk, read and merge any sessions from disk that might have been saved by other processes
+      // If file exists on disk, read and merge any sessions and tickets from disk that might have been saved by other processes
       if (fs.existsSync(this.filePath)) {
         try {
           const raw = fs.readFileSync(this.filePath, "utf-8");
@@ -373,6 +374,13 @@ class AssessmentStore {
             for (const [sId, sVal] of Object.entries(diskData.sessions)) {
               if (!this.data.sessions[sId]) {
                 this.data.sessions[sId] = sVal as any;
+              }
+            }
+          }
+          if (diskData.tickets) {
+            for (const [tId, tVal] of Object.entries(diskData.tickets)) {
+              if (!this.data.tickets[tId]) {
+                this.data.tickets[tId] = tVal as any;
               }
             }
           }
@@ -719,6 +727,30 @@ class AssessmentStore {
     }
   }
 
+  private scanTicketsDir() {
+    try {
+      if (fs.existsSync(this.ticketsDir)) {
+        const files = fs.readdirSync(this.ticketsDir);
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            try {
+              const raw = fs.readFileSync(path.join(this.ticketsDir, file), "utf-8");
+              const t = JSON.parse(raw) as StoredSupportTicket;
+              if (t && t.id) {
+                const existing = this.data.tickets[t.id];
+                if (!existing || new Date(t.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
+                  this.data.tickets[t.id] = t;
+                }
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not scan ticketsDir:", e);
+    }
+  }
+
   getSupportTicket(id: string): StoredSupportTicket | null {
     this.init();
     let ticket = this.data.tickets?.[id];
@@ -749,6 +781,7 @@ class AssessmentStore {
   getSupportTicketsByUser(userId: string, email?: string): StoredSupportTicket[] {
     this.init();
     this.reloadFromDisk();
+    this.scanTicketsDir();
     const normEmail = email?.toLowerCase().trim();
 
     return Object.values(this.data.tickets || {})
@@ -759,6 +792,7 @@ class AssessmentStore {
   getAllSupportTickets(): StoredSupportTicket[] {
     this.init();
     this.reloadFromDisk();
+    this.scanTicketsDir();
     return Object.values(this.data.tickets || {})
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
@@ -769,6 +803,7 @@ class AssessmentStore {
   ): StoredSupportTicket | null {
     this.init();
     this.reloadFromDisk();
+    this.scanTicketsDir();
     const existing = this.getSupportTicket(id);
     if (!existing) return null;
 

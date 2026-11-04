@@ -434,42 +434,13 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-3">
-              <Button
-                type="button"
-                onClick={() => handleGoogleModalSubmit("luunhuthang2402@gmail.com")}
-                disabled={isGoogleLoading}
-                className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs h-11 flex items-center justify-between px-3.5 border border-slate-200 dark:border-slate-700"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="h-6 w-6 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center">
-                    T
-                  </div>
-                  <div className="text-left">
-                    <span className="font-bold block">Tài khoản Admin</span>
-                    <span className="text-[10px] text-slate-500 font-normal">luunhuthang2402@gmail.com</span>
-                  </div>
-                </div>
-                <ArrowRight className="h-4 w-4 text-slate-400" />
-              </Button>
-
-              <div className="relative py-1">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-800" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-semibold">
-                  <span className="bg-white px-2 text-slate-400 dark:bg-slate-900">
-                    Hoặc dùng Gmail cá nhân
-                  </span>
-                </div>
-              </div>
-
               <div className="space-y-1.5">
                 <Input
                   type="email"
                   placeholder="vidu@gmail.com"
                   value={googleEmailInput}
                   onChange={(e) => setGoogleEmailInput(e.target.value)}
-                  className="text-xs h-10"
+                  className="h-10 text-xs"
                 />
               </div>
 

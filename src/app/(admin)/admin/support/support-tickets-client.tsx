@@ -119,8 +119,16 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
         prev.map((t) => (t.id === selectedTicket.id ? data.ticket : t))
       );
       setSelectedTicket(data.ticket);
-      setActionSuccess(`Đã cập nhật trạng thái: ${STATUS_MAP[newStatus].label}!`);
-      setTimeout(() => setActionSuccess(null), 3500);
+
+      // If current filter excludes the new status, switch to ALL so ticket does not disappear from admin view
+      if (statusFilter !== "ALL" && statusFilter !== newStatus) {
+        setStatusFilter("ALL");
+      }
+
+      setActionSuccess(
+        `Đã cập nhật trạng thái thành công: "${STATUS_MAP[newStatus].label}"! Phản hồi đã được chuyển tới học viên.`
+      );
+      setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
       alert(err.message);
     } finally {

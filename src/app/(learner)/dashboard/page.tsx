@@ -120,6 +120,7 @@ export default function LearnerDashboardPage() {
   const [userTargetLevel, setUserTargetLevel] = useState<string>("HSK 3");
   const [sessions, setSessions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [resolvedNotice, setResolvedNotice] = useState<any | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -187,6 +188,22 @@ export default function LearnerDashboardPage() {
         if (isMounted) {
           setSessions(allSessions);
         }
+
+        // Check for newly resolved support tickets
+        fetch("/api/support/ticket")
+          .then((res) => res.json())
+          .then((d) => {
+            if (isMounted && d.tickets && Array.isArray(d.tickets)) {
+              const latestResolved = d.tickets.find((t: any) => t.status === "RESOLVED");
+              if (latestResolved) {
+                const dismissed = localStorage.getItem(`dismissed_ticket_${latestResolved.id}`);
+                if (!dismissed) {
+                  setResolvedNotice(latestResolved);
+                }
+              }
+            }
+          })
+          .catch(() => {});
       } catch (e) {
         console.warn("Dashboard client fetch note:", e);
       } finally {
@@ -217,6 +234,55 @@ export default function LearnerDashboardPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
+      {/* 0. RESOLVED SUPPORT TICKET NOTIFICATION BANNER */}
+      {resolvedNotice && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-emerald-900 dark:text-emerald-100 animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-2xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 mt-0.5">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                  Kỹ Thuật Viên Đã Xử Lý Yêu Cầu Của Bạn
+                </span>
+                <span className="font-mono text-xs font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">
+                  #{resolvedNotice.id}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                {resolvedNotice.title}
+              </p>
+              {resolvedNotice.adminResponse && (
+                <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1 italic">
+                  &ldquo;{resolvedNotice.adminResponse}&rdquo;
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <Link
+              href="/dashboard/support"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
+            >
+              <span>Xem Chi Tiết & Hành Động</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem(`dismissed_ticket_${resolvedNotice.id}`, "true");
+                setResolvedNotice(null);
+              }}
+              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg"
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. WELCOME BANNER (Hero Command Center) */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-600 via-rose-500 to-rose-700 p-6 sm:p-8 text-white shadow-lg shadow-rose-600/15">
         {/* Subtle decorative Chinese calligraphy watermark background */}
