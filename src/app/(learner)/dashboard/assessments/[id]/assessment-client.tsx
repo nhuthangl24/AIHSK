@@ -18,13 +18,15 @@ import {
   RotateCcw,
   Languages,
   Settings,
-  ShieldCheck,
-  Check,
-  X,
   ArrowLeft,
   Lightbulb,
   Award,
-  BookOpen,
+  Keyboard,
+  Send,
+  X,
+  Check,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 
@@ -58,7 +60,7 @@ const STAGES = [
     name: "Khởi động & Chào hỏi",
     zh: "问候导入",
     desc: "Chào hỏi & giới thiệu bản thân",
-    tips: "Giới thiệu tên, tuổi, lý do học tiếng Trung. Chú ý phát âm chuẩn 4 thanh điệu cơ bản.",
+    tips: "Giới thiệu họ tên, tuổi tác, công việc hoặc lý do học tiếng Trung. Chú ý phát âm chuẩn xác 4 thanh điệu cơ bản.",
     keywords: ["我叫...", "今年...岁", "学习中文...", "因为..."],
   },
   {
@@ -66,7 +68,7 @@ const STAGES = [
     name: "Giao tiếp đời sống",
     zh: "日常交流",
     desc: "Sở thích & thói quen sinh hoạt",
-    tips: "Miêu tả thói quen cuối tuần hoặc sở thích cá nhân. Sử dụng câu đầy đủ có liên từ kết nối.",
+    tips: "Miêu tả thói quen cuối tuần, món ăn yêu thích hoặc sở thích cá nhân. Sử dụng các liên từ kết nối câu.",
     keywords: ["周末", "平时", "经常", "比如", "跟...一起..."],
   },
   {
@@ -74,7 +76,7 @@ const STAGES = [
     name: "Thuyết trình chủ đề",
     zh: "主题阐述",
     desc: "Bàn luận chủ đề chuyên sâu",
-    tips: "Trình bày quan điểm rõ ràng về chủ đề được nêu. Đưa ra ví dụ cụ thể để minh họa luận điểm.",
+    tips: "Trình bày quan điểm rõ ràng về chủ đề được nêu. Đưa ra ví dụ cụ thể để minh họa luận điểm của bạn.",
     keywords: ["我认为", "优势", "方便", "但是", "不能完全代替..."],
   },
   {
@@ -134,6 +136,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(0.95);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceName, setSelectedVoiceName] = useState<string>("Google 國語（臺灣）");
   const [recognitionLang, setRecognitionLang] = useState<string>("zh-TW");
@@ -145,8 +148,6 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
   // Audio References
   const recognitionRef = useRef<any>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -198,7 +199,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     try {
       const res = await fetch(`/api/assessments/${id}`);
       if (!res.ok) {
-        throw new Error("Không thể tải phiên thi khảo thí.");
+        throw new Error("Không thể tải thông tin phòng thi.");
       }
       const data = await res.json();
       setSession(data.session);
@@ -290,9 +291,6 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     utterance.onend = () => {
       setIsExaminerSpeaking(false);
       currentUtteranceRef.current = null;
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 100);
     };
 
     utterance.onerror = (e) => {
@@ -336,9 +334,10 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
     if (!SpeechRecognition) {
       alert(
-        "Trình duyệt chưa hỗ trợ Web Speech Recognition tự động. Bạn có thể gõ trực tiếp câu trả lời bằng tiếng Trung vào ô nhập bên dưới."
+        "Trình duyệt chưa hỗ trợ Web Speech Recognition tự động. Đã chuyển sang chế độ gõ văn bản để bạn nhập câu trả lời."
       );
-      textareaRef.current?.focus();
+      setInputMode("text");
+      setTimeout(() => textareaRef.current?.focus(), 100);
       return;
     }
 
@@ -479,7 +478,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       <div className="fixed inset-0 z-30 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 space-y-4">
         <div className="relative">
           <div className="h-16 w-16 rounded-full border-4 border-rose-100 dark:border-rose-950/60 border-t-rose-600 animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center text-rose-600 font-bold text-lg">
+          <div className="absolute inset-0 flex items-center justify-center text-rose-600 font-bold text-lg font-serif">
             李
           </div>
         </div>
@@ -487,7 +486,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
           <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
             Đang vào phòng thi khẩu ngữ...
           </h3>
-          <p className="text-xs text-slate-500">Entering Oral Examination Studio</p>
+          <p className="text-xs text-slate-500">Khởi tạo phòng khảo thí Giám khảo AI</p>
         </div>
       </div>
     );
@@ -510,7 +509,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
           </div>
           <Button
             onClick={() => router.push("/dashboard/assessments")}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl"
+            className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold"
           >
             Quay lại danh sách bài thi
           </Button>
@@ -519,144 +518,180 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     );
   }
 
-  const latestExaminerTurn = [...session.turns].reverse().find((t) => t.speaker === "EXAMINER");
-  const characterCount = learnerTranscript.trim().replace(/\s+/g, "").length;
   const currentStageInfo = STAGES.find((s) => s.num === session.currentStage) || STAGES[0];
+  const stagePercent = Math.round((session.currentStage / 5) * 100);
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 select-none">
-      {/* 1. TOP HEADER (Height: 48px, fixed) */}
-      <header className="h-12 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 flex items-center justify-between shrink-0 z-10">
-        {/* Left: Exit & Topic info */}
-        <div className="flex items-center gap-2.5 min-w-0">
+    <div className="fixed inset-0 z-30 flex flex-col h-screen w-screen overflow-hidden bg-slate-50/80 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-none">
+      {/* ====================================================================== */}
+      {/* 1. TOP HEADER BAR (Compact, responsive, zero collision)               */}
+      {/* ====================================================================== */}
+      <header className="h-14 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 sm:px-6 flex items-center justify-between shrink-0 z-20 shadow-xs">
+        {/* Left: Exit + Level badge + Exam title */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setShowExitConfirm(true)}
-            className="text-slate-500 hover:text-slate-900 dark:hover:text-white h-8 px-2.5 rounded-lg -ml-1 text-xs"
+            className="text-slate-500 hover:text-slate-900 dark:hover:text-white h-8 px-2 sm:px-2.5 rounded-lg -ml-1 text-xs shrink-0"
+            title="Thoát phòng thi"
           >
-            <ArrowLeft className="h-3.5 w-3.5 mr-1" />
-            <span>Thoát</span>
+            <ArrowLeft className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Thoát</span>
           </Button>
 
-          <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden sm:block" />
+          <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 hidden sm:block" />
 
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-flex items-center bg-rose-600 text-white font-bold text-[11px] px-2 py-0.5 rounded-md shrink-0 shadow-2xs">
-              {session.template.targetLevel}
-            </span>
-            <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
-              {session.template.title}
-            </h1>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/50 shrink-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
-              Đang diễn ra
-            </span>
-          </div>
+          <span className="inline-flex items-center bg-rose-600 text-white font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded-md shrink-0 shadow-xs">
+            {session.template.targetLevel}
+          </span>
+
+          <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate max-w-[140px] sm:max-w-xs md:max-w-md">
+            {session.template.title}
+          </h1>
+
+          <span className="hidden lg:inline-flex items-center gap-1.5 text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-full border border-rose-200/80 dark:border-rose-900/50 shrink-0">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
+            Đang thi trực tiếp
+          </span>
         </div>
 
-        {/* Right: Rubric Drawer Button, Timer, Mic Status, Audio Settings */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right Controls: Timer + Status + Tips + Settings */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Timer */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/60">
+            <Clock className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+            <span className="font-mono text-xs">{formatDuration(elapsedSeconds)}</span>
+          </div>
+
+          {/* Examiner Speaking / Stop Voice Button */}
+          {isExaminerSpeaking && (
+            <button
+              type="button"
+              onClick={stopExaminerVoice}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all shadow-xs"
+              title="Dừng phát giọng đọc (Esc)"
+            >
+              <Square className="h-2.5 w-2.5 fill-current animate-pulse" />
+              <span className="hidden sm:inline">Dừng đọc</span>
+            </button>
+          )}
+
+          {/* Rubric Drawer Button */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowRubricDrawer(true)}
-            className="h-8 px-2.5 text-xs font-semibold text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60 bg-rose-50/50 hover:bg-rose-100/60 dark:bg-rose-950/40 rounded-lg gap-1.5"
+            className="h-8 px-2 sm:px-2.5 text-xs font-semibold text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60 bg-rose-50/50 hover:bg-rose-100/60 dark:bg-rose-950/40 rounded-lg gap-1.5"
             title="Xem tiêu chí chấm điểm và mẹo chặng thi"
           >
             <Award className="h-3.5 w-3.5 text-rose-600" />
-            <span className="hidden sm:inline">Mẹo & Tiêu chí</span>
+            <span className="hidden md:inline">Mẹo & Tiêu chí</span>
           </Button>
 
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
-            <Clock className="h-3 w-3 text-rose-600" />
-            <span className="font-mono text-xs">{formatDuration(elapsedSeconds)}</span>
-          </div>
-
-          <div
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-              isRecording
-                ? "bg-rose-500 text-white animate-pulse"
-                : isExaminerSpeaking
-                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-                : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-            }`}
-          >
-            {isRecording ? (
-              <>
-                <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
-                <span>Thu: {recordingSeconds}s</span>
-              </>
-            ) : isExaminerSpeaking ? (
-              <button
-                type="button"
-                onClick={stopExaminerVoice}
-                className="inline-flex items-center gap-1 cursor-pointer hover:opacity-85"
-                title="Dừng đọc (Esc)"
-              >
-                <Square className="h-2.5 w-2.5 fill-rose-600 text-rose-600 animate-pulse" />
-                <span className="hidden sm:inline">Đang đọc &bull; </span>
-                <span>Dừng</span>
-              </button>
-            ) : (
-              <>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="hidden sm:inline">Mic sẵn sàng</span>
-              </>
-            )}
-          </div>
-
+          {/* Audio Config Modal */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setShowAudioModal(true)}
             className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg"
-            title="Cài đặt giọng đọc và microphone"
+            title="Cài đặt âm thanh và giọng đọc"
           >
             <Settings className="h-4 w-4" />
           </Button>
         </div>
       </header>
 
-      {/* 2. 5-STAGE STEPPER (Height: ~38px, slim bar, fixed) */}
-      <nav aria-label="Stages" className="h-9 px-4 border-b border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 flex items-center justify-between gap-1.5 shrink-0 z-10 overflow-x-auto text-xs">
-        {STAGES.map((st) => {
-          const isCurrent = session.currentStage === st.num;
-          const isPassed = session.currentStage > st.num;
-
-          return (
+      {/* ====================================================================== */}
+      {/* 2. 5-STAGE PROGRESS BAR (Mobile: sleek progress | Desktop: stepper)    */}
+      {/* ====================================================================== */}
+      <div className="bg-white/95 dark:bg-slate-900/95 border-b border-slate-200/80 dark:border-slate-800 shrink-0 z-10">
+        {/* Mobile View: Clean single-line stage banner with progress bar */}
+        <div className="flex md:hidden flex-col px-3 py-1.5 space-y-1">
+          <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center gap-1.5 font-bold text-rose-700 dark:text-rose-300 truncate">
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-white text-[9px]">
+                {currentStageInfo.num}
+              </span>
+              <span className="truncate">{currentStageInfo.name}</span>
+              <span className="text-slate-400 font-normal">({currentStageInfo.zh})</span>
+            </div>
+            <span className="text-[10px] font-semibold text-slate-500 shrink-0 ml-2">
+              Chặng {session.currentStage}/5 &bull; {stagePercent}%
+            </span>
+          </div>
+          {/* Visual progress bar line */}
+          <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
-              key={st.num}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg text-[11px] font-medium transition-all truncate ${
-                isCurrent
-                  ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-900/60"
-                  : isPassed
-                  ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20"
-                  : "text-slate-400 dark:text-slate-500"
-              }`}
-            >
-              <span
-                className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${
-                  isPassed
-                    ? "bg-emerald-600 text-white"
-                    : isCurrent
-                    ? "bg-rose-600 text-white"
-                    : "bg-slate-200 dark:bg-slate-800 text-slate-500"
+              className="h-full bg-rose-600 transition-all duration-500 rounded-full"
+              style={{ width: `${stagePercent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Desktop View: Elegant 5-Stage Stepper Deck */}
+        <div className="hidden md:flex items-center justify-between gap-2 max-w-4xl mx-auto px-4 py-2">
+          {STAGES.map((st) => {
+            const isCurrent = session.currentStage === st.num;
+            const isPassed = session.currentStage > st.num;
+
+            return (
+              <div
+                key={st.num}
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-xl text-xs font-medium transition-all ${
+                  isCurrent
+                    ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-900/60 shadow-2xs"
+                    : isPassed
+                    ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20"
+                    : "text-slate-400 dark:text-slate-500"
                 }`}
               >
-                {isPassed ? <Check className="h-2.5 w-2.5" /> : st.num}
-              </span>
-              <span className="truncate">{st.name}</span>
-            </div>
-          );
-        })}
-      </nav>
+                <span
+                  className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${
+                    isPassed
+                      ? "bg-emerald-600 text-white"
+                      : isCurrent
+                      ? "bg-rose-600 text-white shadow-2xs"
+                      : "bg-slate-200 dark:bg-slate-800 text-slate-500"
+                  }`}
+                >
+                  {isPassed ? <Check className="h-2.5 w-2.5" /> : st.num}
+                </span>
+                <span className="truncate">{st.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-      {/* 3. MAIN UNIFIED CONVERSATION STREAM (Flex-1, auto-scrolls, ZERO outer page scroll) */}
+      {/* ====================================================================== */}
+      {/* 3. MAIN CONVERSATION STREAM (Focused studio layout, no empty void)     */}
+      {/* ====================================================================== */}
       <main
         ref={chatScrollRef}
-        className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4 max-w-4xl w-full mx-auto"
+        className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 max-w-3xl w-full mx-auto"
       >
+        {/* Examiner Studio Greeting Card at top (Grounds the page at Start) */}
+        <div className="rounded-2xl bg-gradient-to-r from-rose-500/10 via-rose-500/5 to-transparent border border-rose-200/60 dark:border-rose-900/40 p-3.5 sm:p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-white flex items-center justify-center font-bold text-base font-serif shadow-sm shrink-0">
+            李
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                Giám khảo AI Lý Lão Sư (考官李老师)
+              </h2>
+              <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-100/70 dark:bg-rose-950/80 px-2 py-0.5 rounded-full">
+                Khảo thí khẩu ngữ HSK thích ứng
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Lắng nghe câu hỏi và bấm Micro bên dưới để trả lời bằng tiếng Trung.
+            </p>
+          </div>
+        </div>
+
+        {/* Conversation Turns List */}
         {session.turns.map((turn, i) => {
           const isExaminer = turn.speaker === "EXAMINER";
           const isLatest = i === session.turns.length - 1;
@@ -664,26 +699,25 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
           return (
             <div key={turn.id || i} className="space-y-3">
-              {/* Stage Transition Separator */}
+              {/* Stage Transition Divider */}
               {isFirstInStage && (
-                <div className="flex items-center justify-center my-3">
-                  <span className="px-3 py-0.5 rounded-full bg-slate-200/60 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400 tracking-wider uppercase border border-slate-300/50 dark:border-slate-700/50">
-                    Chặng {turn.stage} • {STAGES.find((s) => s.num === turn.stage)?.name} ({STAGES.find((s) => s.num === turn.stage)?.zh})
+                <div className="flex items-center justify-center my-3 sm:my-4">
+                  <span className="px-3.5 py-1 rounded-full bg-slate-200/70 dark:bg-slate-800 text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wider uppercase border border-slate-300/60 dark:border-slate-700/60 shadow-2xs">
+                    Chặng {turn.stage} &bull; {STAGES.find((s) => s.num === turn.stage)?.name} ({STAGES.find((s) => s.num === turn.stage)?.zh})
                   </span>
                 </div>
               )}
 
-              {/* Message Bubble Item */}
+              {/* Examiner Bubble */}
               {isExaminer ? (
-                /* EXAMINER QUESTION BUBBLE (Focal & Clean) */
-                <div className="flex items-start gap-3 max-w-[92%] sm:max-w-[85%]">
+                <div className="flex items-start gap-2.5 sm:gap-3.5 max-w-[96%] sm:max-w-[90%]">
                   {/* Examiner Avatar */}
-                  <div className="relative shrink-0 mt-0.5">
+                  <div className="relative shrink-0 mt-1">
                     <div
-                      className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
+                      className={`h-9 w-9 sm:h-10 sm:w-10 rounded-2xl flex items-center justify-center font-bold text-sm font-serif transition-all ${
                         isLatest && isExaminerSpeaking
                           ? "bg-rose-600 text-white shadow-md shadow-rose-600/30 scale-105 ring-2 ring-rose-400"
-                          : "bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300"
+                          : "bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
                       }`}
                     >
                       李
@@ -696,27 +730,28 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                     )}
                   </div>
 
-                  {/* Examiner Card Content */}
+                  {/* Examiner Card Body */}
                   <div
-                    className={`rounded-2xl p-4 shadow-xs space-y-2.5 ${
+                    className={`rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 flex-1 ${
                       isLatest
-                        ? "bg-white dark:bg-slate-900 border-2 border-rose-500/80 ring-2 ring-rose-500/10"
-                        : "bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 opacity-90"
+                        ? "bg-white dark:bg-slate-900 border-2 border-rose-500/80 ring-4 ring-rose-500/5"
+                        : "bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 opacity-95"
                     }`}
                   >
-                    {/* Header line: Examiner name + speed + controls */}
-                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-slate-900 dark:text-white">
-                          Giám khảo Lý (考官李老师)
+                    {/* Card Header Toolbar (Responsive & Clean) */}
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                          Giám khảo Lý
                         </span>
                         {isLatest && (
-                          <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.2 rounded-full border border-rose-200 dark:border-rose-900/50">
+                          <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/50 shrink-0">
                             Câu hỏi hiện tại
                           </span>
                         )}
                       </div>
 
+                      {/* Controls: Speed, Pinyin Toggle, Audio Playback */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isLatest && (
                           <button
@@ -726,8 +761,8 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                               setPlaybackSpeed(next);
                               speakExaminerText(turn.textContent, next);
                             }}
-                            className="h-6 px-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 rounded-md transition-colors"
-                            title="Tốc độ đọc"
+                            className="h-6 px-1.5 text-[10px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 rounded-md transition-colors"
+                            title="Tốc độ đọc câu hỏi"
                           >
                             {playbackSpeed}x
                           </button>
@@ -736,8 +771,8 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                         <button
                           type="button"
                           onClick={() => setShowPinyin(!showPinyin)}
-                          className="h-6 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1"
-                          title="Bật/Tắt Pinyin"
+                          className="h-6 px-2 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1"
+                          title="Bật/Tắt phiên âm Pinyin"
                         >
                           <Languages className="h-3 w-3" />
                           <span>{showPinyin ? "Ẩn Pinyin" : "Pinyin"}</span>
@@ -748,7 +783,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                             variant="destructive"
                             size="sm"
                             onClick={stopExaminerVoice}
-                            className="h-6 px-2 text-[11px] font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-md gap-1 animate-pulse"
+                            className="h-6 px-2 text-[10px] sm:text-[11px] font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-md gap-1 animate-pulse"
                             title="Dừng phát giọng (Esc)"
                           >
                             <Square className="h-2.5 w-2.5 fill-current" />
@@ -759,7 +794,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                             variant="ghost"
                             size="sm"
                             onClick={() => speakExaminerText(turn.textContent)}
-                            className="h-6 px-2 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md gap-1"
+                            className="h-6 px-2 text-[10px] sm:text-[11px] font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md gap-1"
                             title="Nghe lại câu hỏi"
                           >
                             <Volume2 className="h-3 w-3" />
@@ -769,59 +804,72 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                       </div>
                     </div>
 
-                    {/* Question text */}
+                    {/* Question Hanzi text */}
                     <p
-                      className={`font-bold text-slate-900 dark:text-white leading-relaxed ${
-                        isLatest ? "text-lg sm:text-xl" : "text-sm sm:text-base"
+                      className={`font-bold text-slate-900 dark:text-white leading-relaxed tracking-wide ${
+                        isLatest ? "text-lg sm:text-xl md:text-2xl" : "text-sm sm:text-base"
                       }`}
                     >
                       {turn.textContent}
                     </p>
 
-                    {/* Pinyin */}
+                    {/* Pinyin transcription */}
                     {showPinyin && turn.pinyinContent && (
-                      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-sans tracking-wide leading-relaxed pt-0.5">
+                      <p className="text-xs sm:text-sm text-rose-600/90 dark:text-rose-400 font-sans tracking-wide leading-relaxed pt-0.5">
                         {turn.pinyinContent}
                       </p>
                     )}
 
-                    {/* Hint for latest question */}
+                    {/* Hint Accordion for active question */}
                     {isLatest && (
                       <div className="pt-1">
                         <button
                           type="button"
                           onClick={() => setShowHint(!showHint)}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-rose-600 transition-colors"
                         >
-                          <Lightbulb className="h-3 w-3 text-amber-500" />
-                          <span>{showHint ? "Ẩn gợi ý nghĩa" : "Gợi ý nghĩa câu hỏi"}</span>
+                          <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                          <span>{showHint ? "Ẩn gợi ý câu trả lời" : "Gợi ý trả lời & từ khóa"}</span>
+                          {showHint ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                         </button>
 
                         {showHint && (
-                          <div className="mt-2 p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 leading-relaxed animate-in fade-in">
-                            {getQuestionHint(session.currentStage, turn.textContent)}
+                          <div className="mt-2 p-3 sm:p-3.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-950 dark:text-amber-200 leading-relaxed animate-in fade-in">
+                            <p>{getQuestionHint(session.currentStage, turn.textContent)}</p>
+                            <div className="mt-2 pt-2 border-t border-amber-200/60 dark:border-amber-900/40 flex flex-wrap gap-1.5">
+                              {currentStageInfo.keywords.map((kw, idx) => (
+                                <span
+                                  key={idx}
+                                  className="bg-white/80 dark:bg-slate-900 text-amber-900 dark:text-amber-300 text-[10px] font-medium px-2 py-0.5 rounded-md border border-amber-300/50"
+                                >
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* Waveform indicator when examiner is speaking */}
+                    {/* Audio wave indicator when examiner is talking */}
                     {isLatest && isExaminerSpeaking && (
                       <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
-                        <span>Giám khảo đang đọc câu hỏi...</span>
+                        <span className="font-medium text-rose-600">Giám khảo đang đọc câu hỏi...</span>
                         <SoundWave isActive={true} color="cinnabar" size="sm" />
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                /* LEARNER RESPONSE BUBBLE (Right aligned) */
-                <div className="flex flex-col items-end space-y-1 ml-auto max-w-[92%] sm:max-w-[80%]">
+                /* Learner Turn Bubble (Right Aligned) */
+                <div className="flex flex-col items-end space-y-1 ml-auto max-w-[94%] sm:max-w-[85%]">
                   <span className="text-[10px] font-semibold text-slate-400 px-1">
-                    Bạn (Thí sinh)
+                    Thí sinh (Bạn)
                   </span>
-                  <div className="rounded-2xl rounded-tr-xs p-3.5 bg-rose-600 text-white shadow-xs">
-                    <p className="font-medium text-sm leading-relaxed">{turn.textContent}</p>
+                  <div className="rounded-2xl rounded-tr-xs p-3.5 sm:p-4 bg-rose-600 text-white shadow-xs">
+                    <p className="font-medium text-sm sm:text-base leading-relaxed tracking-wide">
+                      {turn.textContent}
+                    </p>
                   </div>
                 </div>
               )}
@@ -829,9 +877,9 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
           );
         })}
 
-        {/* Live Interim Transcript when Candidate is speaking */}
+        {/* Live Interim Subtitle when Candidate is speaking */}
         {isRecording && learnerTranscript && (
-          <div className="flex flex-col items-end space-y-1 ml-auto max-w-[92%] sm:max-w-[80%] animate-in fade-in">
+          <div className="flex flex-col items-end space-y-1 ml-auto max-w-[94%] sm:max-w-[85%] animate-in fade-in">
             <span className="text-[10px] font-semibold text-rose-600 animate-pulse flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
               Đang nhận diện giọng nói trực tiếp...
@@ -843,108 +891,173 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         )}
       </main>
 
-      {/* 4. BOTTOM DOCKED RESPONSE CONSOLE (Fixed height: ~135px, ZERO outer scroll) */}
-      <footer className="shrink-0 border-t border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5 z-20 shadow-lg">
-        <div className="max-w-4xl mx-auto space-y-2">
-          {/* Input Textarea Bar */}
-          <div className="relative rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/50 p-2.5 focus-within:ring-2 focus-within:ring-rose-500 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
-            <textarea
-              ref={textareaRef}
-              value={learnerTranscript}
-              onChange={(e) => setLearnerTranscript(e.target.value)}
-              disabled={isSubmittingTurn || isFinalizing || session?.status === "PROCESSING" || session?.status === "COMPLETED"}
-              placeholder={
-                session?.status === "PROCESSING" || session?.status === "COMPLETED"
-                  ? "Kỳ thi khẩu ngữ đã hoàn tất. Đang chuyển hướng sang báo cáo kết quả..."
-                  : isRecording
-                  ? "Đang nhận diện giọng nói trực tiếp qua microphone..."
-                  : "Bấm 'Bắt đầu nói' hoặc bạn có thể gõ câu trả lời bằng tiếng Trung tại đây..."
-              }
-              rows={2}
-              className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none leading-relaxed font-medium disabled:opacity-60 max-h-14"
-            />
+      {/* ====================================================================== */}
+      {/* 4. BOTTOM RESPONSE DOCK (Tactile, Ergonomic, Mobile-First)             */}
+      {/* ====================================================================== */}
+      <footer className="shrink-0 border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 sm:px-6 py-3 sm:py-4 z-20 shadow-lg">
+        <div className="max-w-3xl mx-auto space-y-2.5">
+          {/* Active Voice Mode Console */}
+          {inputMode === "voice" ? (
+            <div className="space-y-2.5">
+              {/* If transcript exists, show review/confirmation box */}
+              {learnerTranscript && (
+                <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 p-3 sm:p-3.5 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-rose-900 dark:text-rose-200">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-rose-600" />
+                      Câu trả lời của bạn:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLearnerTranscript("")}
+                      className="text-[11px] text-slate-500 hover:text-rose-600 flex items-center gap-1"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span>Xóa câu này</span>
+                    </button>
+                  </div>
+                  <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-relaxed">
+                    {learnerTranscript}
+                  </p>
+                </div>
+              )}
 
-            {/* In-box live subtitle status */}
-            {isRecording && (
-              <div className="flex items-center justify-between pt-1 border-t border-rose-200/60 dark:border-rose-900/40 text-[10px] text-rose-600 font-semibold animate-pulse">
-                <span>Đang thu âm qua micro...</span>
-                <SoundWave isActive={true} color="cinnabar" size="sm" />
+              {/* Action Buttons Row in Voice Mode */}
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                {/* Big Microphone Action Button */}
+                {!isRecording ? (
+                  <Button
+                    onClick={startRecording}
+                    disabled={isSubmittingTurn || isExaminerSpeaking || isFinalizing || session?.status === "PROCESSING"}
+                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm h-11 sm:h-12 rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span>{learnerTranscript ? "Nói thêm vào câu trả lời" : "Bấm để bắt đầu nói (开始录音)"}</span>
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={stopRecording}
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm h-11 sm:h-12 rounded-2xl flex items-center justify-center gap-2 shadow-sm animate-pulse transition-all"
+                  >
+                    <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span>Hoàn tất nói ({recordingSeconds}s) &bull; Dừng thu</span>
+                  </Button>
+                )}
+
+                {/* Submit button (if transcript is captured) */}
+                {learnerTranscript && !isRecording && (
+                  <Button
+                    onClick={handleSubmitTurn}
+                    disabled={isSubmittingTurn || isFinalizing}
+                    className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700 font-bold text-xs sm:text-sm h-11 sm:h-12 px-5 sm:px-6 rounded-2xl flex items-center justify-center gap-2 shadow-sm shrink-0 transition-all"
+                  >
+                    {isSubmittingTurn ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Đang gửi...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Gửi câu trả lời (提交)</span>
+                        <Send className="h-3.5 w-3.5" />
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {/* Keyboard input toggle button */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setInputMode("text");
+                    setTimeout(() => textareaRef.current?.focus(), 100);
+                  }}
+                  className="h-11 sm:h-12 px-3 rounded-2xl text-xs font-semibold text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 shrink-0"
+                  title="Chuyển sang gõ chữ bằng bàn phím"
+                >
+                  <Keyboard className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Gõ phím</span>
+                </Button>
               </div>
-            )}
-          </div>
-
-          {/* Action Buttons Row */}
-          <div className="flex items-center justify-between gap-2">
-            {/* Left buttons: Recording trigger & Clear */}
-            <div className="flex items-center gap-2">
-              {!isRecording ? (
-                <Button
-                  onClick={startRecording}
-                  disabled={isSubmittingTurn || isExaminerSpeaking || isFinalizing || session?.status === "PROCESSING"}
-                  className="bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 shadow-xs text-xs h-9 px-4 rounded-xl transition-all"
-                >
-                  <Mic className="h-4 w-4" />
-                  <span>Bắt đầu nói (开始录音)</span>
-                </Button>
-              ) : (
-                <Button
-                  onClick={stopRecording}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-2 text-xs h-9 px-4 rounded-xl transition-all"
-                >
-                  <MicOff className="h-4 w-4" />
-                  <span>Dừng ghi âm (完成录音)</span>
-                </Button>
-              )}
-
-              {learnerTranscript && !isRecording && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setLearnerTranscript("")}
-                  className="text-xs text-slate-500 hover:text-rose-600 h-9 px-2.5 rounded-xl"
-                  title="Xoá câu trả lời và làm lại"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  <span>Làm lại</span>
-                </Button>
-              )}
-
-              {characterCount > 0 && !isRecording && (
-                <span className="text-[11px] font-medium text-slate-500 hidden sm:inline">
-                  {characterCount} chữ
-                </span>
-              )}
             </div>
+          ) : (
+            /* Active Keyboard Typing Mode */
+            <div className="space-y-2">
+              <div className="relative rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/50 p-3 focus-within:ring-2 focus-within:ring-rose-500 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
+                <textarea
+                  ref={textareaRef}
+                  value={learnerTranscript}
+                  onChange={(e) => setLearnerTranscript(e.target.value)}
+                  disabled={isSubmittingTurn || isFinalizing || session?.status === "PROCESSING"}
+                  placeholder="Gõ câu trả lời bằng tiếng Trung tại đây (hoặc dùng bộ gõ Pinyin)..."
+                  rows={2}
+                  className="w-full border-0 bg-transparent p-0 text-sm sm:text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none leading-relaxed font-medium disabled:opacity-60 max-h-20"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmitTurn();
+                    }
+                  }}
+                />
+              </div>
 
-            {/* Right button: Submit Turn */}
-            <Button
-              onClick={handleSubmitTurn}
-              disabled={!learnerTranscript.trim() || isSubmittingTurn || isRecording || isFinalizing || session?.status === "PROCESSING"}
-              className={`font-semibold text-xs h-9 px-5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all ${
-                learnerTranscript.trim() && !isRecording
-                  ? "bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700"
-                  : "bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600"
-              }`}
-            >
-              {isSubmittingTurn ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                  <span>Đang chấm điểm...</span>
-                </>
-              ) : (
-                <>
-                  <span>Gửi câu trả lời (提交回答)</span>
-                  <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </>
-              )}
-            </Button>
-          </div>
+              {/* Text Mode Action Toolbar */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setInputMode("voice")}
+                    className="h-9 px-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl gap-1"
+                  >
+                    <Mic className="h-3.5 w-3.5" />
+                    <span>Dùng Micro nói</span>
+                  </Button>
+
+                  {learnerTranscript && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLearnerTranscript("")}
+                      className="h-9 px-2 text-xs text-slate-400 hover:text-slate-700 rounded-xl"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleSubmitTurn}
+                  disabled={!learnerTranscript.trim() || isSubmittingTurn || isFinalizing}
+                  className={`h-9 px-4 sm:px-5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
+                    learnerTranscript.trim()
+                      ? "bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700 shadow-xs"
+                      : "bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600"
+                  }`}
+                >
+                  {isSubmittingTurn ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Đang gửi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Gửi câu trả lời (提交)</span>
+                      <Send className="h-3 w-3 ml-1" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </footer>
 
-      {/* 5. SLIDE-OVER DRAWER: RUBRIC & STAGE TIPS */}
+      {/* ====================================================================== */}
+      {/* 5. SLIDE-OVER DRAWER: RUBRIC & STAGE TIPS                              */}
+      {/* ====================================================================== */}
       {showRubricDrawer && (
-        <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 h-full p-5 flex flex-col shadow-2xl border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -995,7 +1108,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
               {/* Rubric dimensions */}
               <div className="space-y-2">
                 <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
-                  4 Tiêu Chuẩn Đánh Giá
+                  4 Tiêu Chuẩn Đánh Giá Trọng Yếu
                 </span>
                 <div className="space-y-2">
                   {[
@@ -1032,7 +1145,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
             <Button
               onClick={() => setShowRubricDrawer(false)}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs h-9 rounded-xl"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs h-10 rounded-xl font-semibold"
             >
               Đã hiểu, quay lại phòng thi
             </Button>
@@ -1040,7 +1153,9 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         </div>
       )}
 
-      {/* 6. AUDIO SETTINGS MODAL */}
+      {/* ====================================================================== */}
+      {/* 6. AUDIO SETTINGS MODAL                                                */}
+      {/* ====================================================================== */}
       {showAudioModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="max-w-md w-full rounded-3xl bg-white dark:bg-slate-900 p-6 space-y-5 shadow-2xl border border-slate-200 dark:border-slate-800">
@@ -1109,7 +1224,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 </Button>
                 <Button
                   onClick={() => setShowAudioModal(false)}
-                  className="bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs h-8 px-4"
+                  className="bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs h-8 px-4 font-semibold"
                 >
                   Hoàn tất
                 </Button>
@@ -1119,7 +1234,9 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         </div>
       )}
 
-      {/* 7. EXIT CONFIRMATION MODAL */}
+      {/* ====================================================================== */}
+      {/* 7. EXIT CONFIRMATION MODAL                                             */}
+      {/* ====================================================================== */}
       {showExitConfirm && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="max-w-sm w-full rounded-3xl bg-white dark:bg-slate-900 p-6 space-y-4 text-center shadow-2xl border border-slate-200 dark:border-slate-800">
@@ -1138,13 +1255,13 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
               <Button
                 variant="outline"
                 onClick={() => setShowExitConfirm(false)}
-                className="text-xs h-9 rounded-xl"
+                className="text-xs h-10 rounded-xl font-semibold"
               >
                 Ở lại
               </Button>
               <Button
                 onClick={() => router.push("/dashboard/assessments")}
-                className="bg-rose-600 hover:bg-rose-700 text-white text-xs h-9 rounded-xl"
+                className="bg-rose-600 hover:bg-rose-700 text-white text-xs h-10 rounded-xl font-semibold"
               >
                 Xác nhận thoát
               </Button>
@@ -1153,7 +1270,9 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         </div>
       )}
 
-      {/* 8. FINALIZING OVERLAY MODAL */}
+      {/* ====================================================================== */}
+      {/* 8. FINALIZING OVERLAY MODAL (Scoring progress)                         */}
+      {/* ====================================================================== */}
       {isFinalizing && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="max-w-md w-full rounded-3xl bg-white p-8 text-center space-y-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
@@ -1168,7 +1287,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 Hệ thống đánh giá đa chiều đang phân tích toàn bộ 5 giai đoạn hội thoại của bạn...
               </p>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-600 dark:text-slate-300 space-y-2 text-left border border-slate-100 dark:border-slate-800">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-600 dark:text-slate-300 space-y-2.5 text-left border border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 <span>Hoàn tất ghi nhận bản hội thoại (Transcript)</span>
