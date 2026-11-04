@@ -25,8 +25,6 @@ import {
   Send,
   X,
   Check,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 
@@ -97,41 +95,6 @@ const STAGES = [
   },
 ];
 
-const getQuestionHint = (stage: number, text: string, topic?: string): string => {
-  const t = topic || "chủ đề khảo thí";
-  if (stage === 1) {
-    if (text.includes("准备好了吗") || text.includes("介绍一下自己") || text.includes("自我介绍")) {
-      return "💡 Gợi ý Chặng 1: Giới thiệu họ tên, quê quán, công việc hoặc học tập và bạn đã học tiếng Trung được bao lâu.";
-    }
-    return `💡 Gợi ý Chặng 1: Chia sẻ lý do bạn học tiếng Trung và ấn tượng ban đầu của bạn về chủ đề "${t}".`;
-  }
-  if (stage === 2) {
-    if (text.includes("经历") || text.includes("最近") || text.includes("分享") || text.includes("难忘")) {
-      return `💡 Gợi ý Chặng 2: Kể lại một trải nghiệm thực tế hoặc kỷ niệm cụ thể của bạn liên quan đến "${t}" (sử dụng từ nối thời gian: 最近, 有一次, 后来...).`;
-    }
-    return `💡 Gợi ý Chặng 2: Chia sẻ các thói quen sinh hoạt hoặc sở thích hàng ngày của bạn gắn liền với "${t}".`;
-  }
-  if (stage === 3) {
-    if (text.includes("长远") || text.includes("对比") || text.includes("影响") || text.includes("优缺点")) {
-      return `💡 Gợi ý Chặng 3: Phân tích so sánh hai mặt ưu/nhược điểm hoặc ảnh hưởng sâu rộng của "${t}" (dùng liên từ: 从长远来看, 一方面...另一方面...).`;
-    }
-    return `💡 Gợi ý Chặng 3: Nêu rõ quan điểm chính của bạn về "${t}" cùng 2 lý do và ví dụ thực tế minh họa.`;
-  }
-  if (stage === 4) {
-    if (text.includes("建议") || text.includes("办法") || text.includes("解决")) {
-      return `💡 Gợi ý Chặng 4: Đề xuất 2 lời khuyên hữu ích hoặc giải pháp thiết thực để giải quyết vấn đề được nêu.`;
-    }
-    return `💡 Gợi ý Chặng 4: Đưa ra lập luận bảo vệ quan điểm hoặc cách bạn xử lý tình huống giả định khó khăn được đặt ra.`;
-  }
-  if (stage === 5) {
-    if (text.includes("发挥") || text.includes("回顾") || text.includes("满意")) {
-      return "💡 Gợi ý Chặng 5: Chia sẻ cảm nhận thật của bạn về bài thi hôm nay (hài lòng về sự tự tin, phát âm, từ vựng hay muốn tiếp tục cải thiện điểm nào).";
-    }
-    return "💡 Gợi ý Chặng 5: Lắng nghe lời nhận xét chúc mừng từ giám khảo và đáp lời cảm ơn lịch sự để hoàn tất bài thi.";
-  }
-  return "💡 Gợi ý: Hãy trả lời tự nhiên, phát âm rõ ràng, tập trung vào câu hỏi của giám khảo.";
-};
-
 export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: string }) {
   const router = useRouter();
   const routeParams = useParams();
@@ -148,7 +111,6 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const [isSubmittingTurn, setIsSubmittingTurn] = useState(false);
   const [learnerTranscript, setLearnerTranscript] = useState("");
   const [showPinyin, setShowPinyin] = useState(true);
-  const [showHint, setShowHint] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(0.95);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -425,7 +387,6 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     // 1. Immediately clear input so the candidate feels instant tactile response
     setLearnerTranscript("");
     setRecordingSeconds(0);
-    setShowHint(false);
 
     // 2. Optimistically append learner message to conversation stream
     const optimisticLearnerTurn: Turn = {
@@ -857,37 +818,6 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                       <p className="text-xs sm:text-sm text-rose-600/90 dark:text-rose-400 font-sans tracking-wide leading-relaxed pt-0.5">
                         {turn.pinyinContent}
                       </p>
-                    )}
-
-                    {/* Hint Accordion for active question */}
-                    {isLatest && (
-                      <div className="pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowHint(!showHint)}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-rose-600 transition-colors"
-                        >
-                          <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-                          <span>{showHint ? "Ẩn gợi ý câu trả lời" : "Gợi ý trả lời & từ khóa"}</span>
-                          {showHint ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                        </button>
-
-                        {showHint && (
-                          <div className="mt-2 p-3 sm:p-3.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-950 dark:text-amber-200 leading-relaxed animate-in fade-in">
-                            <p>{getQuestionHint(session.currentStage, turn.textContent, session.template.title)}</p>
-                            <div className="mt-2 pt-2 border-t border-amber-200/60 dark:border-amber-900/40 flex flex-wrap gap-1.5">
-                              {currentStageInfo.keywords.map((kw, idx) => (
-                                <span
-                                  key={idx}
-                                  className="bg-white/80 dark:bg-slate-900 text-amber-900 dark:text-amber-300 text-[10px] font-medium px-2 py-0.5 rounded-md border border-amber-300/50"
-                                >
-                                  {kw}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
                     )}
 
                     {/* Audio wave indicator when examiner is talking */}

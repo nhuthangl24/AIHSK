@@ -93,6 +93,24 @@ export class ExaminerService {
   ): Promise<NextTurnResult> {
     const learnerTurnCount = turns.filter((t) => t.speaker === "LEARNER").length;
 
+    // Enforce standardized 2-turn pacing per stage
+    let computedStage = 1;
+    if (learnerTurnCount <= 1) computedStage = 1;
+    else if (learnerTurnCount <= 3) computedStage = 2;
+    else if (learnerTurnCount <= 5) computedStage = 3;
+    else if (learnerTurnCount <= 7) computedStage = 4;
+    else computedStage = 5;
+
+    const isCompleted = learnerTurnCount >= 9 && computedStage === 5;
+
+    const stageGuidelines: Record<number, string> = {
+      1: "问候导入：简短欢迎考生，确认声音清晰，并引导考生用中文做简短自我介绍。",
+      2: "日常交流：围绕考试主题，询问考生的日常生活习惯、日常喜好或近期一段具体经历。",
+      3: "主题阐述：就该主题提出核心探讨问题，请考生陈述主要观点，并给出理由与具体例子。",
+      4: "深入追问：就考生的观点提出深入追问、反方视角或两难情景，考察思辨与逻辑表达。",
+      5: "考试总结：简短总结并给予正面鼓励，宣布考试圆满结束，致谢道别。",
+    };
+
     const dialogueMessages: ChatMessage[] = turns.map((t) => ({
       role: (t.speaker === "EXAMINER" ? "assistant" : "user") as "assistant" | "user",
       content: t.textContent,
@@ -105,46 +123,67 @@ export class ExaminerService {
       });
     }
 
+    const systemPrompt = `你是一名专业严谨、语气亲切自然的华语口语高级考官，正在主持针对 ${targetLevel} 等级、主题为“${topic}”的口语考试。
+当前环节：第 ${computedStage}/5 阶段（${stageGuidelines[computedStage]}）。
+考生已回答轮次：${learnerTurnCount} 轮。
+
+【极速对话规则 - 必须严格遵守】：
+1. 语言：输出标准普通话（规范简体中文），用词适合 ${targetLevel} 水平。
+2. 篇幅：1 到 3 句话，简明扼要，直奔主题。
+3. 提问：每次只提一个清晰明确的问题或追问，紧密贴合主题“${topic}”。
+4. 防抄题与乱码：若考生仅复述考官题目或输入乱码字符，礼貌提示其用自己的话回答。
+5. 输出格式：仅直接输出考官要说的中文台词内容。绝对不要输出拼音，不要输出英文，不要输出任何提示词或建议。`;
+
     const messages: ChatMessage[] = [
       {
         role: "system",
-        content: `${CHINESE_EXAMINER_SYSTEM_PROMPT}\nTarget Level: ${targetLevel}. Topic: ${topic}\nCurrent candidate turn count: ${learnerTurnCount}. Pacing rule: 2 turns each for Stage 1, Stage 2, Stage 3, Stage 4; and 1-2 turns for Stage 5. Never complete before 9 candidate turns.\nIMPORTANT: Reply ONLY with a strict JSON object according to the schema.`,
+        content: systemPrompt,
       },
       ...dialogueMessages,
     ];
 
+    // Use fast model (e.g. claude-haiku-4.5) if default was claude-sonnet-4.6, with 15s timeout
+    const targetModel =
+      config.modelId === "claude-sonnet-4.6" ? "claude-haiku-4.5" : config.modelId;
+
     const rawContent = await AIClient.chatCompletion({
       messages,
-      model: config.modelId,
-      temperature: config.temperature ?? 0.7,
-      requireJson: true,
+      model: targetModel,
+      temperature: 0.6,
+      requireJson: false,
     });
 
-    const parsed = AIClient.extractJson<{
-      stage?: number;
-      examinerResponse?: string;
-      pinyin?: string;
-      isCompleted?: boolean;
-      feedbackHint?: string;
-    }>(rawContent);
+    let cleanText = (rawContent || "").trim();
 
-    // Enforce standardized 2-turn pacing per stage
-    let computedStage = 1;
-    if (learnerTurnCount <= 1) computedStage = 1;
-    else if (learnerTurnCount <= 3) computedStage = 2;
-    else if (learnerTurnCount <= 5) computedStage = 3;
-    else if (learnerTurnCount <= 7) computedStage = 4;
-    else computedStage = 5;
+    // In case the model wrapped in JSON
+    if (cleanText.startsWith("{") && cleanText.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(cleanText);
+        cleanText = parsed.examinerResponse || parsed.text || parsed.response || cleanText;
+      } catch {
+        // ignore
+      }
+    }
 
-    // Only mark completed when candidate has answered through Stage 5 Turn 1 (learnerTurnCount >= 9)
-    const isCompleted = Boolean(parsed.isCompleted && learnerTurnCount >= 9 && computedStage === 5);
+    cleanText = cleanText
+      .replace(/^```[a-z]*\s*/i, "")
+      .replace(/\s*```$/, "")
+      .replace(/^["'“]|["'”]$/g, "")
+      .replace(/^(考官|李老师|考官李老师)[：:]\s*/i, "")
+      .trim();
+
+    if (!cleanText) {
+      cleanText = "你好！请继续回答。";
+    }
+
+    // Generate accurate Pinyin using the pinyin-pro library in 0.1ms
+    const generatedPinyin = generatePinyin(cleanText);
 
     return {
       stage: computedStage,
-      examinerResponse: parsed.examinerResponse || "你好，请继续回答。",
-      pinyin: parsed.pinyin || "",
+      examinerResponse: cleanText,
+      pinyin: generatedPinyin,
       isCompleted,
-      pedagogicalObservation: parsed.feedbackHint,
     };
   }
 

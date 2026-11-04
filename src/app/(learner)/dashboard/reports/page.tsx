@@ -18,8 +18,8 @@ export default async function ReportsListPage() {
 
   let sessions: any[] = [];
   try {
-    const userSessions = await AssessmentService.getUserSessions(user.userId);
-    sessions = (userSessions || []).filter((s: any) => s.status === "COMPLETED" && s.result);
+    const userSessions = await AssessmentService.getUserSessions(user.userId, user.email);
+    sessions = (userSessions || []).filter((s: any) => s.result || s.status === "COMPLETED" || s.status === "PROCESSING");
   } catch (e) {
     console.warn("Could not load user sessions for reports:", e);
     sessions = [];
@@ -66,7 +66,10 @@ export default async function ReportsListPage() {
         <div className="space-y-3 sm:space-y-4">
           {sessions.map((session) => {
             const result = session.result;
-            const scoreColor = result ? getScoreBadgeColor(result.overallScore) : "bg-slate-100 text-slate-700";
+            const hskLabel = result?.hskEstimate || result?.hskLevel || session.template?.targetLevel || "HSK";
+            const cefrLabel = result?.cefrEstimate || result?.cefrLevel;
+            const summaryText = result?.performanceSummary || result?.feedbackSummary || session.template?.description || "Báo cáo chẩn đoán khẩu ngữ tiếng Trung.";
+            const isFreeTalk = session.template?.category === "FREE_TALK" || session.id?.startsWith("freetalk-");
 
             return (
               <Card
@@ -77,11 +80,16 @@ export default async function ReportsListPage() {
                   <div className="space-y-2 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="cinnabar" className="text-[10px] font-bold">
-                        {result?.hskEstimate || session.template?.targetLevel || "HSK"}
+                        {hskLabel}
                       </Badge>
-                      {result?.cefrEstimate && (
+                      {cefrLabel && (
                         <Badge variant="outline" className="text-[10px] font-bold">
-                          CEFR {result.cefrEstimate}
+                          CEFR {cefrLabel}
+                        </Badge>
+                      )}
+                      {isFreeTalk && (
+                        <Badge variant="outline" className="text-[10px] font-bold bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300">
+                          Trò chuyện tự do
                         </Badge>
                       )}
                       <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
@@ -91,11 +99,11 @@ export default async function ReportsListPage() {
                     </div>
 
                     <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
-                      {session.template?.title || "Bài khảo thí khẩu ngữ"}
+                      {session.template?.title || (isFreeTalk ? "Trò Chuyện Tự Do" : "Bài khảo thí khẩu ngữ")}
                     </h3>
 
                     <p className="text-xs text-slate-500 line-clamp-2 max-w-2xl leading-relaxed">
-                      {result?.performanceSummary || session.template?.description}
+                      {summaryText}
                     </p>
                   </div>
 
@@ -111,7 +119,7 @@ export default async function ReportsListPage() {
                         </div>
                       </div>
                     ) : (
-                      <Badge variant="outline">Đang xử lý</Badge>
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">Đang xử lý</Badge>
                     )}
 
                     <Link href={`/dashboard/reports/${session.id}`}>

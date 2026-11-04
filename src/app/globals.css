@@ -101,3 +101,12 @@
 .animate-voice-bar-5 {
   animation: voiceBar 1s ease-in-out infinite 0.25s;
 }
+
+/* Hide scrollbar for clean horizontal mobile swipes */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

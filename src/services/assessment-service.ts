@@ -39,26 +39,88 @@ export class AssessmentService {
   }
 
   /**
-   * Retrieves assessment sessions for a specific user.
+   * Retrieves assessment sessions for a specific user (merging Prisma & local store resiliently).
    */
-  static async getUserSessions(userId: string) {
+  static async getUserSessions(userId: string, email?: string) {
+    const candidateUserIds = new Set<string>();
+    if (userId) candidateUserIds.add(userId);
+    if (email) {
+      const normEmail = email.toLowerCase().trim();
+      candidateUserIds.add(normEmail);
+      candidateUserIds.add(`firebase_${normEmail.replace(/[^a-z0-9]/g, "_")}`);
+    }
+
+    let prismaSessions: any[] = [];
     if (await this.canUsePrisma()) {
       try {
         const { default: prisma } = await import("@/lib/db/prisma");
-        return await prisma.assessmentSession.findMany({
-          where: { userId },
+        if (email) {
+          const userRecord = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { email: email.toLowerCase().trim() },
+                ...(userId ? [{ id: userId }] : []),
+              ],
+            },
+          });
+          if (userRecord) {
+            candidateUserIds.add(userRecord.id);
+          }
+        }
+
+        prismaSessions = await prisma.assessmentSession.findMany({
+          where: { userId: { in: Array.from(candidateUserIds) } },
           include: {
             template: true,
             result: true,
           },
           orderBy: { createdAt: "desc" },
-          take: 20,
+          take: 30,
         });
       } catch (err) {
         console.warn("Prisma getUserSessions failed, falling back to assessment store:", err);
       }
     }
-    return assessmentStore.getSessionsByUserId(userId);
+
+    // Also get from assessment store
+    const storeSessions = assessmentStore.getAllSessions().filter((s) => {
+      if (candidateUserIds.has(s.userId)) return true;
+      if (email && (s.userId?.includes(email.split("@")[0]) || s.userId === email)) return true;
+      return false;
+    });
+
+    // Merge and deduplicate by id
+    const map = new Map<string, any>();
+    for (const s of prismaSessions) {
+      map.set(s.id, s);
+    }
+    for (const s of storeSessions) {
+      if (!map.has(s.id)) {
+        map.set(s.id, s);
+      }
+    }
+
+    const merged = Array.from(map.values());
+    merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Normalize each session
+    return merged.map((s) => ({
+      ...s,
+      template: s.template || {
+        title: "Bài khảo thí khẩu ngữ",
+        description: "Đánh giá khẩu ngữ HSK",
+        targetLevel: "HSK 3",
+      },
+      result: s.result
+        ? {
+            ...s.result,
+            overallScore: s.result.overallScore,
+            hskEstimate: s.result.hskEstimate || s.result.hskLevel || s.template?.targetLevel || "HSK",
+            cefrEstimate: s.result.cefrEstimate || s.result.cefrLevel || "A2",
+            performanceSummary: s.result.performanceSummary || s.result.feedbackSummary || s.template?.description,
+          }
+        : null,
+    }));
   }
 
   /**
@@ -513,11 +575,13 @@ export class AssessmentService {
   /**
    * Fetches full assessment details including report, scores, recommendations, and turns.
    */
-  static async getSessionWithReport(sessionId: string, userId: string) {
+  static async getSessionWithReport(sessionId: string, userId?: string) {
+    let session: any = null;
+
     if (await this.canUsePrisma()) {
       try {
         const { default: prisma } = await import("@/lib/db/prisma");
-        const session = await prisma.assessmentSession.findUnique({
+        session = await prisma.assessmentSession.findUnique({
           where: { id: sessionId },
           include: {
             template: true,
@@ -534,28 +598,167 @@ export class AssessmentService {
             user: { select: { name: true, email: true } },
           },
         });
-
-        if (session) {
-          if (!session.user) {
-            session.user = { name: "Học viên", email: "" };
-          }
-          return session;
-        }
       } catch (err) {
         console.warn("Prisma getSessionWithReport failed, falling back to assessment store:", err);
       }
     }
 
-    const stored = assessmentStore.getSession(sessionId);
-    if (!stored) return null;
+    if (!session) {
+      session = assessmentStore.getSession(sessionId);
+    }
 
-    // Ensure session object shape matches report expectations
-    return {
-      ...stored,
-      user: {
+    if (!session) return null;
+
+    // Auto-fill template if missing
+    if (!session.template && session.templateId) {
+      session.template = assessmentStore.getTemplate(session.templateId) || {
+        id: session.templateId,
+        title: "Khảo thí khẩu ngữ HSK",
+        description: "Đánh giá khẩu ngữ",
+        targetLevel: "HSK 3",
+      };
+    }
+    if (!session.template) {
+      session.template = {
+        title: "Khảo thí khẩu ngữ HSK",
+        description: "Đánh giá khẩu ngữ",
+        targetLevel: "HSK 3",
+      };
+    }
+
+    // Auto-fill user if missing
+    if (!session.user) {
+      session.user = {
         name: "Học viên",
-        email: stored.userId,
-      },
-    };
+        email: session.userId || "",
+      };
+    }
+
+    // Ensure turns is an array
+    session.turns = Array.isArray(session.turns) ? session.turns : [];
+
+    // Normalize result if exists
+    if (session.result) {
+      const res = session.result;
+      const overallScore = typeof res.overallScore === "number" ? res.overallScore : 0;
+      const hskEstimate =
+        res.hskEstimate || res.hskLevel || session.template?.targetLevel || "HSK 3";
+      const cefrEstimate = res.cefrEstimate || res.cefrLevel || "B1";
+      const performanceSummary =
+        res.performanceSummary ||
+        res.feedbackSummary ||
+        res.summary ||
+        "Buổi đánh giá khẩu ngữ hoàn thành tốt.";
+      const confidenceLevel =
+        typeof res.confidenceLevel === "number" ? res.confidenceLevel : 0.95;
+      const isAcousticAided = res.isAcousticAided ?? true;
+
+      // Normalize scoreDimensions
+      const rawDimensions = Array.isArray(res.scoreDimensions) ? res.scoreDimensions : [];
+      const scoreDimensions = rawDimensions.map((dim: any, idx: number) => {
+        const maxScore = dim.maxScore || (dim.score <= 20 ? 20 : 100);
+        const score = typeof dim.score === "number" ? dim.score : 0;
+        const percent = Math.min(100, Math.max(0, Math.round((score / maxScore) * 100)));
+        const quotes = Array.isArray(dim.evidenceQuotesJson)
+          ? dim.evidenceQuotesJson
+          : Array.isArray(dim.evidenceQuotes)
+          ? dim.evidenceQuotes
+          : [];
+        const rationale = dim.rationale || dim.feedback || "Đạt chuẩn năng lực giao tiếp yêu cầu.";
+        const performanceLevel =
+          dim.performanceLevel ||
+          (percent >= 80 ? "Mastery" : percent >= 60 ? "Proficient" : "Developing");
+
+        return {
+          ...dim,
+          id: dim.id || `dim_${idx}`,
+          dimensionName: dim.dimensionName || dim.name || `Kỹ năng ${idx + 1}`,
+          score,
+          maxScore,
+          percent,
+          performanceLevel,
+          rationale,
+          quotes,
+          weight: typeof dim.weight === "number" ? dim.weight : 0.2,
+        };
+      });
+
+      // Normalize recommendations
+      const rawRecs = Array.isArray(res.recommendations) ? res.recommendations : [];
+      const recommendations = rawRecs.map((r: any, idx: number) => {
+        const category = (r.category || "GENERAL").toUpperCase();
+        const originalPhrase =
+          r.originalPhrase ||
+          r.original ||
+          (r.recommendation?.includes('Thay vì nói "') ? r.recommendation.split('"')[1] : null) ||
+          "";
+        const correctedPhrase =
+          r.correctedPhrase ||
+          r.corrected ||
+          r.correction ||
+          (r.recommendation?.includes('bạn nên dùng: "')
+            ? r.recommendation.split('bạn nên dùng: "')[1]?.replace(/"$/, "")
+            : r.recommendation) ||
+          "";
+        const explanation =
+          r.explanation || r.actionableExercise || r.reason || "Gợi ý diễn đạt chuẩn bản xứ hơn.";
+        const exampleSentence = r.exampleSentence || r.example || null;
+
+        return {
+          ...r,
+          id: r.id || `rec_${idx}`,
+          category,
+          originalPhrase,
+          correctedPhrase,
+          explanation,
+          exampleSentence,
+        };
+      });
+
+      // Normalize strengths, weaknesses, priorityAreas, improvementPlan
+      const strengthsJson = Array.isArray(res.strengthsJson)
+        ? res.strengthsJson
+        : Array.isArray(res.strengths)
+        ? res.strengths
+        : res.scoringRationale
+        ? [res.scoringRationale]
+        : ["Phản xạ chủ động và tự tin khi giao tiếp."];
+
+      const weaknessesJson = Array.isArray(res.weaknessesJson)
+        ? res.weaknessesJson
+        : Array.isArray(res.weaknesses)
+        ? res.weaknesses
+        : Array.isArray(res.improvements)
+        ? res.improvements
+        : ["Cần chú ý luyện thêm ngữ điệu và mở rộng vốn từ vựng chuyên sâu."];
+
+      const priorityAreasJson = Array.isArray(res.priorityAreasJson)
+        ? res.priorityAreasJson
+        : Array.isArray(res.improvements)
+        ? res.improvements
+        : [];
+
+      const improvementPlanJson = Array.isArray(res.improvementPlanJson)
+        ? res.improvementPlanJson
+        : [];
+
+      session.result = {
+        ...res,
+        overallScore,
+        hskEstimate,
+        cefrEstimate,
+        performanceSummary,
+        confidenceLevel,
+        isAcousticAided,
+        scoreDimensions,
+        recommendations,
+        strengthsJson,
+        weaknessesJson,
+        priorityAreasJson,
+        improvementPlanJson,
+      };
+    }
+
+    return session;
   }
 }

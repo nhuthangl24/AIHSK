@@ -135,7 +135,7 @@ export class AIClient {
 
     const modelId =
       process.env.AI_DEFAULT_MODEL ||
-      "claude-sonnet-4.6";
+      "claude-haiku-4.5";
 
     return {
       providerName: process.env.AI_PROVIDER || (apiKey.startsWith("ark-") ? "hhtech" : "openai"),

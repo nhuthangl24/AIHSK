@@ -47,6 +47,35 @@ export async function POST(req: NextRequest) {
       console.warn("Firestore sync note in firebase-sync:", fbErr);
     }
 
+    // 2. Resolve or sync with Prisma User table if PostgreSQL is active
+    try {
+      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+      if (await isPrismaAvailable()) {
+        const pUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+        if (pUser) {
+          userId = pUser.id;
+          if (pUser.name) name = pUser.name;
+          if (pUser.role) role = pUser.role;
+        } else {
+          try {
+            await prisma.user.create({
+              data: {
+                id: userId,
+                email: normalizedEmail,
+                name,
+                passwordHash: "firebase_sso_managed",
+                role,
+              },
+            });
+          } catch {
+            // Already created or concurrent
+          }
+        }
+      }
+    } catch {
+      // Prisma offline, proceed cleanly
+    }
+
     // Save profile to assessmentStore as well
     assessmentStore.saveProfile({
       userId,

@@ -36,29 +36,48 @@ export interface StoredTurn {
 
 export interface StoredScoreDimension {
   id: string;
+  dimensionKey?: string;
   dimensionName: string;
   score: number;
+  maxScore?: number;
   weight: number;
-  feedback: string;
+  performanceLevel?: string;
+  evidenceQuotesJson?: string[];
+  rationale?: string;
+  feedback?: string;
+  suggestionsJson?: string[];
 }
 
 export interface StoredRecommendation {
   id: string;
   category: string;
+  originalPhrase?: string | null;
+  correctedPhrase?: string;
+  explanation?: string;
+  exampleSentence?: string | null;
   priority: number;
-  recommendation: string;
-  actionableExercise: string;
+  recommendation?: string;
+  actionableExercise?: string;
 }
 
 export interface StoredResult {
   id: string;
   sessionId: string;
   overallScore: number;
-  hskLevel: string;
-  cefrLevel: string;
-  passingStatus: boolean;
-  feedbackSummary: string;
-  scoringRationale: string;
+  hskLevel?: string;
+  hskEstimate?: string;
+  cefrLevel?: string;
+  cefrEstimate?: string;
+  passingStatus?: boolean;
+  feedbackSummary?: string;
+  performanceSummary?: string;
+  scoringRationale?: string;
+  confidenceLevel?: number;
+  isAcousticAided?: boolean;
+  strengthsJson?: string[];
+  weaknessesJson?: string[];
+  priorityAreasJson?: string[];
+  improvementPlanJson?: any[];
   scoredAt: string;
   scoreDimensions: StoredScoreDimension[];
   recommendations: StoredRecommendation[];
@@ -318,10 +337,20 @@ class AssessmentStore {
     return session;
   }
 
+  getAllSessions(): StoredSession[] {
+    this.init();
+    return Object.values(this.data.sessions)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map((s) => ({
+        ...s,
+        template: s.template || (s.templateId ? this.getTemplate(s.templateId) || undefined : undefined),
+      }));
+  }
+
   getSessionsByUserId(userId: string): StoredSession[] {
     this.init();
     return Object.values(this.data.sessions)
-      .filter((s) => s.userId === userId)
+      .filter((s) => s.userId === userId || s.userId?.includes(userId))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .map((s) => ({
         ...s,
