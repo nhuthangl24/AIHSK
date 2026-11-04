@@ -1,6 +1,6 @@
 "use client";
 
-import { X, ExternalLink, ShieldCheck, FileText, CheckCircle2 } from "lucide-react";
+import { X, ExternalLink, ShieldCheck, FileText, CheckCircle2, AlertOctagon, Lock } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -27,10 +27,10 @@ export function LegalModal({ isOpen, type, onClose, onAccept }: LegalModalProps)
             </div>
             <div>
               <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
-                {isTerms ? "Điều Khoản Sử Dụng Dịch Vụ" : "Chính Sách Bảo Mật & Dữ Liệu"}
+                {isTerms ? "Điều Khoản Sử Dụng Dịch Vụ (ToS)" : "Chính Sách Bảo Mật (Privacy Policy)"}
               </h3>
               <p className="text-[11px] text-slate-500">
-                {isTerms ? "Terms of Service · Classnia AI" : "Privacy Policy · Classnia AI"}
+                {isTerms ? "Thỏa thuận dịch vụ ràng buộc · Luật Giao dịch điện tử 2023" : "Tuân thủ Nghị định 13/2023/NĐ-CP & Luật An ninh mạng"}
               </p>
             </div>
           </div>
@@ -47,81 +47,102 @@ export function LegalModal({ isOpen, type, onClose, onAccept }: LegalModalProps)
         <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
           {isTerms ? (
             <>
-              <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 text-xs">
-                <strong>Tóm tắt cốt lõi:</strong> Classnia AI là hệ thống luyện khẩu ngữ tiếng Trung độc lập, cung cấp điểm số và nhận xét học thuật phục vụ tự rèn luyện và hỗ trợ giảng dạy, không thay thế chứng chỉ pháp lý cấp bởi cơ quan khảo thí quốc gia (CTI).
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-950 dark:text-amber-200 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                  <AlertOctagon className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>Cam Kết Pháp Lý Ràng Buộc</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                  Việc sử dụng dịch vụ đồng nghĩa với việc bạn ký kết hợp đồng dịch vụ điện tử có giá trị pháp lý theo Luật Giao dịch điện tử 2023. Hãy nắm rõ các giới hạn cốt lõi sau:
+                </p>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  1. Chấp Thuận Điều Khoản
-                </h4>
-                <p>
-                  Khi đăng ký tài khoản, đăng nhập hoặc trải nghiệm các tính năng khảo thí tại Classnia AI, bạn đồng ý tuân thủ toàn bộ quy định trong bản Điều khoản này.
-                </p>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-1">
+                    1. Độc Lập Khảo Thí & Không Thay Thế Chứng Chỉ Quốc Tế
+                  </h4>
+                  <p className="text-xs">
+                    Classnia AI là hệ thống công nghệ giáo dục độc lập. Kết quả chẩn đoán và điểm số ước lượng phục vụ mục đích tự rèn luyện và nghiên cứu học thuật, <strong>không có giá trị thay thế văn bằng chứng chỉ chính quy</strong> do CTI hoặc Bộ Giáo dục Trung Quốc cấp.
+                  </p>
+                </div>
 
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  2. Dịch Vụ Khảo Thí Khẩu Ngữ AI
-                </h4>
-                <p>
-                  Classnia AI ứng dụng trí tuệ nhân tạo đối thoại thời gian thực để mô phỏng kỳ thi khẩu ngữ HSK/HSKK, phân tích âm học 7 chiều và đề xuất bài luyện thích ứng.
-                </p>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-1">
+                    2. Nghiêm Cấm Tấn Công Hệ Thống & Trích Xuất Dữ Liệu
+                  </h4>
+                  <p className="text-xs">
+                    Nghiêm cấm tuyệt đối các hành vi jailbreak prompt sư phạm, sử dụng bot cào đề thi, mô phỏng âm thanh giả lập (audio spoofing), đảo ngược mã nguồn hoặc can thiệp hạ tầng máy chủ. Mọi vi phạm sẽ bị xử lý theo Luật An ninh mạng 2018 và truy cứu trách nhiệm dân sự/hình sự.
+                  </p>
+                </div>
 
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  3. Tài Khoản & Bảo Mật Định Danh
-                </h4>
-                <p>
-                  Bạn chịu trách nhiệm bảo mật mật khẩu và tài khoản Google liên kết. Mọi hoạt động phát sinh từ tài khoản của bạn được xem là do chính bạn thực hiện.
-                </p>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-1">
+                    3. Trách Nhiệm Định Danh Tài Khoản
+                  </h4>
+                  <p className="text-xs">
+                    Mỗi tài khoản được cấp cho một cá nhân sử dụng. Người dùng chịu trách nhiệm duy nhất đối với toàn bộ hoạt động phát sinh từ tài khoản của mình và phải bảo mật tuyệt đối thông tin xác thực.
+                  </p>
+                </div>
 
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  4. Quy Tắc Sử Dụng Hợp Chuẩn
-                </h4>
-                <p>
-                  Người dùng cam kết không tải lên các nội dung vi phạm pháp luật, ngôn từ thù địch; không sử dụng công cụ tự động khai thác trái phép dữ liệu đề thi hoặc can thiệp đảo ngược mã nguồn nền tảng.
-                </p>
-
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  5. Quyền Sở Hữu Trí Tuệ & Dữ Liệu Phát Ngôn
-                </h4>
-                <p>
-                  Bản quyền mã nguồn, giao diện, bộ đề thi thuộc về Classnia AI. Học viên giữ quyền sở hữu phát ngôn cá nhân và cấp quyền hạn chế cho hệ thống phân tích nhằm mục đích trả kết quả khảo thí.
-                </p>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-1">
+                    4. Bản Quyền Sở Hữu Trí Tuệ & Dữ Liệu Phát Ngôn
+                  </h4>
+                  <p className="text-xs">
+                    Toàn bộ thuật toán, bộ đề thi, giao diện và cấu trúc chẩn đoán thuộc quyền sở hữu trí tuệ của Classnia AI. Bạn giữ quyền đối với giọng nói cá nhân và cấp quyền phân tích âm học giới hạn cho nền tảng nhằm phục vụ trả điểm bài thi.
+                  </p>
+                </div>
               </div>
             </>
           ) : (
             <>
-              <div className="p-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-emerald-900 dark:text-emerald-200 text-xs">
-                <strong>Cam kết quyền riêng tư:</strong> Chúng tôi bảo vệ tuyệt đối bản ghi âm của bạn. Dữ liệu giọng nói KHÔNG BAO GIỜ bị bán cho bên thứ ba và KHÔNG dùng để huấn luyện mô hình AI công khai khi chưa có sự đồng ý.
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-200 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <span>Tuân Thủ Nghị Định 13/2023/NĐ-CP</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-emerald-900/90 dark:text-emerald-200/90">
+                  Classnia AI thực thi đầy đủ 8 quyền và 3 nghĩa vụ của Chủ thể dữ liệu, bảo vệ tối đa dữ liệu nhạy cảm âm thanh và sinh trắc học giọng nói.
+                </p>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  1. Dữ Liệu Chúng Tôi Thu Thập
-                </h4>
-                <p>
-                  Bao gồm: Email, tên hiển thị, mục tiêu cấp độ HSK; file ghi âm âm thanh micro trong bài thi; dữ liệu trích xuất cao độ F0, nhịp điệu và văn bản nhận dạng tiếng Trung.
-                </p>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-1">
+                    1. Cam Kết Không Bán Dữ Liệu & Không Huấn Luyện AI Mở
+                  </h4>
+                  <p className="text-xs">
+                    Chúng tôi cam kết <strong>không bao giờ bán, cho thuê hoặc chuyển giao bản ghi âm giọng nói của bạn cho các bên thứ ba quảng cáo</strong>. Luồng âm thanh chỉ dùng suy luận (inference) trực tiếp và không đưa vào tập dữ liệu công khai (Zero Public Training).
+                  </p>
+                </div>
 
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  2. Mục Đích Sử Dụng Dữ Liệu
-                </h4>
-                <p>
-                  Chỉ phục vụ việc chẩn đoán lỗi phát âm thanh điệu, tính toán điểm 7 chiều, hiển thị biểu đồ tiến bộ học tập và cung cấp phản hồi của Giám khảo AI.
-                </p>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-1">
+                    2. Tiêu Chuẩn Bảo Mật Kỹ Thuật Đa Tầng
+                  </h4>
+                  <p className="text-xs">
+                    Âm thanh truyền tải qua micro được mã hóa trực tiếp bằng giao thức TLS 1.3 và lưu trữ máy chủ với chuẩn AES-256. Dữ liệu phân quyền độc lập theo mã người dùng duy nhất (Tenant Isolation).
+                  </p>
+                </div>
 
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  3. Tiêu Chuẩn Bảo Mật & Mã Hóa
-                </h4>
-                <p>
-                  Dữ liệu truyền tải được mã hóa TLS 1.3 và lưu trữ an toàn với cơ chế phân quyền bảo mật nghiêm ngặt. Chỉ bạn và giảng viên phụ trách lớp học của bạn mới có quyền xem báo cáo chi tiết.
-                </p>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-1">
+                    3. 8 Quyền Luật Định & Quyền Xóa Vĩnh Viễn
+                  </h4>
+                  <p className="text-xs">
+                    Bạn có toàn quyền truy cập, xem lại, rút lại sự đồng ý hoặc yêu cầu tiêu hủy hoàn toàn bản ghi âm và tài khoản bất kỳ lúc nào qua Trung Tâm Hỗ Trợ. Thời hạn xử lý xóa bỏ vĩnh viễn không quá 72 giờ làm việc.
+                  </p>
+                </div>
 
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  4. Quyền Yêu Cầu Xóa Dữ Liệu
-                </h4>
-                <p>
-                  Bạn có toàn quyền xóa lịch sử khảo thí, từng bản ghi âm bài nói hoặc yêu cầu hủy vĩnh viễn tài khoản trong mục Hồ sơ & Cài đặt.
-                </p>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-1">
+                    4. Bảo Vệ Người Học Dưới 16 Tuổi
+                  </h4>
+                  <p className="text-xs">
+                    Người học dưới 16 tuổi tham gia thi thử cần có sự đồng thuận của cha mẹ hoặc người giám hộ hợp pháp theo Điều 20 Nghị định 13/2023/NĐ-CP.
+                  </p>
+                </div>
               </div>
             </>
           )}
@@ -134,7 +155,7 @@ export function LegalModal({ isOpen, type, onClose, onAccept }: LegalModalProps)
             target="_blank"
             className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1.5"
           >
-            <span>Đọc toàn bộ văn bản chi tiết</span>
+            <span>Đọc toàn bộ văn bản pháp lý chi tiết</span>
             <ExternalLink className="h-3.5 w-3.5" />
           </Link>
 
