@@ -368,20 +368,15 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
                           : "border-slate-200 dark:border-slate-800 hover:border-rose-300 dark:hover:border-rose-700 bg-white dark:bg-slate-900"
                       }`}
                     >
-                      {/* Top row: Level + Badge */}
+                      {/* Top row: Level & Selection Indicator */}
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-sm font-black tracking-tight ${
-                              isSelected ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"
-                            }`}
-                          >
-                            {card.level}
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${card.badgeBg}`}>
-                            {card.cefr}
-                          </span>
-                        </div>
+                        <span
+                          className={`text-sm font-black tracking-tight ${
+                            isSelected ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"
+                          }`}
+                        >
+                          {card.level}
+                        </span>
 
                         {isSelected ? (
                           <CheckCircle2 className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
@@ -390,12 +385,7 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
                         )}
                       </div>
 
-                      {/* Hanzi & Vietnamese Subtitle */}
-                      <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
-                        {card.zh}
-                      </div>
-
-                      {/* Vocabulary pill */}
+                      {/* Vocabulary count */}
                       <div className="text-[11px] font-bold text-rose-600/90 dark:text-rose-400 mb-2">
                         {card.words}
                       </div>
@@ -691,7 +681,7 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
                   {selectedHskCard.title}
                 </div>
                 <div className="text-xs text-slate-600 dark:text-slate-300">
-                  {selectedHskCard.words} · Khung CEFR {selectedHskCard.cefr}
+                  {selectedHskCard.words}
                 </div>
               </div>
 

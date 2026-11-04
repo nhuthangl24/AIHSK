@@ -1,4 +1,7 @@
-import { prisma, isPrismaAvailable } from "@/lib/db/prisma";
+import { getFirestoreDb } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+let cachedAIConfig: LLMConfig | null = null;
 
 export interface LLMConfig {
   providerName: string; // "hhtech" | "openai" | "anthropic" | "deepseek" | "custom"
@@ -93,32 +96,32 @@ export class AIClient {
    * Retrieves the current active LLM configuration from the database or environment variables.
    */
   static async getActiveConfig(): Promise<LLMConfig> {
-    try {
-      if (await isPrismaAvailable()) {
-        const dbConfig = await prisma.aIProviderConfiguration.findFirst({
-          where: {
-            providerType: "LLM",
-            isEnabled: true,
-            isDefault: true,
-          },
-        });
+    if (cachedAIConfig) {
+      return cachedAIConfig;
+    }
 
-        if (dbConfig) {
-          const json = (dbConfig.configJson as Record<string, any>) || {};
-          return {
-            providerName: dbConfig.providerName || "hhtech",
-            baseUrl: json.baseUrl || "https://hhtechapi.net/v1",
-            apiKey: json.apiKey || process.env.HHTECH_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "",
-            modelId: dbConfig.modelId || "claude-sonnet-4.6",
-            temperature: typeof json.temperature === "number" ? json.temperature : 0.7,
-            isEnabled: dbConfig.isEnabled,
-            isDefault: dbConfig.isDefault,
-            notes: json.notes || "Configured via Classnia Admin Panel",
+    try {
+      const db = getFirestoreDb();
+      if (db) {
+        const docRef = doc(db, "settings", "ai_config");
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          cachedAIConfig = {
+            providerName: data.providerName || "hhtech",
+            baseUrl: data.baseUrl || "https://hhtechapi.net/v1",
+            apiKey: data.apiKey || process.env.HHTECH_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "",
+            modelId: data.modelId || "claude-sonnet-4.6",
+            temperature: typeof data.temperature === "number" ? data.temperature : 0.7,
+            isEnabled: data.isEnabled !== false,
+            isDefault: true,
+            notes: data.notes || "Configured via Firestore",
           };
+          return cachedAIConfig;
         }
       }
     } catch {
-      // Could not query AIProviderConfiguration from DB, falling back to ENV variables
+      // Firestore query skipped, proceed to ENV fallback
     }
 
     // Default fallback from environment variables
@@ -137,7 +140,7 @@ export class AIClient {
       process.env.AI_DEFAULT_MODEL ||
       "claude-haiku-4.5";
 
-    return {
+    cachedAIConfig = {
       providerName: process.env.AI_PROVIDER || (apiKey.startsWith("ark-") ? "hhtech" : "openai"),
       baseUrl,
       apiKey,
@@ -147,10 +150,11 @@ export class AIClient {
       isDefault: true,
       notes: "Default environment variable configuration",
     };
+    return cachedAIConfig;
   }
 
   /**
-   * Saves or updates the primary LLM configuration in the database.
+   * Saves or updates the primary LLM configuration in memory and Firestore.
    */
   static async saveConfig(config: {
     providerName: string;
@@ -162,54 +166,42 @@ export class AIClient {
     notes?: string;
     updatedById?: string;
   }) {
-    // Check existing
-    const existing = await prisma.aIProviderConfiguration.findFirst({
-      where: {
-        providerType: "LLM",
-        isDefault: true,
-      },
-    });
+    const current = await this.getActiveConfig();
+    const finalApiKey = config.apiKey ? config.apiKey.trim() : current.apiKey || "";
+    const cleanBaseUrl = (config.baseUrl || "https://hhtechapi.net/v1").trim().replace(/\/+$/, "");
 
-    const oldJson = (existing?.configJson as Record<string, any>) || {};
-    // If no new apiKey provided, keep existing
-    const finalApiKey = config.apiKey ? config.apiKey.trim() : oldJson.apiKey || "";
-
-    const cleanBaseUrl = (config.baseUrl || "https://hhtechapi.net/v1")
-      .trim()
-      .replace(/\/+$/, "");
-
-    const newConfigJson = {
-      ...oldJson,
+    cachedAIConfig = {
+      providerName: config.providerName || "hhtech",
       baseUrl: cleanBaseUrl,
       apiKey: finalApiKey,
+      modelId: config.modelId || "claude-sonnet-4.6",
       temperature: config.temperature ?? 0.7,
+      isEnabled: config.isEnabled ?? true,
+      isDefault: true,
       notes: config.notes ?? "Updated via Admin AI Hub",
     };
 
-    if (existing) {
-      return await prisma.aIProviderConfiguration.update({
-        where: { id: existing.id },
-        data: {
-          providerName: config.providerName || "hhtech",
-          modelId: config.modelId || "claude-sonnet-4.6",
-          configJson: newConfigJson,
-          isEnabled: config.isEnabled ?? true,
-          updatedById: config.updatedById,
-        },
-      });
+    try {
+      const db = getFirestoreDb();
+      if (db) {
+        const docRef = doc(db, "settings", "ai_config");
+        await setDoc(docRef, {
+          ...cachedAIConfig,
+          updatedAt: new Date().toISOString(),
+          updatedById: config.updatedById || null,
+        }, { merge: true });
+      }
+    } catch (e) {
+      console.warn("Could not persist AI config to Firestore:", e);
     }
 
-    return await prisma.aIProviderConfiguration.create({
-      data: {
-        providerType: "LLM",
-        providerName: config.providerName || "hhtech",
-        modelId: config.modelId || "claude-sonnet-4.6",
-        configJson: newConfigJson,
-        isEnabled: config.isEnabled ?? true,
-        isDefault: true,
-        updatedById: config.updatedById,
-      },
-    });
+    return {
+      id: "ai_config",
+      providerName: cachedAIConfig.providerName,
+      modelId: cachedAIConfig.modelId,
+      configJson: cachedAIConfig,
+      isEnabled: cachedAIConfig.isEnabled,
+    };
   }
 
   /**
