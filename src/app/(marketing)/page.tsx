@@ -1,37 +1,23 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+export const dynamic = "force-dynamic";
 
-export default function HomePage() {
-  const router = useRouter();
+export default async function HomePage() {
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    user = null;
+  }
 
-  useEffect(() => {
-    let isMounted = true;
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!isMounted) return;
-        if (data?.user) {
-          router.replace(data.user.role === "ADMIN" ? "/admin" : "/dashboard");
-        } else {
-          router.replace("/login");
-        }
-      })
-      .catch(() => {
-        if (isMounted) router.replace("/login");
-      });
+  if (!user) {
+    redirect("/login");
+  }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [router]);
+  if (user.role === "ADMIN") {
+    redirect("/admin");
+  }
 
-  return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
-      <Loader2 className="h-8 w-8 animate-spin text-rose-600 mb-3" />
-      <p className="text-xs text-slate-500 font-medium">Đang chuyển hướng tới Classnia AI...</p>
-    </div>
-  );
+  redirect("/dashboard");
 }
