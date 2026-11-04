@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { HskkService } from "@/lib/ai/hskk-service";
+import { HskkService, HSKK_TEMPLATES } from "@/lib/ai/hskk-service";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export async function GET(
   req: NextRequest,
@@ -7,14 +8,20 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const session = HskkService.getSession(id);
+    const user = await getCurrentUser().catch(() => null);
+
+    let session = HskkService.getSession(id, user?.userId, user?.email, user?.name);
+    if (!session) {
+      session = HskkService.selfHealSession(id, user?.userId, user?.email, user?.name);
+    }
+
     if (!session) {
       return NextResponse.json(
         { success: false, error: "HSKK session not found" },
         { status: 404 }
       );
     }
-    const template = HskkService.getTemplateById(session.templateId);
+    const template = HskkService.getTemplateById(session.templateId) || HSKK_TEMPLATES[1];
     return NextResponse.json({ success: true, session, template });
   } catch (err: any) {
     return NextResponse.json(

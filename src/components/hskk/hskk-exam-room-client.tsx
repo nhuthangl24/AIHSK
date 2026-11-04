@@ -135,19 +135,45 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
     async function loadData() {
       try {
         setIsLoading(true);
+
+        // Check local backup snapshot
+        let localSnapshot: any = null;
+        try {
+          const cached = localStorage.getItem(`aihsk_hskk_sess_${sessionId}`);
+          if (cached) localSnapshot = JSON.parse(cached);
+        } catch {}
+
         const res = await fetch(`/api/hskk/sessions/${sessionId}`);
         const data = await res.json();
-        if (!data.success || !data.session) {
-          setErrorMsg(data.error || "Không tìm thấy phòng thi HSKK.");
+
+        if (data.success && data.session && data.template) {
+          setSession(data.session);
+          setTemplate(data.template);
+
+          try {
+            localStorage.setItem(`aihsk_hskk_sess_${sessionId}`, JSON.stringify(data.session));
+          } catch {}
+
+          if (data.session.status === "COMPLETED" && data.session.result) {
+            setFinalResult(data.session.result);
+            setPhase("RESULT");
+          }
           return;
         }
-        setSession(data.session);
-        setTemplate(data.template);
 
-        if (data.session.status === "COMPLETED" && data.session.result) {
-          setFinalResult(data.session.result);
-          setPhase("RESULT");
+        // Fallback: If server returned an error but we have local backup snapshot, recover smoothly!
+        if (localSnapshot && localSnapshot.templateId) {
+          setSession(localSnapshot);
+          const tRes = await fetch("/api/hskk/templates");
+          const tData = await tRes.json();
+          if (tData.templates) {
+            const found = tData.templates.find((t: any) => t.id === localSnapshot.templateId) || tData.templates[1];
+            setTemplate(found);
+            return;
+          }
         }
+
+        setErrorMsg(data.error || "Không tìm thấy phòng thi HSKK.");
       } catch (err: any) {
         setErrorMsg(err.message || "Lỗi tải thông tin phòng thi.");
       } finally {
@@ -439,19 +465,39 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
     await hskkAudio.playEndingBeep();
 
     const spokenText = learnerTranscript.trim();
+    const duration = q.speakingTimeSeconds - speakingSecondsLeft;
+
+    const answerPayload = {
+      questionId: q.id,
+      partNumber: q.partNumber,
+      questionIndex: q.questionIndex,
+      transcript: spokenText,
+      durationSeconds: duration,
+      spokenAt: new Date().toISOString(),
+    };
+
+    // Keep session state & localStorage synchronized immediately
+    setSession((prev) => {
+      if (!prev) return prev;
+      const updated = {
+        ...prev,
+        answers: {
+          ...prev.answers,
+          [q.id]: answerPayload,
+        },
+      };
+      try {
+        localStorage.setItem(`aihsk_hskk_sess_${sessionId}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     fetch(`/api/hskk/sessions/${sessionId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         questionId: q.id,
-        answer: {
-          questionId: q.id,
-          partNumber: q.partNumber,
-          questionIndex: q.questionIndex,
-          transcript: spokenText,
-          durationSeconds: q.speakingTimeSeconds - speakingSecondsLeft,
-        },
+        answer: answerPayload,
       }),
     }).catch(() => null);
 
@@ -476,6 +522,8 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
     try {
       const res = await fetch(`/api/hskk/sessions/${sessionId}/submit`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: session?.answers }),
       });
       const data = await res.json();
       if (data.success && data.result) {

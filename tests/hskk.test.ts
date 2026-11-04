@@ -180,5 +180,28 @@ describe("HSKK (汉语水平口语考试) Exam System Unit Tests", () => {
       expect(inStore?.status).toBe("COMPLETED");
       expect(inStore?.result?.overallScore).toBe(result.overallScore);
     });
+
+    it("should self-heal an HSKK session from cold-start or multi-instance serverless without failing with 404", () => {
+      // Simulate a session ID that is NOT in in-memory map or disk
+      const coldStartSessionId = `hskk_sess_hskk-intermediate-std-1__OFFICIAL__1730761234567__test99`;
+      const healed = HskkService.getSession(coldStartSessionId, "user_healed", "healed@test.com", "Học Viên Tự Hồi Phục");
+
+      expect(healed).toBeDefined();
+      expect(healed?.id).toBe(coldStartSessionId);
+      expect(healed?.templateId).toBe("hskk-intermediate-std-1");
+      expect(healed?.mode).toBe("OFFICIAL");
+      expect(healed?.candidateNumber).toMatch(/^ZK\d{6,10}$/);
+
+      // Verify that saving answers works on the healed session
+      const saved = HskkService.saveAnswer(coldStartSessionId, "int_p1_q1", {
+        questionId: "int_p1_q1",
+        partNumber: 1,
+        questionIndex: 1,
+        transcript: "科技让生活更美好。",
+        durationSeconds: 5,
+      });
+      expect(saved).not.toBeNull();
+      expect(saved?.answers["int_p1_q1"].transcript).toBe("科技让生活更美好。");
+    });
   });
 });

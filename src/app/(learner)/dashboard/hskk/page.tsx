@@ -116,6 +116,9 @@ export default function HskkPortalPage() {
       });
       const data = await res.json();
       if (data.success && data.session?.id) {
+        try {
+          localStorage.setItem(`aihsk_hskk_sess_${data.session.id}`, JSON.stringify(data.session));
+        } catch {}
         router.push(`/dashboard/hskk/room/${data.session.id}`);
       } else {
         alert(data.error || "Không thể khởi tạo phòng thi HSKK.");

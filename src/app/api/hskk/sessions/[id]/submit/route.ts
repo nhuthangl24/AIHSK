@@ -7,7 +7,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const result = await HskkService.evaluateSession(id);
+    const body = await req.json().catch(() => ({}));
+    const answers = body?.answers;
+
+    const result = await HskkService.evaluateSession(id, answers);
     if (!result) {
       return NextResponse.json(
         { success: false, error: "Session not found or evaluation failed" },

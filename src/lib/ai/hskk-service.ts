@@ -921,12 +921,16 @@ export class HskkService {
     userName: string;
     templateId: string;
     mode?: "OFFICIAL" | "PRACTICE";
+    sessionId?: string;
   }): HskkSession {
     const template = this.getTemplateById(params.templateId) || HSKK_TEMPLATES[1]; // default Intermediate
 
     const now = new Date();
     const candidateNumber = `ZK${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(1000 + Math.random() * 9000))}`;
-    const sessionId = `hskk_session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const mode = params.mode || "OFFICIAL";
+    const sessionId =
+      params.sessionId ||
+      `hskk_sess_${template.id}__${mode}__${Date.now()}__${Math.random().toString(36).substring(2, 7)}`;
 
     const session: HskkSession = {
       id: sessionId,
@@ -936,7 +940,7 @@ export class HskkService {
       candidateNumber,
       templateId: template.id,
       level: template.level,
-      mode: params.mode || "OFFICIAL",
+      mode,
       status: "IN_PROGRESS",
       startedAt: now.toISOString(),
       currentQuestionIndex: 0,
@@ -969,9 +973,95 @@ export class HskkService {
   }
 
   /**
-   * Get session by ID
+   * Self-heal an HSKK session if cold-start or multi-instance serverless process lost in-memory state
    */
-  static getSession(sessionId: string): HskkSession | null {
+  static selfHealSession(
+    sessionId: string,
+    userId?: string,
+    userEmail?: string,
+    userName?: string
+  ): HskkSession {
+    let templateId = "hskk-intermediate-std-1";
+    let mode: "OFFICIAL" | "PRACTICE" = "OFFICIAL";
+
+    // 1. Check if templateId was encoded with __ delimiter
+    const parts = sessionId.split("__");
+    if (parts.length >= 2) {
+      const candidateTemplateId = parts[0].replace(/^hskk_sess_/, "").replace(/^hskk_session_/, "");
+      if (this.getTemplateById(candidateTemplateId)) {
+        templateId = candidateTemplateId;
+      }
+      if (parts[1]?.toUpperCase() === "PRACTICE") {
+        mode = "PRACTICE";
+      }
+    } else {
+      // Fallback heuristics from ID strings
+      if (sessionId.includes("primary") || sessionId.includes("PRIMARY")) {
+        templateId = "hskk-primary-std-1";
+      } else if (sessionId.includes("advanced") || sessionId.includes("ADVANCED")) {
+        templateId = "hskk-advanced-std-1";
+      } else if (sessionId.includes("intermediate") || sessionId.includes("INTERMEDIATE")) {
+        templateId = "hskk-intermediate-std-1";
+      }
+
+      if (sessionId.includes("PRACTICE") || sessionId.includes("practice")) {
+        mode = "PRACTICE";
+      }
+    }
+
+    const template = this.getTemplateById(templateId) || HSKK_TEMPLATES[1];
+    const now = new Date();
+    const candidateNumber = `ZK${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(1000 + Math.random() * 9000))}`;
+
+    const session: HskkSession = {
+      id: sessionId,
+      userId: userId || "guest_user",
+      userEmail: userEmail || "learner@classnia.id.vn",
+      userName: userName || "Học Viên HSKK",
+      candidateNumber,
+      templateId: template.id,
+      level: template.level,
+      mode,
+      status: "IN_PROGRESS",
+      startedAt: now.toISOString(),
+      currentQuestionIndex: 0,
+      answers: {},
+    };
+
+    activeHskkSessions.set(sessionId, session);
+
+    try {
+      assessmentStore.saveSession({
+        id: sessionId,
+        userId: session.userId,
+        userEmail: session.userEmail,
+        templateId: session.templateId,
+        status: "IN_PROGRESS",
+        startedAt: session.startedAt,
+        template: {
+          id: template.id,
+          title: template.title,
+          targetLevel: template.hskEquivalent,
+          description: template.description,
+        } as any,
+        metadata: {
+          hskkSession: session,
+        },
+      } as any);
+    } catch {}
+
+    return session;
+  }
+
+  /**
+   * Get session by ID with multi-tier fallback and serverless self-healing
+   */
+  static getSession(
+    sessionId: string,
+    userId?: string,
+    userEmail?: string,
+    userName?: string
+  ): HskkSession | null {
     let session = activeHskkSessions.get(sessionId);
     if (!session) {
       try {
@@ -982,19 +1072,32 @@ export class HskkService {
         }
       } catch {}
     }
+
+    // Auto-heal any HSKK session ID pattern so the user never gets locked out with 404
+    if (
+      !session &&
+      (sessionId.startsWith("hskk_session_") ||
+        sessionId.startsWith("hskk_sess_") ||
+        sessionId.startsWith("hskk_"))
+    ) {
+      session = this.selfHealSession(sessionId, userId, userEmail, userName);
+    }
+
     return session || null;
   }
 
   /**
-   * Save a single question's answer
+   * Save a single question's answer with self-healing persistence
    */
   static saveAnswer(
     sessionId: string,
     questionId: string,
     answer: Omit<HskkCandidateAnswer, "spokenAt">
   ): HskkSession | null {
-    const session = this.getSession(sessionId);
-    if (!session) return null;
+    let session = this.getSession(sessionId);
+    if (!session) {
+      session = this.selfHealSession(sessionId);
+    }
 
     session.answers[questionId] = {
       ...answer,
@@ -1020,9 +1123,21 @@ export class HskkService {
   /**
    * Evaluate complete HSKK Exam Session using Official CTI Rubric & AI
    */
-  static async evaluateSession(sessionId: string): Promise<HskkResult | null> {
-    const session = this.getSession(sessionId);
-    if (!session) return null;
+  static async evaluateSession(
+    sessionId: string,
+    fallbackAnswers?: Record<string, any>
+  ): Promise<HskkResult | null> {
+    let session = this.getSession(sessionId);
+    if (!session) {
+      session = this.selfHealSession(sessionId);
+    }
+
+    if (fallbackAnswers && typeof fallbackAnswers === "object") {
+      session.answers = {
+        ...session.answers,
+        ...fallbackAnswers,
+      };
+    }
 
     const template = this.getTemplateById(session.templateId) || HSKK_TEMPLATES[1];
 
