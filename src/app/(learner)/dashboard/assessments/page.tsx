@@ -21,6 +21,8 @@ import {
   Flame,
   Search,
   MessageCircle,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 interface AssessmentTemplate {
@@ -135,6 +137,7 @@ export default function AssessmentSelectionPage() {
   const [customLevel, setCustomLevel] = useState("HSK 3");
   const [isStartingCustom, setIsStartingCustom] = useState(false);
   const [activePresetLoading, setActivePresetLoading] = useState<string | null>(null);
+  const [errorModalMsg, setErrorModalMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/assessments")
@@ -175,7 +178,7 @@ export default function AssessmentSelectionPage() {
         err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
           ? "Máy chủ đang khởi động hoặc gián đoạn kết nối. Vui lòng bấm thử lại."
           : err?.message || "Khởi động phòng thi thất bại.";
-      alert(friendlyMsg);
+      setErrorModalMsg(friendlyMsg);
       setStartingId(null);
     }
   };
@@ -186,7 +189,7 @@ export default function AssessmentSelectionPage() {
     const finalLevel = levelToUse || customLevel;
 
     if (!finalTopic) {
-      alert("Vui lòng nhập chủ đề bạn muốn luyện tập hoặc chọn từ danh sách gợi ý.");
+      setErrorModalMsg("Vui lòng nhập chủ đề bạn muốn luyện tập hoặc chọn từ danh sách gợi ý.");
       return;
     }
 
@@ -223,7 +226,7 @@ export default function AssessmentSelectionPage() {
         err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
           ? "Máy chủ đang khởi động hoặc gián đoạn kết nối. Vui lòng bấm thử lại."
           : err?.message || "Khởi tạo phòng thi tự do thất bại.";
-      alert(friendlyMsg);
+      setErrorModalMsg(friendlyMsg);
       setIsStartingCustom(false);
       setActivePresetLoading(null);
     }
@@ -564,6 +567,42 @@ export default function AssessmentSelectionPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modern Notice / Error Modal (Replacing Native Browser Alert) */}
+      {errorModalMsg && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-sm w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setErrorModalMsg(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">Thông Báo Phòng Thi</h4>
+                <p className="text-xs text-slate-500">Khảo thí khẩu ngữ AI</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+              {errorModalMsg}
+            </p>
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                size="sm"
+                onClick={() => setErrorModalMsg(null)}
+                className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs h-8 px-4 font-bold"
+              >
+                Đã hiểu
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

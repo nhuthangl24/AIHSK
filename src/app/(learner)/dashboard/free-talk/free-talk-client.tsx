@@ -306,10 +306,15 @@ export default function FreeTalkClient() {
     }
   };
 
+  const [showRestartModal, setShowRestartModal] = useState(false);
+
   const handleRestartChat = () => {
-    if (confirm("Bắt đầu cuộc trò chuyện mới từ đầu?")) {
-      handleSelectPersona(selectedPersonaId);
-    }
+    setShowRestartModal(true);
+  };
+
+  const handleConfirmRestart = () => {
+    handleSelectPersona(selectedPersonaId);
+    setShowRestartModal(false);
   };
 
   return (
@@ -1079,6 +1084,42 @@ export default function FreeTalkClient() {
                   Về Dashboard
                 </Button>
               </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Restart Chat Confirmation Modal */}
+      {showRestartModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-sm w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <RotateCcw className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">Làm Mới Cuộc Trò Chuyện?</h4>
+                <p className="text-xs text-slate-500">Bắt đầu lại cuộc hội thoại từ đầu với gia sư ảo.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Biên bản hội thoại hiện tại sẽ được làm mới và các lượt nói vừa rồi sẽ không thể khôi phục.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowRestartModal(false)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRestart}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-colors"
+              >
+                Làm mới ngay
+              </button>
             </div>
           </div>
         </div>
