@@ -175,7 +175,15 @@ export class FirebaseDb {
         { merge: true }
       );
       return true;
-    } catch (e) {
+    } catch (e: any) {
+      if (
+        e?.code === "permission-denied" ||
+        e?.message?.includes("PERMISSION_DENIED") ||
+        e?.message?.includes("Missing or insufficient permissions")
+      ) {
+        // Expected when server-side Node process writes without Firebase Admin Service Account credentials.
+        return false;
+      }
       console.warn("FirebaseDb saveSession note:", e);
       return false;
     }
