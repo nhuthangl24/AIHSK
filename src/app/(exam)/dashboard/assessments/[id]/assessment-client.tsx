@@ -27,6 +27,11 @@ import {
   Check,
 } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
+import {
+  getSystemAudioSettings,
+  saveSystemAudioSettings,
+  getBestChineseVoice,
+} from "@/lib/audio/system-audio-settings";
 
 interface Turn {
   id?: string;
@@ -134,9 +139,17 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const elapsedTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load Voices for TTS
+  // Load Voices and System Audio Settings for TTS
   useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (typeof window === "undefined") return;
+
+    const sysSettings = getSystemAudioSettings();
+    setPlaybackSpeed(sysSettings.playbackSpeed);
+    setSelectedVoiceName(sysSettings.voiceName);
+    setRecognitionLang(sysSettings.recognitionLang);
+    setShowPinyin(sysSettings.showPinyin);
+
+    if (!("speechSynthesis" in window)) return;
 
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices();
@@ -151,14 +164,9 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       );
       setAvailableVoices(zhVoices);
 
-      const preferred =
-        zhVoices.find((v) => v.name.includes("Google") && v.name.includes("國語")) ||
-        zhVoices.find((v) => v.lang === "zh-TW") ||
-        zhVoices.find((v) => v.lang === "zh-CN") ||
-        zhVoices[0];
-
-      if (preferred) {
-        setSelectedVoiceName(preferred.name);
+      const target = getBestChineseVoice(zhVoices, sysSettings.voiceName);
+      if (target) {
+        setSelectedVoiceName(target.name);
       }
     };
 
@@ -843,6 +851,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                             onClick={() => {
                               const next = playbackSpeed === 0.95 ? 0.85 : playbackSpeed === 0.85 ? 1.05 : 0.95;
                               setPlaybackSpeed(next);
+                              saveSystemAudioSettings({ playbackSpeed: next });
                               speakExaminerText(turn.textContent, next);
                             }}
                             className="h-6 px-1.5 text-[10px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 rounded-md transition-colors"
@@ -854,7 +863,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
                         <button
                           type="button"
-                          onClick={() => setShowPinyin(!showPinyin)}
+                          onClick={() => {
+                            const next = !showPinyin;
+                            setShowPinyin(next);
+                            saveSystemAudioSettings({ showPinyin: next });
+                          }}
                           className="h-6 px-1.5 sm:px-2 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1"
                           title="Bật/Tắt phiên âm Pinyin"
                         >
@@ -1304,7 +1317,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 </label>
                 <select
                   value={selectedVoiceName}
-                  onChange={(e) => setSelectedVoiceName(e.target.value)}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setSelectedVoiceName(name);
+                    saveSystemAudioSettings({ voiceName: name });
+                  }}
                   className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500"
                 >
                   {availableVoices.map((v) => (
@@ -1321,7 +1338,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 </label>
                 <select
                   value={recognitionLang}
-                  onChange={(e) => setRecognitionLang(e.target.value)}
+                  onChange={(e) => {
+                    const lang = e.target.value;
+                    setRecognitionLang(lang);
+                    saveSystemAudioSettings({ recognitionLang: lang });
+                  }}
                   className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500"
                 >
                   <option value="zh-TW">Tiếng Trung Chuẩn (Phổ thông / zh-TW)</option>

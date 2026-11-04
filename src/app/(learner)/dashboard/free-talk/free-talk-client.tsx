@@ -28,6 +28,12 @@ import {
   FreeTalkPersona,
   FreeTalkEvaluation,
 } from "@/lib/ai/free-talk-service";
+import {
+  getSystemAudioSettings,
+  saveSystemAudioSettings,
+  speakWithSystemSettings,
+  stopSystemSpeech,
+} from "@/lib/audio/system-audio-settings";
 
 const HSK_LEVELS = [
   "Tự do (Mọi trình độ)",
@@ -109,42 +115,18 @@ export default function FreeTalkClient() {
     stopTTS();
   };
 
-  // Text-to-speech audio
+  // Text-to-speech audio (Powered by System Audio Settings)
   const speakText = (text: string, speedOverride?: number) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
-
-    const cleanText = text
-      .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]/gu, "")
-      .replace(/[\(\[（【].*?[\)\]）】]/g, "")
-      .trim();
-
-    if (!cleanText) return;
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "zh-CN";
-    utterance.rate = speedOverride || playbackSpeed;
-    utterance.pitch = 1.0;
-
-    const voices = window.speechSynthesis.getVoices();
-    const zhVoice =
-      voices.find((v) => v.name.includes("Google") && v.name.includes("國語")) ||
-      voices.find((v) => v.lang.startsWith("zh")) ||
-      voices[0];
-    if (zhVoice) utterance.voice = zhVoice;
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
+    speakWithSystemSettings(text, {
+      speedOverride: speedOverride || playbackSpeed,
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
   };
 
   const stopTTS = () => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    stopSystemSpeech();
     setIsSpeaking(false);
   };
 
