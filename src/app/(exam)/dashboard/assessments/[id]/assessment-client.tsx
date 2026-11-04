@@ -556,7 +556,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
           <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
             Đang vào phòng thi khẩu ngữ...
           </h3>
-          <p className="text-xs text-slate-500">Khởi tạo phòng khảo thí Giám khảo AI</p>
+          <p className="text-xs text-slate-500">Khởi tạo phòng khảo thí Giám khảo HSK</p>
         </div>
       </div>
     );
@@ -588,11 +588,20 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     );
   }
 
+  const getStageTotalQuestions = (stage: number) => {
+    if (stage === 1) return 2;
+    if (stage === 2) return 3;
+    if (stage === 3) return 3;
+    if (stage === 4) return 3;
+    return 1;
+  };
+
   const currentStageInfo = STAGES.find((s) => s.num === session.currentStage) || STAGES[0];
   const stagePercent = Math.round((session.currentStage / 5) * 100);
   const currentStageTurns = session.turns.filter((t) => t.stage === session.currentStage);
   const currentStageExaminerTurns = currentStageTurns.filter((t) => t.speaker === "EXAMINER").length;
-  const currentTurnInStage = Math.min(Math.max(currentStageExaminerTurns, 1), 2);
+  const totalQuestionsInCurrentStage = getStageTotalQuestions(session.currentStage);
+  const currentTurnInStage = Math.min(Math.max(currentStageExaminerTurns, 1), totalQuestionsInCurrentStage);
 
   return (
     <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-40 flex flex-col h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-none m-0 p-0">
@@ -690,7 +699,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
               <span className="text-slate-400 font-normal">({currentStageInfo.zh})</span>
             </div>
             <span className="text-[10px] font-semibold text-slate-500 shrink-0 ml-2">
-              Chặng {session.currentStage}/5 &bull; {session.currentStage === 5 ? "Tổng kết" : `Câu ${currentTurnInStage}/2`}
+              Chặng {session.currentStage}/5 &bull; {session.currentStage === 5 ? "Tổng kết" : `Câu ${currentTurnInStage}/${totalQuestionsInCurrentStage}`}
             </span>
           </div>
           {/* Visual progress bar line */}
@@ -738,7 +747,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                   {isCurrent && (
                     <span className="text-[9px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
-                      {session.currentStage === 5 ? "Tự đánh giá & Tổng kết" : `Câu ${currentTurnInStage}/2`}
+                      {session.currentStage === 5 ? "Tự đánh giá & Tổng kết" : `Câu ${currentTurnInStage}/${totalQuestionsInCurrentStage}`}
                     </span>
                   )}
                   {isPassed && (
@@ -809,10 +818,15 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                     <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-2">
                       <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                         <span className="font-bold text-xs text-slate-900 dark:text-white">
-                          Giám khảo AI
+                          Giám khảo HSK
                         </span>
                         <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200/80 dark:border-rose-900/60">
-                          Câu {session.turns.slice(0, i + 1).filter((t) => t.stage === turn.stage && t.speaker === "EXAMINER").length}/2
+                          {turn.stage === 5
+                            ? "Tổng kết"
+                            : `Câu ${Math.min(
+                                session.turns.slice(0, i + 1).filter((t) => t.stage === turn.stage && t.speaker === "EXAMINER").length,
+                                getStageTotalQuestions(turn.stage)
+                              )}/${getStageTotalQuestions(turn.stage)}`}
                         </span>
                         {isLatest && (
                           <span className="hidden sm:inline-flex text-[10px] font-semibold text-rose-600 bg-rose-100/70 dark:bg-rose-900/40 px-2 py-0.5 rounded-full animate-pulse">
@@ -935,7 +949,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-bold text-xs text-slate-900 dark:text-white">
-                    Giám khảo AI
+                    Giám khảo HSK
                   </span>
                   <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                     HSK Examiner
@@ -1286,7 +1300,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             <div className="space-y-4 text-xs">
               <div>
                 <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
-                  Giọng đọc Giám khảo AI:
+                  Giọng đọc Giám khảo HSK:
                 </label>
                 <select
                   value={selectedVoiceName}

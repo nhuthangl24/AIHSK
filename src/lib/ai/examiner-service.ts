@@ -93,22 +93,22 @@ export class ExaminerService {
   ): Promise<NextTurnResult> {
     const learnerTurnCount = turns.filter((t) => t.speaker === "LEARNER").length;
 
-    // Enforce standardized 2-turn pacing per stage
+    // 12-turn structured oral assessment progression (2 + 3 + 3 + 3 + 1)
     let computedStage = 1;
-    if (learnerTurnCount <= 1) computedStage = 1;
-    else if (learnerTurnCount <= 3) computedStage = 2;
-    else if (learnerTurnCount <= 5) computedStage = 3;
-    else if (learnerTurnCount <= 7) computedStage = 4;
+    if (learnerTurnCount < 2) computedStage = 1;
+    else if (learnerTurnCount < 5) computedStage = 2;
+    else if (learnerTurnCount < 8) computedStage = 3;
+    else if (learnerTurnCount < 11) computedStage = 4;
     else computedStage = 5;
 
-    const isCompleted = learnerTurnCount >= 9 && computedStage === 5;
+    const isCompleted = learnerTurnCount >= 12 && computedStage === 5;
 
     const stageGuidelines: Record<number, string> = {
-      1: "问候导入：简短欢迎考生，确认声音清晰，并引导考生用中文做简短自我介绍。",
-      2: "日常交流：围绕考试主题，询问考生的日常生活习惯、日常喜好或近期一段具体经历。",
-      3: "主题阐述：就该主题提出核心探讨问题，请考生陈述主要观点，并给出理由与具体例子。",
-      4: "深入追问：就考生的观点提出深入追问、反方视角或两难情景，考察思辨与逻辑表达。",
-      5: "考试总结：简短总结并给予正面鼓励，宣布考试圆满结束，致谢道别。",
+      1: "问候导入（共2题）：简短欢迎考生，确认声音清晰，引导考生用中文做自我介绍并询问学习中文的背景与动机。",
+      2: "日常交流（共3题）：围绕考试主题，循序渐进询问考生的日常生活习惯、最近一次具体经历，以及个人感受或与亲友的互动。",
+      3: "主题阐述（共3题）：就该主题提出核心探讨问题，请考生陈述主要立场与论点，深入阐述理由、优缺点分析及具体例证。",
+      4: "深入追问（共3题）：就考生的观点提出反思性追问、反方观点或突发两难情境，考察高阶思辨逻辑与复杂交际解决能力。",
+      5: "考试总结（共1-2题）：引导考生对整场口语表现做元认知自我评估，考官给予真诚正面鼓励，宣布考试圆满结束。",
     };
 
     const dialogueMessages: ChatMessage[] = turns.map((t) => ({
@@ -269,7 +269,7 @@ export class ExaminerService {
       };
     }
 
-    // Stage 2 Turn 1: Daily life routines
+    // Stage 2 Turn 1: Daily life routines (Question 1/3)
     if (learnerTurns === 2) {
       if (isFood) {
         return {
@@ -298,7 +298,7 @@ export class ExaminerService {
       };
     }
 
-    // Stage 2 Turn 2: Specific narrative story
+    // Stage 2 Turn 2: Specific narrative story (Question 2/3)
     if (learnerTurns === 3) {
       if (isFood) {
         return {
@@ -318,28 +318,48 @@ export class ExaminerService {
       };
     }
 
-    // Stage 3 Turn 1: Topic Presentation
+    // Stage 2 Turn 3: Personal insights & reflections (Question 3/3)
     if (learnerTurns === 4) {
       if (isFood) {
         return {
+          stage: 2,
+          examinerResponse: "这段经历真让人回味无穷！如果让你向第一次来旅游的外国朋友推荐一道家乡必吃的美食，你会推荐什么？你会怎么向他形容这道菜的独特魅力？",
+          pinyin: "Zhè duàn jīnglì zhēn ràng rén huíwèi wúqióng! Rúguǒ ràng nǐ xiàng dì yī cì lái lǚyóu de wàiguó péngyou tuījiàn yí dào jiāxiāng bì chī de měishí, nǐ huì tuījiàn shénme? Nǐ huì zěnme xiàng tā xíngróng zhè dào cài de dútè mèilì?",
+          isCompleted: false,
+          pedagogicalObservation: "Stage 2 Turn 3: Cultural recommendation and descriptive elaboration.",
+        };
+      }
+      return {
+        stage: 2,
+        examinerResponse: `聊得真不错！结合这些日常经历，你觉得“${topic}”对你个人的心情或者日常生活状态带来了哪些最直接的改变？`,
+        pinyin: `Liáo de zhēn búcuò! Jiéhé zhèxiē rìcháng jīnglì, nǐ juéde \"${topic}\" duì nǐ gèrén de xīnqíng huòzhě rìcháng shēnghuó zhuàngtài dài lái le nǎxiē zuì zhíjiē de gǎibiàn?`,
+        isCompleted: false,
+        pedagogicalObservation: "Stage 2 Turn 3: Reflecting on personal lifestyle impact.",
+      };
+    }
+
+    // Stage 3 Turn 1: Topic Presentation Core Stance (Question 1/3)
+    if (learnerTurns === 5) {
+      if (isFood) {
+        return {
           stage: 3,
-          examinerResponse: "现在我们进入主题阐述环节。有人认为“在餐馆点菜是了解一个国家文化最直接的方式”，也有人觉得现代快餐和外卖更加高效便捷。针对这两种不同的生活方式，你有什么看法？请谈谈你的主要观点和理由。",
-          pinyin: "Xiànzài wǒmen jìnrù zhǔtí chǎnshù huánjié. Yǒurén rènwéi 'zài cānguǎn diǎncài shì liǎojiě yí ge guójiā wénhuà zuì zhíjiē de fāngshì', yě yǒurén juéde xiàndài kuàicān hé wàimài gèngjiā gāoxiào biànjié. Zhēnduì zhè liǎng zhǒng bùtóng de shēnghuó fāngshì, nǐ yǒu shénme kànfǎ? Qǐng tán tán nǐ de zhǔyào guāndiǎn hé lǐyóu.",
+          examinerResponse: "现在我们进入第3阶段：主题阐述环节。有人认为“在餐馆点菜是了解一个国家文化最直接的方式”，也有人觉得现代快餐和外卖更加高效便捷。针对这两种不同的生活方式，你有什么看法？请谈谈你的主要观点和理由。",
+          pinyin: "Xiànzài wǒmen jìnrù dì sān jiēduàn: zhǔtí chǎnshù huánjié. Yǒurén rènwéi 'zài cānguǎn diǎncài shì liǎojiě yí ge guójiā wénhuà zuì zhíjiē de fāngshì', yě yǒurén juéde xiàndài kuàicān hé wàimài gèngjiā gāoxiào biànjié. Zhēnduì zhè liǎng zhǒng bùtóng de shēnghuó fāngshì, nǐ yǒu shénme kànfǎ? Qǐng tán tán nǐ de zhǔyào guāndiǎn hé lǐyóu.",
           isCompleted: false,
           pedagogicalObservation: "Stage 3 Turn 1: Formal thematic stance, comparing cultural dining vs fast food convenience.",
         };
       }
       return {
         stage: 3,
-        examinerResponse: `现在我们进入主题阐述环节。围绕今天的话题“${topic}”，有人认为它给现代生活带来了极大的便利与改变，也有人认为它带来了一些挑战。你持有怎样的看法？请阐明你的立场，并说明理由。`,
-        pinyin: `Xiànzài wǒmen jìnrù zhǔtí chǎnshù huánjié. Wéirào jīntiān de huàtí \"${topic}\", yǒurén rènwéi tā gěi xiàndài shēnghuó dài lái le jídà de biànlì yǔ gǎibiàn, yě yǒurén rènwéi tā dài lái le yìxiē tiǎozhàn. Nǐ chí yǒu zěnyàng de kànfǎ? Qǐng chǎnmíng nǐ de lìchǎng, bìng shuōmíng lǐyóu.`,
+        examinerResponse: `现在我们进入第3阶段：主题阐述环节。围绕今天的话题“${topic}”，有人认为它给现代生活带来了极大的便利与改变，也有人认为它带来了一些挑战。你持有怎样的看法？请阐明你的立场，并说明理由。`,
+        pinyin: `Xiànzài wǒmen jìnrù dì sān jiēduàn: zhǔtí chǎnshù huánjié. Wéirào jīntiān de huàtí \"${topic}\", yǒurén rènwéi tā gěi xiàndài shēnghuó dài lái le jídà de biànlì yǔ gǎibiàn, yě yǒurén rènwéi tā dài lái le yìxiē tiǎozhàn. Nǐ chí yǒu zěnyàng de kànfǎ? Qǐng chǎnmíng nǐ de lìchǎng, bìng shuōmíng lǐyóu.`,
         isCompleted: false,
         pedagogicalObservation: "Stage 3 Turn 1: Structured thematic opinion formulation.",
       };
     }
 
-    // Stage 3 Turn 2: Topic comparison and trade-offs
-    if (learnerTurns === 5) {
+    // Stage 3 Turn 2: In-depth argumentation and reasons (Question 2/3)
+    if (learnerTurns === 6) {
       return {
         stage: 3,
         examinerResponse: "你的观点阐述得很清晰。那么从长远来看，你觉得这种现象对人们的生活方式、健康或者人际关系有哪些深远的影响？你能再举一个具体的例子来论证吗？",
@@ -349,28 +369,39 @@ export class ExaminerService {
       };
     }
 
-    // Stage 4 Turn 1: Probing & Hypothetical Challenge
-    if (learnerTurns === 6) {
+    // Stage 3 Turn 3: Contrast and trade-offs (Question 3/3)
+    if (learnerTurns === 7) {
+      return {
+        stage: 3,
+        examinerResponse: "分析得很有深度。如果要在这种便利与传统价值之间找到一个最佳平衡点，你觉得关键在于什么？",
+        pinyin: "Fēnxī de hěn yǒu shēndù. Rúguǒ yào zài zhè zhǒng biànlì yǔ chuántǒng jiàzhí zhījiān zhǎodào yí ge zuì jiā pínghéng diǎn, nǐ juéde guānjiàn zàiyú shénme?",
+        isCompleted: false,
+        pedagogicalObservation: "Stage 3 Turn 3: Synthesizing balanced perspectives and core criteria.",
+      };
+    }
+
+    // Stage 4 Turn 1: Probing & Hypothetical Challenge (Question 1/3)
+    if (learnerTurns === 8) {
       if (isFood) {
         return {
           stage: 4,
-          examinerResponse: "你说得非常有见地。接下来进入深入追问环节。如果一个外国人刚到中国，完全看不懂中文菜单，而且服务员也不会外语，面对这种情况，你会建议他怎么做？如果点错了菜或者遇到口味不合，又该如何礼貌地沟通？",
-          pinyin: "Nǐ shuō de fēicháng yǒu jiàndì. Jiē xiàlái jìnrù shēnrù zhuīwèn huánjié. Rúguǒ yí ge wàiguó rén gāng dào Zhōngguó, wánquán kàn bù dǒng zhōngwén càidān, érqiě fúwùyuán yě bú huì wàiyǔ, miànduì zhè zhǒng qíngkuàng, nǐ huì jiànyì tā zěnme zuò? Rúguǒ diǎn cuò le cài huòzhě yù dào kǒuwèi bù hé, yòu gāi rúhé lǐmào de gōutōng?",
+          examinerResponse: "你说得非常有见地。接下来进入第4阶段：深入追问。如果一个外国人刚到中国，完全看不懂中文菜单，而且服务员也不会外语，面对这种情况，你会建议他怎么做？如果点错了菜或者遇到口味不合，又该如何礼貌地沟通？",
+          pinyin: "Nǐ shuō de fēicháng yǒu jiàndì. Jiē xiàlái jìnrù dì sì jiēduàn: shēnrù zhuīwèn. Rúguǒ yí ge wàiguó rén gāng dào Zhōngguó, wánquán kàn bù dǒng zhōngwén càidān, érqiě fúwùyuán yě bú huì wàiyǔ, miànduì zhè zhǒng qíngkuàng, nǐ huì jiànyì tā zěnme zuò? Rúguǒ diǎn cuò le cài huòzhě yù dào kǒuwèi bù hé, yòu gāi rúhé lǐmào de gōutōng?",
           isCompleted: false,
           pedagogicalObservation: "Stage 4 Turn 1: Hypothetical problem-solving, situational diplomatic communication.",
         };
       }
       return {
         stage: 4,
-        examinerResponse: "你说得非常有见地。接下来进入深入追问环节。如果遇到反对你观点的人，或者出现了大家意料之外的突发情况，你会如何说服对方或者化解矛盾？请谈谈你的应对思路。",
-        pinyin: "Nǐ shuō de fēicháng yǒu jiàndì. Jiē xiàlái jìnrù shēnrù zhuīwèn huánjié. Rúguǒ yù dào fǎnduì nǐ guāndiǎn de rén, huòzhě chūxiàn le dàjiā yìliào zhīwài de tūfā qíngkuàng, nǐ huì rúhé shuōfú duìfāng huòzhě huàjiě máodùn? Qǐng tán tán nǐ de yìngduì sīlù.",
+        examinerResponse: "你说得非常有见地。接下来进入第4阶段：深入追问。如果遇到强烈反对你观点的人，或者出现了意料之外的突发情况，你会如何说服对方或者妥善化解矛盾？请谈谈你的应对思路。",
+        pinyin: "Nǐ shuō de fēicháng yǒu jiàndì. Jiē xiàlái jìnrù dì sì jiēduàn: shēnrù zhuīwèn. Rúguǒ yù dào qiángliè fǎnduì nǐ guāndiǎn de rén, huòzhě chūxiàn le yìliào zhīwài de tūfā qíngkuàng, nǐ huì rúhé shuōfú duìfāng huòzhě tuǒshàn huàjiě máodùn? Qǐng tán tán nǐ de yìngduì sīlù.",
         isCompleted: false,
         pedagogicalObservation: "Stage 4 Turn 1: Handling hypothetical challenges and conflicting viewpoints.",
       };
     }
 
-    // Stage 4 Turn 2: Synthesis & Practical Advice
-    if (learnerTurns === 7) {
+    // Stage 4 Turn 2: Critical dialectics & practical advice (Question 2/3)
+    if (learnerTurns === 9) {
       return {
         stage: 4,
         examinerResponse: "这个解决方法很有建设性。结合你自己的切身体会，针对想要更好地掌握这门技能或适应这种情境的学习者，你最想给他们提出的两条实用建议是什么？",
@@ -380,8 +411,19 @@ export class ExaminerService {
       };
     }
 
-    // Stage 5 Turn 1: Candidate Self-Reflection
-    if (learnerTurns === 8) {
+    // Stage 4 Turn 3: Future Outlook & High-level Synthesis (Question 3/3)
+    if (learnerTurns === 10) {
+      return {
+        stage: 4,
+        examinerResponse: `非常有洞察力。最后，展望未来五到十年，你认为随着人工智能和科技的发展，“${topic}”这一领域会发生哪些颠覆性的变化？我们应当做好怎样的心理准备？`,
+        pinyin: `Fēicháng yǒu dòngchálì. Zuìhòu, zhǎnwàng wèilái wǔ dào shí nián, nǐ rènwéi suízhe réngōng zhìnéng hé kējì de fāzhǎn, \"${topic}\" zhè yī lǐngyù huì fāshēng nǎxiē diānfù xìng de biànhuà? Wǒmen yīngdāng zuò hǎo zěnyàng de xīnlǐ zhǔnbèi?`,
+        isCompleted: false,
+        pedagogicalObservation: "Stage 4 Turn 3: Future outlook and macro-level dialectical synthesis.",
+      };
+    }
+
+    // Stage 5 Turn 1: Candidate Self-Reflection (Question 1/2)
+    if (learnerTurns === 11) {
       return {
         stage: 5,
         examinerResponse: "非常出色！现在我们来到最后的全程总结阶段。回顾今天在5个不同阶段的交流，你觉得自己今天口语发挥得怎么样？在词汇、发音或者表达流利度方面，你有哪些满意或者希望能进一步提高的地方吗？",
@@ -391,7 +433,7 @@ export class ExaminerService {
       };
     }
 
-    // Stage 5 Turn 2: Final Conclusion & Goodbye
+    // Stage 5 Turn 2: Final Conclusion & Goodbye (isCompleted = true)
     return {
       stage: 5,
       examinerResponse: "非常感谢你的真诚分享！今天的华语口语5阶段全真模拟考核到这里就圆满结束了。你在整个交流中表现得非常积极，语言连贯度很高，思路也很清晰。系统目前正在对你全程对话录音进行全面的7维度语言学智能评估，稍后你可以在系统中查阅详细的诊断报告。祝你在中文学习的道路上取得更大的进步，再见！",

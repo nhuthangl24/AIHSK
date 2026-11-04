@@ -979,6 +979,75 @@ export default function FreeTalkClient() {
                       </div>
                     </div>
                   )}
+
+                  {/* Extension Practice Questions Bank (Bộ câu hỏi luyện tập mở rộng sau báo cáo) */}
+                  {evaluationResult.extensionQuestions && evaluationResult.extensionQuestions.length > 0 && (
+                    <div className="space-y-3 pt-2 border-t border-slate-200/80 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5 text-rose-600" />
+                            <span>Bộ Câu Hỏi Luyện Tập Mở Rộng Sau Báo Cáo</span>
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            5 câu hỏi tiếp nối thiết kế riêng theo phong cách của {activePersona.name}:
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {evaluationResult.extensionQuestions.map((q, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 shadow-2xs space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-white text-[10px] font-bold">
+                                {idx + 1}
+                              </span>
+                              <div className="flex items-center gap-1.5 ml-auto">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => speakText(q.zh, 0.95)}
+                                  className="h-6 px-2 text-[10px] text-slate-500 hover:text-rose-600 rounded-md gap-1"
+                                  title="Nghe phát âm câu hỏi"
+                                >
+                                  <Volume2 className="h-3 w-3" />
+                                  <span>Phát âm</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => {
+                                    setInputValue(q.zh);
+                                    setShowSummaryModal(false);
+                                  }}
+                                  className="h-6 px-2.5 text-[10px] bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 rounded-lg font-semibold gap-1"
+                                >
+                                  <MessageSquare className="h-2.5 w-2.5" />
+                                  <span>Hỏi AI ngay</span>
+                                </Button>
+                              </div>
+                            </div>
+
+                            <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                              {q.zh}
+                            </p>
+                            {q.pinyin && (
+                              <p className="text-[11px] text-rose-600 dark:text-rose-400 font-sans">
+                                {q.pinyin}
+                              </p>
+                            )}
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                              Dịch nghĩa: &quot;{q.vi}&quot;
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : null}
             </div>

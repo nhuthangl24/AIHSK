@@ -1,4 +1,5 @@
 import { AIClient, ChatMessage } from "./ai-client";
+import { pinyin } from "pinyin-pro";
 
 export interface FreeTalkMessage {
   role: "user" | "assistant";
@@ -87,6 +88,13 @@ export interface FreeTalkCorrection {
   explanation: string;
 }
 
+export interface FreeTalkExtensionQuestion {
+  zh: string;
+  pinyin: string;
+  vi: string;
+  tip?: string;
+}
+
 export interface FreeTalkEvaluation {
   overallScore: number;
   hskEstimate: string;
@@ -97,6 +105,7 @@ export interface FreeTalkEvaluation {
   strengths: string[];
   improvements: string[];
   corrections: FreeTalkCorrection[];
+  extensionQuestions?: FreeTalkExtensionQuestion[];
 }
 
 export class FreeTalkService {
@@ -344,6 +353,7 @@ EVALUATE AND RETURN STRICT JSON:
               strengths: Array.isArray(parsed.strengths) ? parsed.strengths : ["Phản xạ chủ động và tự tin"],
               improvements: Array.isArray(parsed.improvements) ? parsed.improvements : ["Luyện tập mở rộng câu ghép"],
               corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
+              extensionQuestions: this.generatePersonaExtensionQuestions(persona.id),
             };
           }
         }
@@ -354,6 +364,105 @@ EVALUATE AND RETURN STRICT JSON:
 
     // 2. Calibrated Heuristic Evaluator
     return this.generateHeuristicEvaluation(userMessages, level, persona);
+  }
+
+  /**
+   * Generates 5 curated follow-up challenge questions customized to the active persona.
+   */
+  public static generatePersonaExtensionQuestions(
+    personaId: string = "friendly_peer"
+  ): FreeTalkExtensionQuestion[] {
+    const questionsByPersona: Record<string, { zh: string; vi: string; tip?: string }[]> = {
+      friendly_peer: [
+        {
+          zh: "你平时周末一般喜欢睡懒觉还是早起出门散步？",
+          vi: "Cuối tuần bạn thường thích ngủ nướng hay dậy sớm ra ngoài dạo mát?",
+          tip: "Luyện thói quen sinh hoạt và sở thích cá nhân",
+        },
+        {
+          zh: "最近有没有看到什么特别好看的电影或者电视剧？",
+          vi: "Dạo gần đây bạn có xem bộ phim hay chương trình truyền hình nào hay không?",
+          tip: "Luyện miêu tả nội dung và chia sẻ cảm nghĩ",
+        },
+        {
+          zh: "如果现在给你一张免费机票，你最想立刻飞去哪座城市旅行？",
+          vi: "Nếu giờ tặng bạn một vé máy bay miễn phí, bạn muốn bay ngay tới thành phố nào?",
+          tip: "Mẫu câu giả định: 如果...最想...",
+        },
+        {
+          zh: "你觉得学中文最难的部分是汉字、发音还是听力？",
+          vi: "Bạn thấy phần khó nhất khi học tiếng Trung là chữ Hán, phát âm hay nghe hiểu?",
+          tip: "Luyện so sánh lựa chọn: ...是...还是...",
+        },
+        {
+          zh: "今天和你聊天真开心，下次我们一起聊聊各自的梦想好吗？",
+          vi: "Hôm nay tán gẫu với bạn vui thật đấy, lần sau chúng mình cùng nói về ước mơ nhé?",
+          tip: "Mẫu câu rủ rê thân mật: 下次我们一起...好吗？",
+        },
+      ],
+      gentle_tutor: [
+        {
+          zh: "请用中文跟我分享一下，你每天通常花多少时间练习听力和口语？",
+          vi: "Hãy chia sẻ bằng tiếng Trung, mỗi ngày em thường dành bao nhiêu thời gian luyện nghe nói?",
+          tip: "Luyện diễn đạt thời lượng: 花...时间做...",
+        },
+        {
+          zh: "在日常生活中，你觉得最实用的中文句型是哪一句？",
+          vi: "Trong đời sống thường ngày, em thấy mẫu câu tiếng Trung nào là thực dụng nhất?",
+          tip: "Luyện giải thích lý do thực tế",
+        },
+        {
+          zh: "在学习中文的过程中，遇到记不住的生词时，你有什么好方法吗？",
+          vi: "Trong quá trình học tiếng Trung, khi gặp từ mới khó nhớ, em có phương pháp hay nào?",
+          tip: "Luyện mẫu câu kinh nghiệm: 遇到...时，有...方法",
+        },
+        {
+          zh: "如果让你用三个词形容你眼中的中国文化，你会选择哪三个词？",
+          vi: "Nếu dùng 3 từ để miêu tả văn hóa Trung Hoa trong mắt em, em sẽ chọn 3 từ nào?",
+          tip: "Luyện vốn từ vựng miêu tả văn hóa",
+        },
+        {
+          zh: "你的口语进步很大！接下来你的短期学习目标是什么？",
+          vi: "Khẩu ngữ của em tiến bộ rất nhiều! Mục tiêu học tập ngắn hạn tiếp theo của em là gì?",
+          tip: "Luyện lập kế hoạch tương lai: 学习目标是...",
+        },
+      ],
+      travel_companion: [
+        {
+          zh: "中国有八大菜系，你尝过川菜、粤菜还是鲁菜？你更偏爱哪一种？",
+          vi: "Trung Quốc có 8 trường phái ẩm thực lớn, bạn đã thử đồ Tứ Xuyên, Quảng Đông hay Sơn Đông chưa?",
+          tip: "Luyện khẩu vị ẩm thực và so sánh sở thích",
+        },
+        {
+          zh: "去外地旅游时，你更喜欢逛繁华的步行街，还是寻访历史古迹？",
+          vi: "Khi đi du lịch xa, bạn thích dạo phố đi bộ sầm uất hay tìm về các di tích lịch sử?",
+          tip: "Luyện cấu trúc: 更喜欢...还是...",
+        },
+        {
+          zh: "在你的家乡，最值得向外国游客推荐的一个隐秘宝藏景点是哪里？",
+          vi: "Ở quê hương bạn, một địa điểm 'viên ngọc ẩn' đáng giới thiệu cho du khách nước ngoài nhất là ở đâu?",
+          tip: "Luyện giới thiệu địa danh quê hương",
+        },
+        {
+          zh: "你出门旅游时最不能缺少的三件随身物品是什么？为什么？",
+          vi: "Khi đi du lịch, 3 món đồ tùy thân bạn không thể thiếu là gì? Vì sao?",
+          tip: "Luyện cấu trúc: 最不能缺少的...是...",
+        },
+        {
+          zh: "如果我们要一起制定一份为期三天的中国自由行攻略，你想先去哪里？",
+          vi: "Nếu chúng mình cùng lên lịch trình du lịch tự túc 3 ngày ở Trung Quốc, bạn muốn đi đâu trước?",
+          tip: "Luyện lập kế hoạch hành trình du lịch",
+        },
+      ],
+    };
+
+    const list = questionsByPersona[personaId] || questionsByPersona.friendly_peer;
+    return list.map((item) => ({
+      zh: item.zh,
+      pinyin: pinyin(item.zh, { toneType: "symbol", type: "string" }),
+      vi: item.vi,
+      tip: item.tip,
+    }));
   }
 
   /**
@@ -453,6 +562,7 @@ EVALUATE AND RETURN STRICT JSON:
       strengths,
       improvements,
       corrections,
+      extensionQuestions: FreeTalkService.generatePersonaExtensionQuestions(persona.id),
     };
   }
 }
