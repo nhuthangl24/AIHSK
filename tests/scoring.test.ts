@@ -78,7 +78,7 @@ describe("AI Scoring Engine Unit Tests", () => {
     expect(report.improvementPlan[0].week).toBe(1);
   });
 
-  it("should calculate correct weighted score total", () => {
+  it("should calculate correct weighted score total for elementary learner", () => {
     const mockTurns: ConversationTurnItem[] = [
       {
         turnIndex: 0,
@@ -96,7 +96,90 @@ describe("AI Scoring Engine Unit Tests", () => {
 
     const report = ScoringEngine.evaluateLinguistically(mockTurns, "HSK 2");
     expect(report.overallScore).toBeGreaterThan(0);
+    expect(report.overallScore).toBeLessThan(60); // Elementary learner should not be inflated to high score
     expect(report.cefrEstimate).toBeDefined();
     expect(report.hskEstimate).toBeDefined();
+  });
+
+  it("should heavily penalize and flag candidate who copies examiner questions", () => {
+    const copiedTurns: ConversationTurnItem[] = [
+      {
+        turnIndex: 0,
+        stage: 1,
+        speaker: "EXAMINER",
+        textContent: "你好！欢迎参加今天的华语口语评估。请先用中文简单介绍一下你自己吧。",
+      },
+      {
+        turnIndex: 1,
+        stage: 1,
+        speaker: "LEARNER",
+        textContent: "你好！欢迎参加今天的华语口语评估。请先用中文简单介绍一下你自己吧。",
+      },
+      {
+        turnIndex: 2,
+        stage: 2,
+        speaker: "EXAMINER",
+        textContent: "请问你平时学习中文多长时间了？你觉得学中文最有趣的地方是什么？",
+      },
+      {
+        turnIndex: 3,
+        stage: 2,
+        speaker: "LEARNER",
+        textContent: "请问你平时学习中文多长时间了？你觉得学中文最有趣的地方是什么？",
+      },
+    ];
+
+    const report = ScoringEngine.evaluateLinguistically(copiedTurns, "HSK 3");
+    const parsed = ScoringReportSchema.safeParse(report);
+    expect(parsed.success).toBe(true);
+
+    // Score must be severely failed
+    expect(report.overallScore).toBeLessThanOrEqual(25);
+    expect(report.cefrEstimate).toBe("A1");
+    expect(report.hskEstimate).toBe("HSK 1 (Unofficial)");
+
+    // Summary must detect and explain the copying
+    expect(report.performanceSummary.toLowerCase()).toContain("sao chép");
+  });
+
+  it("should heavily penalize and flag gibberish and non-Chinese answers", () => {
+    const gibberishTurns: ConversationTurnItem[] = [
+      {
+        turnIndex: 0,
+        stage: 1,
+        speaker: "EXAMINER",
+        textContent: "你好！请先用中文简单介绍一下你自己吧。",
+      },
+      {
+        turnIndex: 1,
+        stage: 1,
+        speaker: "LEARNER",
+        textContent: "asdfasdf 123 linh tinh haha test",
+      },
+      {
+        turnIndex: 2,
+        stage: 2,
+        speaker: "EXAMINER",
+        textContent: "在周末或者空闲时间，你一般喜欢做些什么？",
+      },
+      {
+        turnIndex: 3,
+        stage: 2,
+        speaker: "LEARNER",
+        textContent: "zzz xxx yyy khong biet noi gi dau a",
+      },
+    ];
+
+    const report = ScoringEngine.evaluateLinguistically(gibberishTurns, "HSK 3");
+    const parsed = ScoringReportSchema.safeParse(report);
+    expect(parsed.success).toBe(true);
+
+    // Score must be severely failed
+    expect(report.overallScore).toBeLessThanOrEqual(20);
+    expect(report.cefrEstimate).toBe("A1");
+    expect(report.hskEstimate).toBe("HSK 1 (Unofficial)");
+
+    // Summary must detect invalid/gibberish input
+    expect(report.performanceSummary.toLowerCase()).toMatch(/linh tinh|ngẫu nhiên|không phải tiếng trung/);
   });
 });

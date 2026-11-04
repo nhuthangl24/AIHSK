@@ -88,7 +88,7 @@ export class AssessmentService {
       category: "GENERAL",
       targetLevel: level,
       estimatedDurationMinutes: 15,
-      maxTurns: 10,
+      maxTurns: 18,
       stagesConfig: STAGES_CONFIG as any,
       examinerPrompt: `Conduct a 5-stage adaptive oral examination focused on the custom topic: ${topicName}`,
       rubricId: null,
@@ -215,7 +215,7 @@ export class AssessmentService {
             status: SessionStatus.IN_PROGRESS,
             currentStage: 1,
             currentTurn: 0,
-            totalTurns: template.maxTurns || 10,
+            totalTurns: template.maxTurns || 18,
             startedAt: new Date(),
           },
         });
@@ -259,7 +259,7 @@ export class AssessmentService {
       status: "IN_PROGRESS",
       currentStage: 1,
       currentTurn: 0,
-      totalTurns: template.maxTurns || 10,
+      totalTurns: template.maxTurns || 18,
       totalDurationSeconds: 0,
       startedAt: new Date().toISOString(),
       completedAt: null,
@@ -383,7 +383,9 @@ export class AssessmentService {
             },
           });
 
-          const isCompleted = examinerReply.isCompleted || examinerTurnIndex >= session.totalTurns - 1;
+          const isCompleted =
+            examinerReply.isCompleted ||
+            (examinerTurnIndex >= session.totalTurns - 1 && examinerReply.stage >= 5);
 
           if (isCompleted) {
             await prisma.assessmentSession.update({
@@ -492,7 +494,9 @@ export class AssessmentService {
     };
     assessmentStore.addTurn(sessionId, examinerTurn);
 
-    const isCompleted = examinerReply.isCompleted || examinerTurnIndex >= storedSession.totalTurns - 1;
+    const isCompleted =
+      examinerReply.isCompleted ||
+      (examinerTurnIndex >= storedSession.totalTurns - 1 && examinerReply.stage >= 5);
 
     if (isCompleted) {
       assessmentStore.updateSession(sessionId, {

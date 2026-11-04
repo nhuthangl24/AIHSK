@@ -25,7 +25,7 @@ export function getAuthCookieOptions() {
   return {
     name: COOKIE_NAME,
     httpOnly: true,
-    secure: isProd,
+    secure: isProd && Boolean(process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://")),
     sameSite: "lax" as const,
     path: "/",
     maxAge: 7 * 24 * 60 * 60,

@@ -81,10 +81,12 @@ export class ExaminerService {
     topic: string,
     config: LLMConfig
   ): Promise<NextTurnResult> {
+    const learnerTurnCount = turns.filter((t) => t.speaker === "LEARNER").length;
+
     const messages: ChatMessage[] = [
       {
         role: "system",
-        content: `${CHINESE_EXAMINER_SYSTEM_PROMPT}\nTarget Level: ${targetLevel}. Topic: ${topic}\nIMPORTANT: Reply ONLY with a strict JSON object according to the schema.`,
+        content: `${CHINESE_EXAMINER_SYSTEM_PROMPT}\nTarget Level: ${targetLevel}. Topic: ${topic}\nCurrent candidate turn count: ${learnerTurnCount}. Pacing rule: 2 turns each for Stage 1, Stage 2, Stage 3, Stage 4; and 1-2 turns for Stage 5. Never complete before 8 candidate turns.\nIMPORTANT: Reply ONLY with a strict JSON object according to the schema.`,
       },
       ...turns.map((t) => ({
         role: (t.speaker === "EXAMINER" ? "assistant" : "user") as "assistant" | "user",
@@ -107,11 +109,21 @@ export class ExaminerService {
       feedbackHint?: string;
     }>(rawContent);
 
+    // Enforce standardized 2-turn pacing per stage
+    let computedStage = 1;
+    if (learnerTurnCount <= 1) computedStage = 1;
+    else if (learnerTurnCount <= 3) computedStage = 2;
+    else if (learnerTurnCount <= 5) computedStage = 3;
+    else if (learnerTurnCount <= 7) computedStage = 4;
+    else computedStage = 5;
+
+    const isCompleted = Boolean(parsed.isCompleted && learnerTurnCount >= 8 && computedStage === 5);
+
     return {
-      stage: parsed.stage || 1,
+      stage: computedStage,
       examinerResponse: parsed.examinerResponse || "你好，请继续回答。",
       pinyin: parsed.pinyin || "",
-      isCompleted: Boolean(parsed.isCompleted),
+      isCompleted,
       pedagogicalObservation: parsed.feedbackHint,
     };
   }
@@ -123,81 +135,228 @@ export class ExaminerService {
     topic: string
   ): NextTurnResult {
     const lastLearnerTurn = [...turns].reverse().find((t) => t.speaker === "LEARNER");
-    const lastText = lastLearnerTurn?.textContent || "";
+    const lastText = (lastLearnerTurn?.textContent || "").trim();
+    const prevExaminerTurn = [...turns].reverse().find((t) => t.speaker === "EXAMINER");
+    const prevExText = (prevExaminerTurn?.textContent || "").trim();
+
+    // Check if candidate copied examiner question or typed gibberish
+    const cleanPunct = (s: string) => s.replace(/[\s\p{P}\p{S}]/gu, "");
+    const cleanLast = cleanPunct(lastText);
+    const cleanPrev = cleanPunct(prevExText);
+
+    let isLastCopied = false;
+    if (cleanLast.length >= 4 && cleanPrev.length >= 4) {
+      if (cleanPrev.includes(cleanLast) || cleanLast.includes(cleanPrev)) {
+        isLastCopied = true;
+      } else {
+        let matched = 0;
+        for (const ch of cleanLast) {
+          if (cleanPrev.includes(ch)) matched++;
+        }
+        if (matched / cleanLast.length >= 0.68) {
+          isLastCopied = true;
+        }
+      }
+    }
+
+    const hanziCount = (lastText.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const isLastGibberish =
+      lastText.length > 0 &&
+      (hanziCount < 2 || /^(asdf|1234|qwerty|zxcv|test|linh tinh|bla bla|zzz|xxx)/i.test(lastText));
+
+    const prefix = isLastCopied
+      ? "请用你自己的话回答，不要直接重复我的问题哦。让我们继续："
+      : isLastGibberish
+      ? "刚才好像没有收到有效的中文回答。请尽量用中文句子回答。接下来："
+      : "";
+
+    const pinyinPrefix = isLastCopied
+      ? "Qǐng yòng nǐ zìjǐ de huà huídá, búyào zhíjiē chóngfù wǒ de wèntí ó. Ràng wǒmen jìxù: "
+      : isLastGibberish
+      ? "Gāngcái hǎoxiàng méiyǒu shōudào yǒuxiào de zhōngwén huídá. Qǐng jǐnliàng yòng zhōngwén jùzi huídá. Jiē xiàlái: "
+      : "";
+
+    const lowerTopic = (topic || "").toLowerCase();
+    const isFood = lowerTopic.includes("ẩm thực") || lowerTopic.includes("gọi món") || lowerTopic.includes("món ăn") || lowerTopic.includes("nhà hàng") || lowerTopic.includes("ăn uống") || lowerTopic.includes("food");
+    const isSports = lowerTopic.includes("bóng") || lowerTopic.includes("thể thao") || lowerTopic.includes("sport") || lowerTopic.includes("football");
+
+    // Check if Stage 4 is already finished or candidate reached maximum turns -> Conclude Stage 5
+    const stage4LearnerTurns = turns.filter((t) => t.stage === 4 && t.speaker === "LEARNER").length;
+    const isStage4Done =
+      (lastLearnerTurn?.stage === 4 && stage4LearnerTurns >= 2) ||
+      (lastLearnerTurn?.stage !== undefined && lastLearnerTurn.stage >= 5) ||
+      learnerTurns >= 8;
+
+    if (isStage4Done) {
+      return {
+        stage: 5,
+        examinerResponse:
+          "非常感谢你的真诚分享！今天的华语口语考核到这里就全部结束了。系统目前正在对你全程对话记录进行全面的7维度语言学智能评估，稍后你可以在系统中查阅详细的诊断报告。祝你在中文学习的道路上取得更大的进步，再见！",
+        pinyin:
+          "Fēicháng gǎnxiè nǐ de zhēnchéng fēnxiǎng! Jīntiān de Huáyǔ kǒuyǔ kǎohé dào zhèlǐ jiù quánbù jiéshù le. Xìtǒng mùqián zhèngzài duì nǐ quánchéng duìhuà jìlù jìnxíng quánmiàn de qī wéidù yǔyánxué zhìnéng pínggū, shāohòu nǐ kěyǐ zài xìtǒng zhōng cháyuè xiángxì de zhěnduàn bàogào. Zhù nǐ zài zhōngwén xuéxí de dàolù shàng qǔdé gèng dà de jìnbù, zàijiàn!",
+        isCompleted: true,
+        pedagogicalObservation: "Stage 5: Examination formally concluded, scoring pipeline enqueued.",
+      };
+    }
 
     // Turn 0: Candidate hasn't spoken yet (First greeting)
     if (learnerTurns === 0) {
       return {
         stage: 1,
-        examinerResponse: "你好！欢迎参加今天的华语口语评估。请问你准备好了吗？请先用中文简单介绍一下你自己吧。",
-        pinyin: "Nǐ hǎo! Huānyíng cānjiā jīntiān de Huáyǔ kǒuyǔ pínggū. Qǐngwèn nǐ zhǔnbèi hǎo le ma? Qǐng xiān yòng zhōngwén jiǎndān jièshào yíxià nǐ zìjǐ ba.",
+        examinerResponse: "你好！欢迎参加今天的华语口语评估。我是李老师。我们先确认一下，你能清楚地听到我的声音吗？请先用中文简单介绍一下你自己吧（比如你的名字、职业或学习经历）。",
+        pinyin: "Nǐ hǎo! Huānyíng cānjiā jīntiān de Huáyǔ kǒuyǔ pínggū. Wǒ shì Lǐ lǎoshī. Wǒmen xiān quèrèn yíxià, nǐ néng qīngchǔ de tīng dào wǒ de shēngyīn ma? Qǐng xiān yòng zhōngwén jiǎndān jièshào yíxià nǐ zìjǐ ba (bǐrú nǐ de míngzì, zhíyè huò xuéxí jīnglì).",
         isCompleted: false,
-        pedagogicalObservation: "Stage 1 initial greeting and identity readiness confirmation.",
+        pedagogicalObservation: "Stage 1 Turn 1: Warm greeting, audio verification, self-introduction.",
       };
     }
 
-    // Stage 1 -> Turn 1
+    // Stage 1 Turn 2: Follow-up intro
     if (learnerTurns === 1) {
+      const resp = prefix
+        ? `${prefix}请问你平时学习中文多长时间了？今天我们的话题是“${topic}”，你对这个话题有什么兴趣？`
+        : `很好，很高兴认识你！听到你的声音很清晰。请问你平时学习中文多长时间了？今天我们选择的话题是“${topic}”，是什么让你对这个话题感兴趣呢？`;
+      const pin = pinyinPrefix
+        ? `${pinyinPrefix}Qǐngwèn nǐ píngshí xuéxí zhōngwén duō cháng shíjiān le? Jīntiān wǒmen de huàtí shì \"${topic}\", nǐ duì zhè ge huàtí yǒu shénme xìngqù?`
+        : `Hěn hǎo, hěn gāoxìng rènshí nǐ! Tīng dào nǐ de shēngyīn hěn qīngxī. Qǐngwèn nǐ píngshí xuéxí zhōngwén duō cháng shíjiān le? Jīntiān wǒmen xuǎnzé de huàtí shì \"${topic}\", shì shénme ràng nǐ duì zhè ge huàtí gǎn xìngqù ne?`;
+
       return {
         stage: 1,
-        examinerResponse: `很好，很高兴认识你！听到你的声音很清晰。请问你平时学习中文多长时间了？你觉得学中文最有趣的地方是什么？`,
-        pinyin: "Hěn hǎo, hěn gāoxìng rènshí nǐ! Tīng dào nǐ de shēngyīn hěn qīngxī. Qǐngwèn nǐ píngshí xuéxí zhōngwén duō cháng shíjiān le? Nǐ juéde xué zhōngwén zuì yǒuqù de dìfang shì shénme?",
+        examinerResponse: resp,
+        pinyin: pin,
         isCompleted: false,
-        pedagogicalObservation: "Evaluating self-introduction clarity, basic tense, and introductory sentence structure.",
+        pedagogicalObservation: "Stage 1 Turn 2: Background exploration and motivation for chosen topic.",
       };
     }
 
-    // Stage 2: Daily Life & Routines
+    // Stage 2 Turn 1: Daily life routines
     if (learnerTurns === 2) {
+      if (isFood) {
+        return {
+          stage: 2,
+          examinerResponse: "听起来很棒！现在我们进入日常交流环节。聊到美食，你平时更喜欢在家里自己做饭，还是更喜欢去饭馆点菜？你最喜欢吃的一道菜是什么？",
+          pinyin: "Tīng qǐlái hěn bàng! Xiànzài wǒmen jìnrù rìcháng jiāoliú huánjié. Liáo dào měishí, nǐ píngshí gèng xǐhuan zài jiālǐ zìjǐ zuò fàn, háishì gèng xǐhuan qù fànguǎn diǎncài? Nǐ zuì xǐhuan chī de yī dào cài shì shénme?",
+          isCompleted: false,
+          pedagogicalObservation: "Stage 2 Turn 1: Daily eating habits and favorite dish.",
+        };
+      }
+      if (isSports) {
+        return {
+          stage: 2,
+          examinerResponse: "很好。现在我们进入日常交流环节。平时在周末或者空闲时间，你一般喜欢看球赛还是亲自参与体育运动？你最支持的队伍或运动员是谁？",
+          pinyin: "Hěn hǎo. Xiànzài wǒmen jìnrù rìcháng jiāoliú huánjié. Píngshí zài zhōumò huòzhě kòngxián shíjiān, nǐ yībān xǐhuan kàn qiúsài háishì qīnzì cānyù tǐyù yùndòng? Nǐ zuì zhīchí de duìwǔ huò yùndòngyuán shì shéi?",
+          isCompleted: false,
+          pedagogicalObservation: "Stage 2 Turn 1: Sports routines, spectating vs playing.",
+        };
+      }
       return {
         stage: 2,
-        examinerResponse: `听起来很有意思！接下来我们聊聊日常生活。在周末或者空闲时间，你一般喜欢做些什么？你有什么特别的兴趣爱好吗？`,
-        pinyin: "Tīng qǐlái hěn yǒu yìsi! Jiē xiàlái wǒmen liáo liáo rìcháng shēnghuó. Zài zhōumò huòzhě kòngxián shíjiān, nǐ yībān xǐhuan zuò xiē shénme? Nǐ yǒu shénme tèbié de xìngqù àihào ma?",
+        examinerResponse: `很好。现在我们进入日常交流环节。关于“${topic}”，在平时日常生活或空闲时间里，你一般有哪些相关的习惯或爱好？请跟老师简单聊聊。`,
+        pinyin: `Hěn hǎo. Xiànzài wǒmen jìnrù rìcháng jiāoliú huánjié. Guānyú \"${topic}\", zài píngshí rìcháng shēnghuó huò kòngxián shíjiān lǐ, nǐ yībān yǒu nǎxiē xiāngguān de xíguàn huò àihào? Qǐng gēn lǎoshī jiǎndān liáo liáo.`,
         isCompleted: false,
-        pedagogicalObservation: "Assessing daily activities vocabulary, frequency adverbs (一般, 经常), and expression of personal hobbies.",
+        pedagogicalObservation: "Stage 2 Turn 1: Daily routines and personal habits linked to topic.",
       };
     }
 
-    // Stage 2 -> Follow-up
+    // Stage 2 Turn 2: Specific narrative story
     if (learnerTurns === 3) {
+      if (isFood) {
+        return {
+          stage: 2,
+          examinerResponse: "你说得很诱人！那么你能具体分享一次你最近和朋友或家人一起去特色餐馆点菜的经历吗？当时尝到了什么特别的味道，有什么有趣的事？",
+          pinyin: "Nǐ shuō de hěn yòurén! Nàme nǐ néng jùtǐ fēnxiǎng yícì nǐ zuìjìn hé péngyou huò jiārén yìqǐ qù tèsè cānguǎn diǎncài de jīnglì ma? Dāngshí cháng dào le shénme tèbié de wèidào, yǒu shénme yǒuqù de shì?",
+          isCompleted: false,
+          pedagogicalObservation: "Stage 2 Turn 2: Past narrative, restaurant ordering experience, vivid recall.",
+        };
+      }
       return {
         stage: 2,
-        examinerResponse: `很好。那么平时你的朋友或家人也会和你一起参与这些活动吗？你可以具体说说你们最近一次一起度过的愉快经历吗？`,
-        pinyin: "Hěn hǎo. Nàme píngshí nǐ de péngyou huò jiārén yě huì hé nǐ yìqǐ cānyù zhèxiē huódòng ma? Nǐ kěyǐ jùtǐ shuōshuō nǐmen zuìjìn yícì yìqǐ dùguò de yúkuài jīnglì ma?",
+        examinerResponse: "听起来很有意思。那么平时你的朋友或家人也会和你一起参与吗？你能具体分享一次你印象最深刻的相关经历吗？当时发生了什么？",
+        pinyin: "Tīng qǐlái hěn yǒu yìsi. Nàme píngshí nǐ de péngyou huò jiārén yě huì hé nǐ yìqǐ cānyù ma? Nǐ néng jùtǐ fēnxiǎng yícì nǐ yìnxiàng zuì shēnkè de xiāngguān jīnglì ma? Dāngshí fāshēng le shénme?",
         isCompleted: false,
-        pedagogicalObservation: "Testing past narrative cohesion, time expressions, and interpersonal conversational interaction.",
+        pedagogicalObservation: "Stage 2 Turn 2: Past narrative recounting a memorable event.",
       };
     }
 
-    // Stage 3: Topic Presentation (Theme: Learning & Culture)
+    // Stage 3 Turn 1: Topic Presentation
     if (learnerTurns === 4) {
+      if (isFood) {
+        return {
+          stage: 3,
+          examinerResponse: "现在我们进入主题阐述环节。有人认为“在餐馆点菜是了解一个国家文化最直接的方式”，也有人觉得现代快餐和外卖更加高效便捷。针对这两种不同的生活方式，你有什么看法？请谈谈你的主要观点和理由。",
+          pinyin: "Xiànzài wǒmen jìnrù zhǔtí chǎnshù huánjié. Yǒurén rènwéi 'zài cānguǎn diǎncài shì liǎojiě yí ge guójiā wénhuà zuì zhíjiē de fāngshì', yě yǒurén juéde xiàndài kuàicān hé wàimài gèngjiā gāoxiào biànjié. Zhēnduì zhè liǎng zhǒng bùtóng de shēnghuó fāngshì, nǐ yǒu shénme kànfǎ? Qǐng tán tán nǐ de zhǔyào guāndiǎn hé lǐyóu.",
+          isCompleted: false,
+          pedagogicalObservation: "Stage 3 Turn 1: Formal thematic stance, comparing cultural dining vs fast food convenience.",
+        };
+      }
       return {
         stage: 3,
-        examinerResponse: `现在我们进入主题讨论环节。现在的年轻人越来越喜欢使用手机和人工智能软件来学习外语。你认为利用科技学习中文有什么优势？它是否可以完全代替传统的老师呢？请谈谈你的看法。`,
-        pinyin: "Xiànzài wǒmen jìnrù zhǔtí tǎolùn huánjié. Xiànzài de niánqīng rén yuè lái yuè xǐhuan shǐyòng shǒujī hé réngōng zhìnéng ruǎnjiàn lái xuéxí wàiyǔ. Nǐ rènwéi lìyòng kējì xuéxí zhōngwén yǒu shénme yōushì? Tā shìfǒu kěyǐ wánquán dàitì chuántǒng de lǎoshī ne? Qǐng tán tán nǐ de kànfǎ.",
+        examinerResponse: `现在我们进入主题阐述环节。围绕今天的话题“${topic}”，有人认为它给现代生活带来了极大的便利与改变，也有人认为它带来了一些挑战。你持有怎样的看法？请阐明你的立场，并说明理由。`,
+        pinyin: `Xiànzài wǒmen jìnrù zhǔtí chǎnshù huánjié. Wéirào jīntiān de huàtí \"${topic}\", yǒurén rènwéi tā gěi xiàndài shēnghuó dài lái le jídà de biànlì yǔ gǎibiàn, yě yǒurén rènwéi tā dài lái le yìxiē tiǎozhàn. Nǐ chí yǒu zěnyàng de kànfǎ? Qǐng chǎnmíng nǐ de lìchǎng, bìng shuōmíng lǐyóu.`,
         isCompleted: false,
-        pedagogicalObservation: "Transitioning to formal topic argumentation: assessing conjunctions (因为...所以, 虽然...但是), comparison, and abstract expression.",
+        pedagogicalObservation: "Stage 3 Turn 1: Structured thematic opinion formulation.",
       };
     }
 
-    // Stage 4: In-depth Probing & Logical Reasoning
+    // Stage 3 Turn 2: Topic comparison and trade-offs
     if (learnerTurns === 5) {
       return {
-        stage: 4,
-        examinerResponse: `你的观点很有深度。不过也有人担心，如果长期过度依赖人工智能和电子产品，可能会减少真实人际交往的机会，甚至影响语言的实际应用能力。针对这种担忧，你有什么建议或者解决办法吗？`,
-        pinyin: "Nǐ de guāndiǎn hěn yǒu shēndù. Bùguò yě yǒurén dānxīn, rúguǒ chángqī guòdù yīlài réngōng zhìnéng hé diànzǐ chǎnpǐn, kěnéng huì jiǎnshǎo zhēnshí rénjì jiāowǎng de jīhuì, shènzhì yǐngxiǎng yǔyán de shíjì yìngyòng nénglì. Zhēnduì zhèzhǒng dānyōu, nǐ yǒu shénme jiànyì huòzhě jiějué bànfǎ ma?",
+        stage: 3,
+        examinerResponse: "你的观点阐述得很清晰。那么从长远来看，你觉得这种现象对人们的生活方式、健康或者人际关系有哪些深远的影响？你能再举一个具体的例子来论证吗？",
+        pinyin: "Nǐ de guāndiǎn chǎnshù de hěn qīngxī. Nàme cóng chángyuǎn lái kàn, nǐ juéde zhè zhǒng xiànxiàng duì rénmen de shēnghuó fāngshì, jiànkāng huòzhě rénjì guānxì yǒu nǎxiē shēnyuǎn de yǐngxiǎng? Nǐ néng zài jǔ yí ge jùtǐ de lìzi lái lùnzhèng ma?",
         isCompleted: false,
-        pedagogicalObservation: "Probing higher-order reasoning, hypothetical conditional structures (如果...就...), and problem-solving discourse.",
+        pedagogicalObservation: "Stage 3 Turn 2: Expanding arguments with concrete examples and causal relationships.",
       };
     }
 
-    // Stage 5: Professional Conclusion
+    // Stage 4 Turn 1: Probing & Hypothetical Challenge
+    if (learnerTurns === 6) {
+      if (isFood) {
+        return {
+          stage: 4,
+          examinerResponse: "你说得非常有见地。接下来进入深入追问环节。如果一个外国人刚到中国，完全看不懂中文菜单，而且服务员也不会外语，面对这种情况，你会建议他怎么做？如果点错了菜或者遇到口味不合，又该如何礼貌地沟通？",
+          pinyin: "Nǐ shuō de fēicháng yǒu jiàndì. Jiē xiàlái jìnrù shēnrù zhuīwèn huánjié. Rúguǒ yí ge wàiguó rén gāng dào Zhōngguó, wánquán kàn bù dǒng zhōngwén càidān, érqiě fúwùyuán yě bú huì wàiyǔ, miànduì zhè zhǒng qíngkuàng, nǐ huì jiànyì tā zěnme zuò? Rúguǒ diǎn cuò le cài huòzhě yù dào kǒuwèi bù hé, yòu gāi rúhé lǐmào de gōutōng?",
+          isCompleted: false,
+          pedagogicalObservation: "Stage 4 Turn 1: Hypothetical problem-solving, situational diplomatic communication.",
+        };
+      }
+      return {
+        stage: 4,
+        examinerResponse: "你说得非常有见地。接下来进入深入追问环节。如果遇到反对你观点的人，或者出现了大家意料之外的突发情况，你会如何说服对方或者化解矛盾？请谈谈你的应对思路。",
+        pinyin: "Nǐ shuō de fēicháng yǒu jiàndì. Jiē xiàlái jìnrù shēnrù zhuīwèn huánjié. Rúguǒ yù dào fǎnduì nǐ guāndiǎn de rén, huòzhě chūxiàn le dàjiā yìliào zhīwài de tūfā qíngkuàng, nǐ huì rúhé shuōfú duìfāng huòzhě huàjiě máodùn? Qǐng tán tán nǐ de yìngduì sīlù.",
+        isCompleted: false,
+        pedagogicalObservation: "Stage 4 Turn 1: Handling hypothetical challenges and conflicting viewpoints.",
+      };
+    }
+
+    // Stage 4 Turn 2: Synthesis & Practical Advice
+    if (learnerTurns === 7) {
+      return {
+        stage: 4,
+        examinerResponse: "这个解决方法很有建设性。结合你自己的切身体会，针对想要更好地掌握这门技能或适应这种情境的学习者，你最想给他们提出的两条实用建议是什么？",
+        pinyin: "Zhè ge jiějué fāngfǎ hěn yǒu jiànshè xìng. Jiéhé nǐ zìjǐ de qièshēn tǐhuì, zhēnduì xiǎng yào gèng hǎo de zhǎngwò zhè mén jìnéng huò shìyìng zhè zhǒng qíngjìng de xuéxí zhě, nǐ zuì xiǎng gěi tāmen tíchū de liǎng tiáo shíyòng jiànyì shì shénme?",
+        isCompleted: false,
+        pedagogicalObservation: "Stage 4 Turn 2: Synthesizing personal advice and practical wisdom.",
+      };
+    }
+
+    // Stage 5 Turn 1: Candidate Self-Reflection
+    if (learnerTurns === 8) {
+      return {
+        stage: 5,
+        examinerResponse: "非常出色！现在我们来到最后的全程总结阶段。回顾今天在5个不同阶段的交流，你觉得自己今天口语发挥得怎么样？在词汇、发音或者表达流利度方面，你有哪些满意或者希望能进一步提高的地方吗？",
+        pinyin: "Fēicháng chūsè! Xiànzài wǒmen lái dào zuìhòu de quánchéng zǒngjié jiēduàn. Huígù jīntiān zài wǔ ge bùtóng jiēduàn de jiāoliú, nǐ juéde zìjǐ jīntiān kǒuyǔ fāhuī de zěnmeyàng? Zài cíhuì, fāyīn huòzhě biǎodá liúlì dù fāngmiàn, nǐ yǒu nǎxiē mǎnyì huòzhě xīwàng néng jìnyíbù tígāo de dìfang ma?",
+        isCompleted: false,
+        pedagogicalObservation: "Stage 5 Turn 1: Metacognitive self-reflection on oral proficiency across 5 stages.",
+      };
+    }
+
+    // Stage 5 Turn 2: Final Conclusion & Goodbye
     return {
       stage: 5,
-      examinerResponse: `非常感谢你的精彩回答！今天的华语口语考核到这里就全部结束了。你在整个交流过程中表现得很积极，表达也很流畅。系统现在正在对你的完整对话记录进行全面的语言学多维度评估，稍后你可以在系统中查看详细的诊断报告。祝你中文学习进步，再见！`,
-      pinyin: "Fēicháng gǎnxiè nǐ de jīngcǎi huídá! Jīntiān de Huáyǔ kǒuyǔ kǎohé dào zhèlǐ jiù quánbù jiéshù le. Nǐ zài zhěnggè jiāoliú guòchéng zhōng biǎoxiàn de hěn jījí, biǎodá yě hěn liúchàng. Xìtǒng xiànzài zhèngzài duì nǐ de wánzhěng duìhuà jìlù jìnxíng quánmiàn de yǔyánxué duō wéidù pínggū, shāohòu nǐ kěyǐ zài xìtǒng zhōng chákàn xiángxì de zhěnduàn bàogào. Zhù nǐ zhōngwén xuéxí jìnbù, zàijiàn!",
+      examinerResponse: "非常感谢你的真诚分享！今天的华语口语5阶段全真模拟考核到这里就圆满结束了。你在整个交流中表现得非常积极，语言连贯度很高，思路也很清晰。系统目前正在对你全程对话录音进行全面的7维度语言学智能评估，稍后你可以在系统中查阅详细的诊断报告。祝你在中文学习的道路上取得更大的进步，再见！",
+      pinyin: "Fēicháng gǎnxiè nǐ de zhēnchéng fēnxiǎng! Jīntiān de Huáyǔ kǒuyǔ wǔ jiēduàn quánzhēn mónǐ kǎohé dào zhèlǐ jiù yuánmǎn jiéshù le. Nǐ zài zhěnggè jiāoliú zhōng biǎoxiàn de fēicháng jījí, yǔyán liánguàn dù hěn gāo, sīlù yě hěn qīngxī. Xìtǒng mùqián zhèngzài duì nǐ quánchéng duìhuà lùyīn jìnxíng quánmiàn de qī wéidù yǔyánxué zhìnéng pínggū, shāohòu nǐ kěyǐ zài xìtǒng zhōng cháyuè xiángxì de zhěnduàn bàogào. Zhù nǐ zài zhōngwén xuéxí de dàolù shàng qǔdé gèng dà de jìnbù, zàijiàn!",
       isCompleted: true,
-      pedagogicalObservation: "Assessment session successfully concluded; triggers scoring job.",
+      pedagogicalObservation: "Stage 5 Turn 2: Examination formally concluded, scoring pipeline enqueued.",
     };
   }
 }

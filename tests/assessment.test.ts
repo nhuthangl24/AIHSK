@@ -46,6 +46,12 @@ describe("Examiner 5-Stage Orchestration Unit Tests", () => {
       { turnIndex: 9, stage: 4, speaker: "LEARNER", textContent: "A5" },
       { turnIndex: 10, stage: 4, speaker: "EXAMINER", textContent: "Q6" },
       { turnIndex: 11, stage: 4, speaker: "LEARNER", textContent: "A6" },
+      { turnIndex: 12, stage: 4, speaker: "EXAMINER", textContent: "Q7" },
+      { turnIndex: 13, stage: 4, speaker: "LEARNER", textContent: "A7" },
+      { turnIndex: 14, stage: 5, speaker: "EXAMINER", textContent: "Q8" },
+      { turnIndex: 15, stage: 5, speaker: "LEARNER", textContent: "A8" },
+      { turnIndex: 16, stage: 5, speaker: "EXAMINER", textContent: "Q9" },
+      { turnIndex: 17, stage: 5, speaker: "LEARNER", textContent: "A9" },
     ];
 
     const nextTurn = await ExaminerService.generateNextTurn(turns, "HSK 4");

@@ -97,23 +97,39 @@ const STAGES = [
   },
 ];
 
-const getQuestionHint = (stage: number, text: string): string => {
-  if (text.includes("准备好了吗") || text.includes("介绍一下你自己") || stage === 1) {
-    return "💡 Gợi ý: Giới thiệu họ tên, tuổi tác, công việc/học tập, và lý do bạn muốn học tiếng Trung hoặc thi HSK.";
+const getQuestionHint = (stage: number, text: string, topic?: string): string => {
+  const t = topic || "chủ đề khảo thí";
+  if (stage === 1) {
+    if (text.includes("准备好了吗") || text.includes("介绍一下自己") || text.includes("自我介绍")) {
+      return "💡 Gợi ý Chặng 1: Giới thiệu họ tên, quê quán, công việc hoặc học tập và bạn đã học tiếng Trung được bao lâu.";
+    }
+    return `💡 Gợi ý Chặng 1: Chia sẻ lý do bạn học tiếng Trung và ấn tượng ban đầu của bạn về chủ đề "${t}".`;
   }
-  if (text.includes("日常生活") || text.includes("空闲时间") || text.includes("兴趣爱好") || stage === 2) {
-    return "💡 Gợi ý: Chia sẻ các thói quen hàng ngày, sở thích cuối tuần (đọc sách, xem phim, thể thao, gặp gỡ bạn bè...).";
+  if (stage === 2) {
+    if (text.includes("经历") || text.includes("最近") || text.includes("分享") || text.includes("难忘")) {
+      return `💡 Gợi ý Chặng 2: Kể lại một trải nghiệm thực tế hoặc kỷ niệm cụ thể của bạn liên quan đến "${t}" (sử dụng từ nối thời gian: 最近, 有一次, 后来...).`;
+    }
+    return `💡 Gợi ý Chặng 2: Chia sẻ các thói quen sinh hoạt hoặc sở thích hàng ngày của bạn gắn liền với "${t}".`;
   }
-  if (text.includes("主题讨论") || text.includes("科技") || text.includes("人工智能") || stage === 3) {
-    return "💡 Gợi ý: Nêu rõ quan điểm của bạn về ưu điểm của công nghệ/AI trong học tập và vai trò không thể thay thế của giáo viên.";
+  if (stage === 3) {
+    if (text.includes("长远") || text.includes("对比") || text.includes("影响") || text.includes("优缺点")) {
+      return `💡 Gợi ý Chặng 3: Phân tích so sánh hai mặt ưu/nhược điểm hoặc ảnh hưởng sâu rộng của "${t}" (dùng liên từ: 从长远来看, 一方面...另一方面...).`;
+    }
+    return `💡 Gợi ý Chặng 3: Nêu rõ quan điểm chính của bạn về "${t}" cùng 2 lý do và ví dụ thực tế minh họa.`;
   }
-  if (text.includes("过度依赖") || text.includes("人际交往") || text.includes("解决办法") || stage === 4) {
-    return "💡 Gợi ý: Đề xuất giải pháp cân bằng (kết hợp học AI với tham gia câu lạc bộ khẩu ngữ, giao tiếp thực tế với người bản xứ).";
+  if (stage === 4) {
+    if (text.includes("建议") || text.includes("办法") || text.includes("解决")) {
+      return `💡 Gợi ý Chặng 4: Đề xuất 2 lời khuyên hữu ích hoặc giải pháp thiết thực để giải quyết vấn đề được nêu.`;
+    }
+    return `💡 Gợi ý Chặng 4: Đưa ra lập luận bảo vệ quan điểm hoặc cách bạn xử lý tình huống giả định khó khăn được đặt ra.`;
   }
   if (stage === 5) {
-    return "💡 Gợi ý: Lắng nghe nhận xét tổng kết từ giám khảo và gửi lời chào/cảm ơn để hoàn tất buổi thi.";
+    if (text.includes("发挥") || text.includes("回顾") || text.includes("满意")) {
+      return "💡 Gợi ý Chặng 5: Chia sẻ cảm nhận thật của bạn về bài thi hôm nay (hài lòng về sự tự tin, phát âm, từ vựng hay muốn tiếp tục cải thiện điểm nào).";
+    }
+    return "💡 Gợi ý Chặng 5: Lắng nghe lời nhận xét chúc mừng từ giám khảo và đáp lời cảm ơn lịch sự để hoàn tất bài thi.";
   }
-  return "💡 Gợi ý: Hãy trả lời tự nhiên, rõ ràng, tập trung vào đúng trọng tâm câu hỏi của giám khảo.";
+  return "💡 Gợi ý: Hãy trả lời tự nhiên, phát âm rõ ràng, tập trung vào câu hỏi của giám khảo.";
 };
 
 export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: string }) {
@@ -522,7 +538,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const stagePercent = Math.round((session.currentStage / 5) * 100);
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col h-screen w-screen overflow-hidden bg-slate-50/80 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-none">
+    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-40 flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-none m-0 p-0">
       {/* ====================================================================== */}
       {/* 1. TOP HEADER BAR (Compact, responsive, zero collision)               */}
       {/* ====================================================================== */}
@@ -835,7 +851,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
                         {showHint && (
                           <div className="mt-2 p-3 sm:p-3.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-950 dark:text-amber-200 leading-relaxed animate-in fade-in">
-                            <p>{getQuestionHint(session.currentStage, turn.textContent)}</p>
+                            <p>{getQuestionHint(session.currentStage, turn.textContent, session.template.title)}</p>
                             <div className="mt-2 pt-2 border-t border-amber-200/60 dark:border-amber-900/40 flex flex-wrap gap-1.5">
                               {currentStageInfo.keywords.map((kw, idx) => (
                                 <span
@@ -1274,7 +1290,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       {/* 8. FINALIZING OVERLAY MODAL (Scoring progress)                         */}
       {/* ====================================================================== */}
       {isFinalizing && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 m-0">
           <div className="max-w-md w-full rounded-3xl bg-white p-8 text-center space-y-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             <div className="h-16 w-16 rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/80 flex items-center justify-center mx-auto">
               <Sparkles className="h-8 w-8 animate-spin" />
