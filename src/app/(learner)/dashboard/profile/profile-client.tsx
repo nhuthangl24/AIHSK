@@ -249,15 +249,11 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
     }
   };
 
-  const handleRequestDataPurge = async () => {
-    if (
-      !confirm(
-        "Bạn có chắc chắn muốn yêu cầu xóa toàn bộ lịch sử khảo thí và bản ghi âm giọng nói khỏi hệ thống? Hành động này tuân thủ quyền được lãng quên theo Nghị định 13/2023/NĐ-CP và không thể khôi phục."
-      )
-    ) {
-      return;
-    }
+  const handleRequestDataPurge = () => {
+    setShowPurgeModal(true);
+  };
 
+  const handleConfirmDataPurge = async () => {
     setIsPurging(true);
     try {
       const res = await fetch("/api/user/data-purge", {
@@ -265,7 +261,7 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
         headers: { "Content-Type": "application/json" },
       });
       if (res.ok) {
-        setPrivacyMessage("Đã tiếp nhận yêu cầu xóa dữ liệu âm thanh và lịch sử khảo thí theo quy chuẩn bảo mật.");
+        setPrivacyMessage("Đã tiếp nhận và xử lý yêu cầu xóa dữ liệu âm thanh và lịch sử khảo thí theo Nghị định 13/2023/NĐ-CP.");
       } else {
         setPrivacyMessage("Yêu cầu đã được lưu vào hệ thống bảo mật để xử lý.");
       }
@@ -273,6 +269,7 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
       setPrivacyMessage("Đã gửi yêu cầu xóa dữ liệu đến bộ phận Pháp chế & Kỹ thuật.");
     } finally {
       setIsPurging(false);
+      setShowPurgeModal(false);
     }
   };
 
@@ -1085,6 +1082,14 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
         isOpen={legalModalType !== null}
         type={legalModalType}
         onClose={() => setLegalModalType(null)}
+      />
+
+      {/* Custom Confirmation Modal for Data Purge */}
+      <DataPurgeModal
+        isOpen={showPurgeModal}
+        onClose={() => setShowPurgeModal(false)}
+        onConfirm={handleConfirmDataPurge}
+        isPurging={isPurging}
       />
     </div>
   );

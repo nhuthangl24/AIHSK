@@ -90,7 +90,7 @@ export interface StoredSession {
   rubricId: string | null;
   userId: string;
   userEmail?: string | null;
-  status: "READY" | "IN_PROGRESS" | "PROCESSING" | "COMPLETED" | "FAILED";
+  status: "READY" | "IN_PROGRESS" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
   currentStage: number;
   currentTurn: number;
   totalTurns: number;
