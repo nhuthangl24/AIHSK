@@ -16,6 +16,7 @@ export interface FreeTalkPersona {
   role: string;
   avatarText: string;
   avatarColor: string;
+  avatarIcon?: string;
   description: string;
   greeting: string;
   greetingPinyin: string;
@@ -29,8 +30,9 @@ export const FREE_TALK_PERSONAS: Record<string, FreeTalkPersona> = {
     name: "Tiểu Lý (小李)",
     zhName: "小李同学",
     role: "Bạn học thân thiện",
-    avatarText: "李",
-    avatarColor: "from-rose-500 to-rose-700",
+    avatarText: "HSK",
+    avatarColor: "from-emerald-500 to-emerald-700",
+    avatarIcon: "/icon.svg",
     description: "Trò chuyện đời sống thường ngày như hai người bạn, không áp lực, dùng từ ngữ tự nhiên, gần gũi.",
     greeting: "嗨！今天过得怎么样？你想和我随便聊聊什么呢？",
     greetingPinyin: "Hāi! Jīntiān guò de zěnmeyàng? Nǐ xiǎng hé wǒ suíbiàn liáoliao shénme ne?",
@@ -46,8 +48,9 @@ export const FREE_TALK_PERSONAS: Record<string, FreeTalkPersona> = {
     name: "Lý Lão Sư (李老师)",
     zhName: "李老师",
     role: "Gia sư kiên nhẫn",
-    avatarText: "师",
-    avatarColor: "from-indigo-500 to-purple-700",
+    avatarText: "HSK",
+    avatarColor: "from-emerald-600 to-teal-800",
+    avatarIcon: "/icon.svg",
     description: "Nhẹ nhàng giải thích, sửa các lỗi ngữ pháp nhỏ, dùng câu ngắn dễ hiểu và động viên bạn nói nhiều hơn.",
     greeting: "你好！别紧张，这里没有考试和打分。你想聊什么话题都可以，慢慢说就好。",
     greetingPinyin: "Nǐ hǎo! Bié jǐnzhāng, zhèlǐ méiyǒu kǎoshì hé dǎ fēn. Nǐ xiǎng liáo shénme huàtí dōu kěyǐ, mànman shuō jiù hǎo.",
@@ -63,8 +66,9 @@ export const FREE_TALK_PERSONAS: Record<string, FreeTalkPersona> = {
     name: "A Khang (阿康)",
     zhName: "旅行达人阿康",
     role: "Bạn đồng hành du lịch",
-    avatarText: "康",
-    avatarColor: "from-emerald-500 to-teal-700",
+    avatarText: "HSK",
+    avatarColor: "from-teal-500 to-emerald-700",
+    avatarIcon: "/icon.svg",
     description: "Đam mê ẩm thực, văn hóa và du lịch Trung Quốc. Thích kể chuyện các thành phố và món ăn đặc sắc.",
     greeting: "哈喽！你喜欢旅行吗？中国有很多好玩的地方和好吃的美食，你想聊聊哪儿？",
     greetingPinyin: "Hālóu! Nǐ xǐhuan lǚxíng ma? Zhōngguó yǒu hěn duō hǎowán de dìfang hé hǎochī de měishí, nǐ xiǎng liáoliao nǎr?",
