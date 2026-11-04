@@ -49,12 +49,16 @@ export default async function LearningProgressPage() {
     })(),
     (async () => {
       try {
-        const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-        if (await isPrismaAvailable()) {
-          const p = await prisma.userProfile.findUnique({
-            where: { userId: user.userId },
-          });
-          if (p) return p;
+        const { FirebaseDb } = await import("@/lib/firebase-db");
+        const fb =
+          (await FirebaseDb.findUserById(user.userId)) ||
+          (await FirebaseDb.findUserByEmail(user.email));
+        if (fb) {
+          return {
+            targetLevel: fb.targetLevel || "HSK 3",
+            name: fb.name,
+            email: fb.email,
+          };
         }
       } catch {
         // ignore

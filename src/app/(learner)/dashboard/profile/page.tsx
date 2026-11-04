@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assessmentStore } from "@/lib/db/assessment-store";
+import { FirebaseDb } from "@/lib/firebase-db";
 import ProfileClient from "./profile-client";
 
 export const dynamic = "force-dynamic";
@@ -11,28 +12,19 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
-  let userRecord: any = null;
-  try {
-    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-    if (await isPrismaAvailable()) {
-      userRecord = await prisma.user.findUnique({
-        where: { id: user.userId },
-        include: { profile: true },
-      });
-    }
-  } catch {
-    userRecord = null;
-  }
+  const fbUser =
+    (await FirebaseDb.findUserById(user.userId)) ||
+    (await FirebaseDb.findUserByEmail(user.email));
 
   const storedProfile = assessmentStore.getProfile(user.userId);
 
   const initialData = {
-    name: userRecord?.name || storedProfile?.name || user.name || "",
-    email: userRecord?.email || storedProfile?.email || user.email || "",
-    targetLevel: userRecord?.profile?.targetLevel || storedProfile?.targetLevel || "HSK 3",
-    nativeLanguage: userRecord?.profile?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
-    studyHoursWeekly: userRecord?.profile?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
-    learningGoal: userRecord?.profile?.learningGoal || storedProfile?.learningGoal || "",
+    name: fbUser?.name || storedProfile?.name || user.name || "",
+    email: fbUser?.email || storedProfile?.email || user.email || "",
+    targetLevel: fbUser?.targetLevel || storedProfile?.targetLevel || "HSK 3",
+    nativeLanguage: fbUser?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
+    studyHoursWeekly: fbUser?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
+    learningGoal: fbUser?.learningGoal || storedProfile?.learningGoal || "",
   };
 
   return (

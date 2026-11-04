@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 export interface FirebaseClientConfig {
   apiKey: string;
@@ -25,28 +26,46 @@ export function getFirebaseConfig(): FirebaseClientConfig {
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
+let firestoreDb: Firestore | null = null;
 export const googleAuthProvider = new GoogleAuthProvider();
+
+export function getFirebaseApp(): FirebaseApp {
+  if (!getApps().length) {
+    app = initializeApp(getFirebaseConfig());
+  } else {
+    app = getApp();
+  }
+  return app;
+}
+
+export function getFirestoreDb(): Firestore | null {
+  try {
+    const fbApp = getFirebaseApp();
+    if (!firestoreDb) {
+      firestoreDb = getFirestore(fbApp);
+    }
+    return firestoreDb;
+  } catch (err) {
+    console.warn("Firestore initialization error:", err);
+    return null;
+  }
+}
 
 export function getFirebaseServices(): {
   app: FirebaseApp | null;
   auth: Auth | null;
+  db: Firestore | null;
   isConfigured: boolean;
 } {
-  if (typeof window === "undefined") {
-    return { app: null, auth: null, isConfigured: false };
-  }
-
   try {
-    const config = getFirebaseConfig();
-    if (!getApps().length) {
-      app = initializeApp(config);
-    } else {
-      app = getApp();
+    const fbApp = getFirebaseApp();
+    if (typeof window !== "undefined" && !auth) {
+      auth = getAuth(fbApp);
     }
-    auth = getAuth(app);
-    return { app, auth, isConfigured: true };
+    const db = getFirestoreDb();
+    return { app: fbApp, auth, db, isConfigured: true };
   } catch (err) {
-    console.warn("Firebase client initialization error:", err);
-    return { app: null, auth: null, isConfigured: false };
+    console.warn("Firebase initialization error:", err);
+    return { app: null, auth: null, db: null, isConfigured: false };
   }
 }

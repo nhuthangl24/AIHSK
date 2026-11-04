@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
+import { FirebaseDb } from "@/lib/firebase-db";
+import { assessmentStore } from "@/lib/db/assessment-store";
 
 export async function GET() {
   const session = await getCurrentUser();
@@ -7,30 +9,37 @@ export async function GET() {
     return NextResponse.json({ user: null }, { status: 401 });
   }
 
-  // Try to get full profile from DB if available
+  // 1. Fetch from Firebase Firestore (Primary DB)
   try {
-    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-    if (await isPrismaAvailable()) {
-      const user = await prisma.user.findUnique({
-        where: { id: session.userId },
-        include: { profile: true },
-      });
-      if (user && user.isActive) {
-        return NextResponse.json({
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            avatarUrl: user.avatarUrl,
-            profile: user.profile,
+    const fbUser =
+      (await FirebaseDb.findUserById(session.userId)) ||
+      (await FirebaseDb.findUserByEmail(session.email));
+
+    if (fbUser) {
+      return NextResponse.json({
+        user: {
+          id: fbUser.id,
+          email: fbUser.email,
+          name: fbUser.name,
+          role: fbUser.role || session.role,
+          avatarUrl: fbUser.avatar || null,
+          profile: {
+            targetLevel: fbUser.targetLevel || "HSK 3",
+            nativeLanguage: fbUser.nativeLanguage || "Tiếng Việt",
+            studyHoursWeekly: fbUser.studyHoursWeekly || 3,
+            learningGoal: fbUser.learningGoal || "",
+            streakDays: fbUser.streakDays || 1,
+            totalMastered: fbUser.totalMastered || 0,
           },
-        });
-      }
+        },
+      });
     }
-  } catch {
-    // DB unavailable — return JWT session data
+  } catch (err) {
+    console.warn("Firebase user fetch note in /api/auth/me:", err);
   }
+
+  // 2. Fallback to assessmentStore
+  const storedProfile = assessmentStore.getProfile(session.userId);
 
   return NextResponse.json({
     user: {
@@ -39,7 +48,12 @@ export async function GET() {
       name: session.name,
       role: session.role,
       avatarUrl: null,
-      profile: null,
+      profile: storedProfile || {
+        targetLevel: "HSK 3",
+        nativeLanguage: "Tiếng Việt",
+        studyHoursWeekly: 3,
+        learningGoal: "",
+      },
     },
   });
 }

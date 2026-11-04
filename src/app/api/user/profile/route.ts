@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assessmentStore } from "@/lib/db/assessment-store";
+import { FirebaseDb } from "@/lib/firebase-db";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -8,29 +9,21 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let userRecord: any = null;
-  try {
-    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-    if (await isPrismaAvailable()) {
-      userRecord = await prisma.user.findUnique({
-        where: { id: user.userId },
-        include: { profile: true },
-      });
-    }
-  } catch {
-    userRecord = null;
-  }
+  // 1. Try Firebase Firestore
+  const fbUser =
+    (await FirebaseDb.findUserById(user.userId)) ||
+    (await FirebaseDb.findUserByEmail(user.email));
 
   const storedProfile = assessmentStore.getProfile(user.userId);
 
   return NextResponse.json({
     user: {
-      name: userRecord?.name || storedProfile?.name || user.name || "",
-      email: userRecord?.email || storedProfile?.email || user.email || "",
-      targetLevel: userRecord?.profile?.targetLevel || storedProfile?.targetLevel || "HSK 3",
-      nativeLanguage: userRecord?.profile?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
-      studyHoursWeekly: userRecord?.profile?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
-      learningGoal: userRecord?.profile?.learningGoal || storedProfile?.learningGoal || "",
+      name: fbUser?.name || storedProfile?.name || user.name || "",
+      email: fbUser?.email || storedProfile?.email || user.email || "",
+      targetLevel: fbUser?.targetLevel || storedProfile?.targetLevel || "HSK 3",
+      nativeLanguage: fbUser?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
+      studyHoursWeekly: fbUser?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
+      learningGoal: fbUser?.learningGoal || storedProfile?.learningGoal || "",
     },
   });
 }
@@ -60,37 +53,6 @@ export async function PUT(req: NextRequest) {
     };
 
     assessmentStore.saveProfile(profileData);
-
-    try {
-      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-      if (await isPrismaAvailable()) {
-        if (name && typeof name === "string" && name.trim().length > 0) {
-          await prisma.user.update({
-            where: { id: user.userId },
-            data: { name: name.trim() },
-          }).catch(() => null);
-        }
-
-        await prisma.userProfile.upsert({
-          where: { userId: user.userId },
-          update: {
-            targetLevel: profileData.targetLevel,
-            nativeLanguage: profileData.nativeLanguage,
-            studyHoursWeekly: validHours,
-            learningGoal: profileData.learningGoal,
-          },
-          create: {
-            userId: user.userId,
-            targetLevel: profileData.targetLevel,
-            nativeLanguage: profileData.nativeLanguage,
-            studyHoursWeekly: validHours,
-            learningGoal: profileData.learningGoal,
-          },
-        }).catch(() => null);
-      }
-    } catch {
-      // Prisma offline, fallback store is primary
-    }
 
     return NextResponse.json({
       success: true,

@@ -65,52 +65,20 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
 
     if (!payload) return null;
 
-    // 3. Ensure userId matches an existing User in the database so foreign key constraints never fail
+    // 3. Resolve user details from Firebase Firestore database
     try {
-      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-      if (await isPrismaAvailable()) {
-        const normalizedEmail = payload.email.toLowerCase().trim();
+      const { FirebaseDb } = await import("@/lib/firebase-db");
+      const fbUser =
+        (await FirebaseDb.findUserById(payload.userId)) ||
+        (await FirebaseDb.findUserByEmail(payload.email));
 
-        let dbUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { id: payload.userId },
-              { email: normalizedEmail },
-            ],
-          },
-        });
-
-        if (!dbUser) {
-          const { hashPassword } = await import("@/lib/auth/password");
-          const passwordHash = await hashPassword(crypto.randomUUID() + "!AiHsk2025");
-          const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
-          dbUser = await prisma.user.create({
-            data: {
-              id: payload.userId.startsWith("cm") ? payload.userId : undefined,
-              email: normalizedEmail,
-              name: payload.name || normalizedEmail.split("@")[0],
-              passwordHash,
-              role: payload.role || (isAdmin ? "ADMIN" : "USER"),
-              emailVerified: true,
-              profile: {
-                create: {
-                  targetLevel: "HSK 3",
-                  nativeLanguage: "Tiếng Việt",
-                  studyHoursWeekly: 3,
-                },
-              },
-            },
-          });
-        }
-
-        if (dbUser) {
-          payload.userId = dbUser.id;
-          payload.role = dbUser.role as any;
-          if (dbUser.name) payload.name = dbUser.name;
-        }
+      if (fbUser) {
+        if (fbUser.name) payload.name = fbUser.name;
+        if (fbUser.role) payload.role = fbUser.role as any;
+        if (fbUser.id) payload.userId = fbUser.id;
       }
     } catch {
-      // In edge/serverless without DB, continue with JWT payload
+      // In edge/serverless, continue with JWT payload
     }
 
     return payload;
@@ -123,21 +91,44 @@ export async function getCurrentUserWithProfile() {
   const session = await getCurrentUser();
   if (!session) return null;
 
-  // Try to enrich from DB if available, otherwise return session data directly
+  // 1. Try to enrich from Firebase Firestore (Primary DB)
   try {
-    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-    if (await isPrismaAvailable()) {
-      const user = await prisma.user.findUnique({
-        where: { id: session.userId },
-        include: { profile: true },
-      });
-      if (user && user.isActive) return user;
+    const { FirebaseDb } = await import("@/lib/firebase-db");
+    const fbUser =
+      (await FirebaseDb.findUserById(session.userId)) ||
+      (await FirebaseDb.findUserByEmail(session.email));
+
+    if (fbUser) {
+      return {
+        id: fbUser.id,
+        email: fbUser.email,
+        name: fbUser.name,
+        role: fbUser.role || session.role,
+        avatarUrl: fbUser.avatar || null,
+        isActive: true,
+        emailVerified: true,
+        passwordHash: "",
+        suspendedAt: null as Date | null,
+        createdAt: new Date(fbUser.createdAt || Date.now()),
+        updatedAt: new Date(fbUser.updatedAt || Date.now()),
+        profile: {
+          id: `prof_${fbUser.id}`,
+          userId: fbUser.id,
+          targetLevel: fbUser.targetLevel || "HSK 3",
+          nativeLanguage: fbUser.nativeLanguage || "Tiếng Việt",
+          studyHoursWeekly: fbUser.studyHoursWeekly || 3,
+          learningGoal: fbUser.learningGoal || "",
+        },
+      };
     }
   } catch {
-    // DB not available (e.g. no DATABASE_URL on edge/serverless) — return minimal profile
+    // Continue to store fallback
   }
 
-  // Fallback: construct a virtual user from JWT payload (no DB)
+  // 2. Fallback: construct from assessmentStore
+  const { assessmentStore } = await import("@/lib/db/assessment-store");
+  const storedProfile = assessmentStore.getProfile(session.userId);
+
   return {
     id: session.userId,
     email: session.email,
@@ -150,7 +141,23 @@ export async function getCurrentUserWithProfile() {
     suspendedAt: null as Date | null,
     createdAt: new Date(),
     updatedAt: new Date(),
-    profile: null,
+    profile: storedProfile
+      ? {
+          id: `prof_${session.userId}`,
+          userId: session.userId,
+          targetLevel: storedProfile.targetLevel,
+          nativeLanguage: storedProfile.nativeLanguage,
+          studyHoursWeekly: storedProfile.studyHoursWeekly,
+          learningGoal: storedProfile.learningGoal,
+        }
+      : {
+          id: `prof_${session.userId}`,
+          userId: session.userId,
+          targetLevel: "HSK 3",
+          nativeLanguage: "Tiếng Việt",
+          studyHoursWeekly: 3,
+          learningGoal: "",
+        },
   };
 }
 
