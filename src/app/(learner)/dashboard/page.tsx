@@ -511,6 +511,39 @@ export default function LearnerDashboardPage() {
         </div>
       </Card>
 
+      {/* HSKK VIRTUAL EXAM ROOM PROMO CARD */}
+      <Card className="rounded-3xl border border-rose-200/90 dark:border-rose-900/40 bg-gradient-to-r from-rose-50/80 via-red-50/40 to-orange-50/50 dark:from-rose-950/20 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-rose-600 to-red-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-xs">
+              <Award className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Phòng Thi Thử HSKK Ảo Chuẩn Quốc Tế (汉语水平口语考试)
+                </h3>
+                <Badge variant="outline" className="text-[10px] font-bold bg-rose-100/70 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300">
+                  Chuẩn CTI 2024
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Mô phỏng 100% phòng thi máy tính: Sơ cấp, Trung cấp &amp; Cao cấp. Có băng nghe, tín hiệu bíp '嘀' chuẩn, nhìn tranh nói và chấm điểm tự động.
+              </p>
+            </div>
+          </div>
+
+          <Link href="/dashboard/hskk" className="shrink-0">
+            <Button
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-10 px-5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs w-full sm:w-auto"
+            >
+              <span>Vào Thi HSKK Ngay</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </div>
+      </Card>
+
       {/* CASUAL FREE TALK PROMO CARD */}
       <Card className="rounded-3xl border border-amber-200/90 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-rose-50/50 dark:from-amber-950/20 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

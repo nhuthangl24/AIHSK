@@ -18,6 +18,7 @@ import {
   MessageCircle,
   HelpCircle,
   ShieldCheck,
+  Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/brand-logo";
@@ -26,6 +27,7 @@ import { LegalModal } from "@/components/legal/legal-modal";
 const NAV_ITEMS = [
   { name: "Tổng Quan", shortName: "Tổng quan", href: "/dashboard", icon: LayoutDashboard },
   { name: "Bắt Đầu Thi Nói", shortName: "Thi nói", href: "/dashboard/assessments", icon: PlayCircle },
+  { name: "Thi Thử HSKK", shortName: "Thi HSKK", href: "/dashboard/hskk", icon: Award },
   { name: "Trò Chuyện Tự Do", shortName: "Tự do", href: "/dashboard/free-talk", icon: MessageCircle },
   { name: "Báo Cáo Đánh Giá", shortName: "Báo cáo", href: "/dashboard/reports", icon: FileText },
   { name: "Tiến Độ Khẩu Ngữ", shortName: "Tiến độ", href: "/dashboard/progress", icon: TrendingUp },
