@@ -87,4 +87,13 @@ describe("Offline / Firebase-only Mode (Zero-PostgreSQL) Resilience Tests", () =
     const templates = await AssessmentService.getTemplates();
     expect(templates.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("should detect localhost database URL and serverless environment safely", async () => {
+    const { isLocalhostDbUrl, isServerlessOrCloud } = await import("../src/lib/db/prisma");
+
+    expect(isLocalhostDbUrl("postgresql://nhuthang@localhost:5432/aihsk_saas")).toBe(true);
+    expect(isLocalhostDbUrl("postgresql://nhuthang@127.0.0.1:5432/aihsk_saas")).toBe(true);
+    expect(isLocalhostDbUrl("postgresql://user:pass@ep-neon-1234.us-east-2.aws.neon.tech/neondb")).toBe(false);
+    expect(isLocalhostDbUrl(undefined)).toBe(true);
+  });
 });
