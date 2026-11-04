@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { FreeTalkService, FREE_TALK_PERSONAS } from "../src/lib/ai/free-talk-service";
 import { POST } from "../src/app/api/free-talk/route";
+import { POST as EVAL_POST } from "../src/app/api/free-talk/evaluate/route";
 import { NextRequest } from "next/server";
 import * as sessionModule from "../src/lib/auth/session";
 
@@ -144,6 +145,70 @@ describe("Free Talk (Trò Chuyện Tự Do) Unit Tests", () => {
       expect(data.pinyin).toBeTruthy();
       expect(data.translation).toBeTruthy();
       expect(Array.isArray(data.suggestions)).toBe(true);
+    });
+  });
+
+  describe("Free Talk Evaluation & Scoring", () => {
+    it("should evaluate a session with multiple turns and return scores across 3 criteria", async () => {
+      const messages = [
+        { role: "assistant" as const, content: "你好！今天怎么样？" },
+        { role: "user" as const, content: "我今天挺好的，因为天气很好，所以我想去公园。" },
+        { role: "assistant" as const, content: "公园风景一定很美！" },
+        { role: "user" as const, content: "是的，我也吃了好吃菜，心情特别好。" },
+      ];
+
+      const evaluation = await FreeTalkService.evaluateSession({
+        messages,
+        level: "HSK 2",
+        personaId: "friendly_peer",
+      });
+
+      expect(evaluation.overallScore).toBeGreaterThanOrEqual(60);
+      expect(evaluation.overallScore).toBeLessThanOrEqual(100);
+      expect(evaluation.fluencyScore).toBeGreaterThanOrEqual(60);
+      expect(evaluation.grammarScore).toBeGreaterThanOrEqual(60);
+      expect(evaluation.vocabularyScore).toBeGreaterThanOrEqual(60);
+      expect(evaluation.hskEstimate).toContain("HSK");
+      expect(evaluation.strengths.length).toBeGreaterThanOrEqual(1);
+      expect(evaluation.summary).toBeTruthy();
+      expect(Array.isArray(evaluation.corrections)).toBe(true);
+    });
+
+    it("should return 0 score when user has 0 turns", async () => {
+      const evaluation = await FreeTalkService.evaluateSession({
+        messages: [{ role: "assistant", content: "你好！" }],
+      });
+
+      expect(evaluation.overallScore).toBe(0);
+      expect(evaluation.summary).toContain("chưa gửi câu");
+    });
+
+    it("should handle POST /api/free-talk/evaluate and persist session", async () => {
+      vi.spyOn(sessionModule, "getCurrentUser").mockResolvedValueOnce({
+        userId: "user_test_free_talk",
+        email: "freetalk@aihsk.com",
+        role: "USER" as any,
+      });
+
+      const req = new NextRequest("http://localhost:3000/api/free-talk/evaluate", {
+        method: "POST",
+        body: JSON.stringify({
+          messages: [
+            { role: "assistant", content: "你好！你想聊聊什么？" },
+            { role: "user", content: "我想聊聊中国的美食和旅游。" },
+          ],
+          level: "HSK 3",
+          personaId: "travel_companion",
+        }),
+      });
+
+      const res = await EVAL_POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.sessionId).toBeTruthy();
+      expect(data.evaluation.overallScore).toBeGreaterThan(0);
+      expect(data.evaluation.hskEstimate).toBeTruthy();
     });
   });
 });

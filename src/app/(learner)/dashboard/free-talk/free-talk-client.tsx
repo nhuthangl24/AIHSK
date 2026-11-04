@@ -25,11 +25,17 @@ import {
   HelpCircle,
   Loader2,
   X,
+  Award,
+  ChevronRight,
+  BarChart3,
+  ThumbsUp,
+  FileText,
 } from "lucide-react";
 import {
   FREE_TALK_PERSONAS,
   FreeTalkMessage,
   FreeTalkPersona,
+  FreeTalkEvaluation,
 } from "@/lib/ai/free-talk-service";
 
 const HSK_LEVELS = [
@@ -72,6 +78,11 @@ export default function FreeTalkClient() {
   const [showTranslation, setShowTranslation] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(0.95);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+
+  // Evaluation state
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationResult, setEvaluationResult] = useState<FreeTalkEvaluation | null>(null);
+  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
 
   // Audio References
   const recognitionRef = useRef<any>(null);
@@ -274,6 +285,49 @@ export default function FreeTalkClient() {
 
   const userTurnCount = messages.filter((m) => m.role === "user").length;
 
+  const handleEvaluateSession = async () => {
+    stopRecording();
+    stopTTS();
+    setShowSummaryModal(true);
+
+    if (userTurnCount === 0) {
+      setEvaluationResult({
+        overallScore: 0,
+        hskEstimate: selectedLevel.includes("HSK") ? selectedLevel.slice(0, 5) : "HSK 1",
+        fluencyScore: 0,
+        grammarScore: 0,
+        vocabularyScore: 0,
+        summary: "Bạn chưa gửi câu phản xạ nào trong phòng trò chuyện. Hãy nói hoặc gõ ít nhất 1-2 câu tiếng Trung để AI có thể phân tích và chấm điểm nhé!",
+        strengths: ["Đã bước vào phòng luyện khẩu ngữ tự do"],
+        improvements: ["Tự tin nói thử một vài câu tiếng Trung bất kỳ."],
+        corrections: [],
+      });
+      return;
+    }
+
+    setIsEvaluating(true);
+    try {
+      const res = await fetch("/api/free-talk/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: messages.map((m) => ({ role: m.role, content: m.content, pinyin: m.pinyin })),
+          level: selectedLevel,
+          personaId: selectedPersonaId,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Chấm điểm thất bại");
+      const data = await res.json();
+      setEvaluationResult(data.evaluation);
+      if (data.sessionId) setSavedSessionId(data.sessionId);
+    } catch (e) {
+      console.error("Evaluate error:", e);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto space-y-3 pb-2">
       {/* ==================================================================== */}
@@ -323,14 +377,23 @@ export default function FreeTalkClient() {
           </select>
 
           <Button
-            variant="outline"
             size="sm"
-            onClick={() => setShowSummaryModal(true)}
-            className="h-8 px-2.5 text-xs font-semibold text-rose-600 border-rose-200 dark:border-rose-900/60 bg-rose-50/50 hover:bg-rose-100 dark:bg-rose-950/40 rounded-xl"
-            title="Xem tổng kết cuộc trò chuyện"
+            onClick={handleEvaluateSession}
+            disabled={isEvaluating}
+            className="h-8 px-3 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
+            title="Kết thúc và xem bảng điểm AI đánh giá chi tiết"
           >
-            <Sparkles className="h-3.5 w-3.5 mr-1" />
-            <span>Tổng kết ({userTurnCount})</span>
+            {isEvaluating ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Đang chấm điểm...</span>
+              </>
+            ) : (
+              <>
+                <Award className="h-3.5 w-3.5" />
+                <span>Kết Thúc & Chấm Điểm ({userTurnCount})</span>
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -621,17 +684,25 @@ export default function FreeTalkClient() {
       </div>
 
       {/* ==================================================================== */}
-      {/* 4. SUMMARY DIALOG MODAL                                              */}
+      {/* 4. EVALUATION & SUMMARY MODAL                                        */}
       {/* ==================================================================== */}
       {showSummaryModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="max-w-md w-full rounded-3xl bg-white dark:bg-slate-900 p-6 space-y-5 shadow-2xl border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="max-w-xl w-full max-h-[90vh] rounded-3xl bg-white dark:bg-slate-900 flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-rose-600" />
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Tổng Kết Buổi Trò Chuyện Tự Do
-                </h3>
+                <div className="h-8 w-8 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 flex items-center justify-center">
+                  <Award className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                    Bảng Đánh Giá & Chấm Điểm Khẩu Ngữ
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Phân tích phản xạ cùng {currentPersona.name} ({userTurnCount} câu đã nói)
+                  </p>
+                </div>
               </div>
               <Button
                 variant="ghost"
@@ -643,57 +714,172 @@ export default function FreeTalkClient() {
               </Button>
             </div>
 
-            <div className="space-y-4 text-xs leading-relaxed">
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                    Lượt phản xạ
-                  </span>
-                  <span className="text-2xl font-black text-rose-600">
-                    {userTurnCount}
-                  </span>
-                  <span className="text-[10px] text-slate-500 block">câu đã nói</span>
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs leading-relaxed">
+              {isEvaluating ? (
+                <div className="py-12 flex flex-col items-center justify-center space-y-3 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    Giám khảo AI đang chấm điểm khẩu ngữ...
+                  </p>
+                  <p className="text-xs text-slate-500 max-w-xs">
+                    Đang rà soát ngữ pháp, từ vựng, độ trôi chảy và đối chiếu chuẩn HSK.
+                  </p>
                 </div>
+              ) : evaluationResult ? (
+                <>
+                  {/* Overall Score Banner */}
+                  <div className="rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 text-white p-4 sm:p-5 shadow-sm flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] uppercase tracking-wider font-extrabold text-rose-100">
+                          Điểm Khẩu Ngữ Tự Do
+                        </span>
+                        <Badge variant="secondary" className="bg-white/20 text-white border-0 text-[10px] font-bold">
+                          Ước lượng {evaluationResult.hskEstimate}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-rose-100 leading-relaxed max-w-sm pt-0.5">
+                        {evaluationResult.summary}
+                      </p>
+                    </div>
 
-                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                    Độ tích cực
-                  </span>
-                  <span className="text-2xl font-black text-emerald-600">
-                    {userTurnCount >= 5 ? "Rất tốt" : userTurnCount >= 2 ? "Tốt" : "Khởi động"}
-                  </span>
-                  <span className="text-[10px] text-slate-500 block">tinh thần giao tiếp</span>
-                </div>
-              </div>
+                    <div className="text-right shrink-0 bg-white/15 backdrop-blur-md rounded-2xl px-4 py-2 border border-white/20">
+                      <span className="text-3xl sm:text-4xl font-black">{evaluationResult.overallScore}</span>
+                      <span className="text-xs text-rose-200 block font-semibold">/ 100</span>
+                    </div>
+                  </div>
 
-              <div className="p-3.5 rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-900/40 space-y-1.5">
-                <div className="font-bold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-rose-600" />
-                  <span>Nhận xét từ bạn đồng hành:</span>
-                </div>
-                <p className="text-slate-700 dark:text-slate-300">
-                  {userTurnCount >= 5
-                    ? "Bạn phản xạ rất nhanh và tự nhiên! Tiếp tục duy trì thói quen trò chuyện hàng ngày để từ vựng ngấm sâu hơn nhé."
-                    : "Bạn đã có bước khởi động rất tốt! Hãy thử nói thêm một vài câu nữa về sở thích hoặc món ăn yêu thích để tăng độ linh hoạt nhé."}
-                </p>
-              </div>
+                  {/* 3 Skill Dimension Bars */}
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                      <BarChart3 className="h-3.5 w-3.5 text-rose-600" />
+                      <span>3 Trụ Cột Đánh Giá Khẩu Ngữ</span>
+                    </h4>
 
-              <div className="pt-2 flex items-center gap-2">
-                <Button
-                  onClick={() => setShowSummaryModal(false)}
-                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs h-10 font-bold"
-                >
-                  Tiếp tục trò chuyện
-                </Button>
-                <Link href="/dashboard" className="flex-1">
-                  <Button
-                    variant="outline"
-                    className="w-full text-xs h-10 rounded-xl font-semibold"
-                  >
-                    Về Bảng điều khiển
+                    {/* Fluency */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                        <span>Độ Lưu Loát & Phản Xạ</span>
+                        <span className="font-bold text-rose-600">{evaluationResult.fluencyScore} / 100</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-rose-600 rounded-full transition-all duration-500"
+                          style={{ width: `${evaluationResult.fluencyScore}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Grammar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                        <span>Độ Chuẩn Ngữ Pháp & Cấu Trúc</span>
+                        <span className="font-bold text-indigo-600">{evaluationResult.grammarScore} / 100</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-600 rounded-full transition-all duration-500"
+                          style={{ width: `${evaluationResult.grammarScore}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Vocabulary */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                        <span>Vốn Từ Vựng & Diễn Đạt Tự Nhiên</span>
+                        <span className="font-bold text-emerald-600">{evaluationResult.vocabularyScore} / 100</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                          style={{ width: `${evaluationResult.vocabularyScore}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Strengths */}
+                  {evaluationResult.strengths?.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 space-y-1.5">
+                      <div className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <span>Điểm Sáng Bạn Đã Làm Tốt:</span>
+                      </div>
+                      <ul className="space-y-1 text-slate-700 dark:text-slate-300 pl-5 list-disc text-[11px]">
+                        {evaluationResult.strengths.map((str, i) => (
+                          <li key={i}>{str}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Native Phrasing / Corrections */}
+                  {evaluationResult.corrections?.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                        <span>Gợi Ý Sửa Câu Chuẩn Bản Xứ:</span>
+                      </h4>
+
+                      <div className="space-y-2">
+                        {evaluationResult.corrections.map((corr, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1"
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[10px] font-bold text-slate-400">Bạn nói:</span>
+                              <span className="text-rose-600 dark:text-rose-400 font-medium line-through">
+                                {corr.original}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[10px] font-bold text-emerald-600">Nên nói:</span>
+                              <span className="text-slate-900 dark:text-white font-bold">
+                                {corr.correction}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                              {corr.explanation}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center gap-2.5 shrink-0">
+              {savedSessionId && (
+                <Link href={`/dashboard/reports/${savedSessionId}`} className="w-full sm:flex-1">
+                  <Button className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs h-10 font-bold gap-1.5 shadow-xs">
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Xem Báo Cáo Chi Tiết</span>
                   </Button>
                 </Link>
-              </div>
+              )}
+
+              <Button
+                variant="outline"
+                onClick={() => setShowSummaryModal(false)}
+                className="w-full sm:flex-1 text-xs h-10 rounded-xl font-semibold border-slate-200 dark:border-slate-700"
+              >
+                Tiếp tục trò chuyện
+              </Button>
+
+              <Link href="/dashboard" className="w-full sm:w-auto">
+                <Button
+                  variant="ghost"
+                  className="w-full sm:w-auto text-xs h-10 rounded-xl font-semibold text-slate-600 dark:text-slate-400"
+                >
+                  Về Dashboard
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
