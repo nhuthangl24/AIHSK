@@ -14,18 +14,22 @@ import {
   Lock,
   Flame,
   Globe,
+  Gavel,
+  ShieldCheck,
+  Zap,
+  Terminal,
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Điều Khoản Sử Dụng Dịch Vụ (Terms of Service)",
+  title: "Điều Khoản Sử Dụng Dịch Vụ (Terms of Service) | Classnia AI",
   description:
-    "Quy chuẩn pháp lý, thỏa thuận dịch vụ thử nghiệm miễn phí và điều kiện sử dụng nền tảng khảo thí khẩu ngữ tiếng Trung Classnia AI.",
+    "Văn bản pháp lý quy định điều kiện sử dụng, quyền sở hữu trí tuệ, quy chuẩn chống gian lận, miễn trừ trách nhiệm và chế tài pháp lý ràng buộc của nền tảng khảo thí khẩu ngữ Classnia AI.",
   alternates: {
     canonical: "/terms",
   },
   openGraph: {
-    title: "Điều Khoản Sử Dụng Dịch Vụ | Classnia AI",
-    description: "Quy chuẩn pháp lý và điều kiện sử dụng dịch vụ khảo thí khẩu ngữ tiếng Trung Classnia AI.",
+    title: "Điều Khoản Sử Dụng Dịch Vụ Ràng Buộc | Classnia AI",
+    description: "Thỏa thuận dịch vụ khảo thí khẩu ngữ tiếng Trung AI và quy chế pháp lý nghiêm ngặt.",
   },
 };
 
@@ -36,74 +40,82 @@ export default function TermsPage() {
         {/* Header */}
         <div className="space-y-4 border-b border-slate-200 dark:border-slate-800 pb-8">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="cinnabar">Thỏa Thuận Dịch Vụ Ràng Buộc</Badge>
+            <Badge variant="destructive" className="bg-rose-600 text-xs font-bold">
+              Thỏa Thuận Pháp Lý Ràng Buộc (Binding Legal Contract)
+            </Badge>
             <span className="text-xs text-slate-500 font-medium">
-              Phiên bản 3.0 · Cập nhật: Tháng 11/2026
+              Hiệu lực: Tháng 11/2026 · Phiên bản 4.0 Toàn Diện
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
             Điều Khoản Sử Dụng Dịch Vụ
           </h1>
           <p className="text-base text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
-            Chào mừng bạn đến với <strong>Classnia AI</strong> (trực thuộc hệ sinh thái Classnia). Bản Điều khoản Sử dụng này ("Thỏa thuận") xác lập các quyền, nghĩa vụ và trách nhiệm pháp lý ràng buộc giữa Người sử dụng (bao gồm học viên, thí sinh, giáo viên, tổ chức) và Ban quản trị Classnia AI. Việc bạn đăng ký tài khoản, đăng nhập qua Google SSO hoặc bắt đầu bài thi đồng nghĩa với việc bạn đã đọc, hiểu và cam kết tuân thủ toàn bộ các điều khoản này.
+            Vui lòng đọc kỹ toàn bộ văn bản Điều khoản Sử dụng này (&ldquo;<strong>Thỏa thuận</strong>&rdquo;) trước khi thực hiện đăng ký, đăng nhập hoặc bắt đầu bất kỳ lượt phỏng vấn, khảo thí âm thanh nào trên hệ thống <strong>Classnia AI</strong> (tại các tên miền <code>chat.classnia.id.vn</code>, <code>classnia.id.vn</code> hoặc các phân hệ dịch vụ đi kèm). Bằng việc tương tác với hệ thống, bạn xác nhận đã đọc, hiểu thấu đáo và chấp thuận vô điều kiện toàn bộ các quy định pháp lý nghiêm ngặt dưới đây.
           </p>
         </div>
 
-        {/* Highlight Banner: Free Beta Platform & Academic Independence */}
-        <div className="p-5 rounded-3xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-950 dark:text-amber-200 space-y-2.5">
-          <div className="flex items-center gap-2 font-bold text-sm">
-            <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span>Tóm Lược Quan Trọng Dành Cho Người Dùng</span>
+        {/* Tuyên bố tóm lược nghiêm ngặt */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-950 dark:text-amber-200 space-y-3">
+          <div className="flex items-center gap-2 font-bold text-sm text-amber-800 dark:text-amber-300">
+            <AlertOctagon className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>THÔNG BÁO QUAN TRỌNG VỀ PHÁP LÝ & AN NINH MẠNG</span>
           </div>
-          <ul className="space-y-1.5 text-xs leading-relaxed pl-5 list-disc text-amber-900/90 dark:text-amber-300/90">
+          <ul className="space-y-2 text-xs leading-relaxed pl-5 list-disc text-amber-900/90 dark:text-amber-200/90">
             <li>
-              <strong>Nền tảng Thử nghiệm Miễn phí (Free Public Beta):</strong> Classnia AI hiện đang mở trải nghiệm 100% miễn phí cho cộng đồng người học tiếng Trung nhằm hoàn thiện công nghệ AI. Không có bất kỳ khoản phí ẩn hoặc yêu cầu thu phí dịch vụ nào.
+              <strong>Hợp đồng có hiệu lực tức thì:</strong> Thao tác đăng ký tài khoản, đăng nhập Google SSO hoặc gửi âm thanh qua micro có giá trị pháp lý tương đương với chữ ký tay của bạn trên hợp đồng dịch vụ điện tử theo Luật Giao dịch điện tử 2023.
             </li>
             <li>
-              <strong>Độc lập Khảo thí & Tính chất Tham khảo:</strong> Điểm số và ước lượng trình độ HSK/HSKK là chỉ số học thuật mô phỏng dựa trên thuật toán, <strong>KHÔNG thay thế cho Giấy chứng nhận HSK/HSKK chính thức</strong> do cơ quan khảo thí quốc gia Trung Quốc (CTI/Hanban) cấp.
+              <strong>Độc lập khảo thí tuyệt đối:</strong> Điểm số, ước tính cấp độ HSK/HSKK và báo cáo chẩn đoán là sản phẩm nghiên cứu thuật toán ngôn ngữ học độc lập của Classnia AI; <strong>KHÔNG thay thế chứng chỉ pháp lý</strong> do Ủy ban Khảo thí Giáo dục Quốc tế Trung Quốc (CTI) hoặc Bộ Giáo dục Trung Quốc cấp.
             </li>
             <li>
-              <strong>Chế tài nghiêm khắc đối với gian lận & phá hoại:</strong> Mọi hành vi dùng bot, cào dữ liệu, trích xuất prompt sư phạm hoặc can thiệp hệ thống sẽ bị khóa tài khoản vĩnh viễn và xử lý theo Luật An ninh mạng Việt Nam.
+              <strong>Chế tài nghiêm khắc với hành vi tấn công & cào dữ liệu:</strong> Mọi hành vi dump đề thi, jailbreak prompt sư phạm, mô phỏng âm thanh bot, đảo ngược mã nguồn hoặc khai thác lỗ hổng sẽ bị khóa tài khoản vĩnh viễn, truy thu bồi thường thiệt hại và chuyển hồ sơ sang Cục An ninh mạng và Phòng chống tội phạm công nghệ cao (A05) - Bộ Công an.
             </li>
           </ul>
         </div>
 
-        {/* Table of Contents */}
-        <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+        {/* Mục lục điều khoản */}
+        <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
             <FileText className="h-4 w-4 text-rose-500" />
-            <span>Mục Lục Điều Khoản</span>
+            <span>Mục Lục Điều Khoản Pháp Lý (12 Phần Chi Tiết)</span>
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            <a href="#section-1" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">1.</span> Giá Trị Pháp Lý Hợp Đồng Điện Tử
+            <a href="#section-1" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">1.</span> Giá Trị Pháp Lý Của Thỏa Thuận Điện Tử
             </a>
-            <a href="#section-2" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">2.</span> Quy Chế Dịch Vụ Thử Nghiệm Miễn Phí
+            <a href="#section-2" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">2.</span> Điều Kiện Chủ Thể & Năng Lực Hành Vi
             </a>
-            <a href="#section-3" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">3.</span> Đăng Ký Tài Khoản & Bảo Mật Phiên
+            <a href="#section-3" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">3.</span> Quy Chế Nền Tảng Thử Nghiệm Miễn Phí (Beta)
             </a>
-            <a href="#section-4" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">4.</span> Miễn Trừ Trách Nhiệm Về Chứng Chỉ & Kết Quả
+            <a href="#section-4" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">4.</span> Miễn Trừ Trách Nhiệm Về Văn Bằng Khảo Thí
             </a>
-            <a href="#section-5" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">5.</span> Quy Định Nghiêm Cấm & Chế Tài Xử Phạt
+            <a href="#section-5" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">5.</span> Trách Nhiệm Quản Lý Định Danh & Tài Khoản
             </a>
-            <a href="#section-6" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">6.</span> Quyền Sở Hữu Trí Tuệ & Bí Quyết Công Nghệ
+            <a href="#section-6" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">6.</span> Các Hành Vi Bị Nghiêm Cấm Tuyệt Đối
             </a>
-            <a href="#section-7" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">7.</span> Bản Quyền Nội Dung Giọng Nói Người Học
+            <a href="#section-7" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">7.</span> Quyền Sở Hữu Trí Tuệ & Bí Mật Kinh Doanh
             </a>
-            <a href="#section-8" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">8.</span> Giới Hạn Trách Nhiệm Dịch Vụ
+            <a href="#section-8" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">8.</span> Bản Quyền Âm Thanh & Tín Hiệu Phát Ngôn
             </a>
-            <a href="#section-9" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">9.</span> Đình Chỉ & Chấm Dứt Dịch Vụ
+            <a href="#section-9" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">9.</span> Giới Hạn Trách Nhiệm Pháp Lý Tối Đa
             </a>
-            <a href="#section-10" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1.5">
-              <span className="font-semibold text-rose-500">10.</span> Luật Điều Chỉnh & Thẩm Quyền Giải Quyết
+            <a href="#section-10" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">10.</span> Chế Tài Vi Phạm, Khóa Tài Khoản & Bồi Thường
+            </a>
+            <a href="#section-11" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">11.</span> Sửa Đổi Điều Khoản & Hiệu Lực Cập Nhật
+            </a>
+            <a href="#section-12" className="hover:text-rose-600 transition-colors flex items-center gap-1.5">
+              <span className="font-semibold text-rose-500">12.</span> Luật Điều Chỉnh & Thẩm Quyền Tòa Án
             </a>
           </div>
         </div>
@@ -115,14 +127,14 @@ export default function TermsPage() {
               1
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Giá Trị Pháp Lý Của Hợp Đồng Điện Tử & Sự Chấp Thuận
+              Giá Trị Pháp Lý Của Thỏa Thuận Điện Tử & Sự Ràng Buộc
             </h2>
           </div>
           <p>
-            Thỏa thuận này được giao kết dưới hình thức hợp đồng điện tử theo quy định của <strong>Luật Giao dịch điện tử số 20/2023/QH15</strong> và <strong>Bộ luật Dân sự số 91/2015/QH13</strong> nước Cộng hòa Xã hội Chủ nghĩa Việt Nam.
+            Thỏa thuận này là hợp đồng dịch vụ điện tử hợp pháp được xác lập căn cứ theo <strong>Luật Giao dịch điện tử số 20/2023/QH15</strong>, <strong>Bộ luật Dân sự số 91/2015/QH13</strong> và <strong>Luật An ninh mạng số 24/2018/QH14</strong> của Nước Cộng hòa Xã hội Chủ nghĩa Việt Nam.
           </p>
           <p>
-            Bằng việc nhấn "Đăng ký", "Đăng nhập", hoặc truy cập vào bất kỳ phân hệ nào của trang web <code>chat.classnia.id.vn</code> / <code>classnia.id.vn</code>, người dùng xác nhận có đầy đủ năng lực hành vi dân sự để thực hiện giao dịch và cam kết chịu sự ràng buộc bởi Thỏa thuận này cùng Chính sách Bảo mật kèm theo. Nếu bạn là người dưới 18 tuổi, bạn cần có sự đồng ý hoặc giám sát của cha mẹ hoặc người giám hộ hợp pháp.
+            Bằng việc nhấn vào nút &ldquo;Đăng ký&rdquo;, &ldquo;Đăng nhập với Google&rdquo;, &ldquo;Bắt đầu bài thi&rdquo; hoặc tiếp tục truy cập bất kỳ giao diện, API nào của hệ thống, người dùng thể hiện ý chí cam kết đồng thuận và bị ràng buộc tuyệt đối bởi Thỏa thuận này cùng <Link href="/privacy" className="text-rose-600 font-semibold hover:underline">Chính Sách Bảo Mật</Link>. Nếu bạn không đồng ý với bất kỳ phần nào của Thỏa thuận này, bạn phải lập tức dừng ngay mọi hành vi truy cập và ngừng sử dụng dịch vụ.
           </p>
         </section>
 
@@ -133,23 +145,17 @@ export default function TermsPage() {
               2
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Quy Chế Nền Tảng Thử Nghiệm Miễn Phí (Free Community Beta License)
+              Điều Kiện Chủ Thể, Năng Lực Dân Sự & Người Chưa Thành Niên
             </h2>
           </div>
           <p>
-            Classnia AI được phát triển nhằm mục tiêu xã hội hóa và nâng cao năng lực phản xạ tiếng Trung cho cộng đồng người Việt:
+            Để sử dụng Classnia AI, người dùng cam đoan và bảo đảm rằng:
           </p>
-          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-            <p>
-              <strong>1. Miễn phí 100%:</strong> Trong suốt giai đoạn thử nghiệm (Beta Test), người học được quyền truy cập đầy đủ các đề khảo thí khẩu ngữ 5 giai đoạn, phòng Trò chuyện tự do (Free-Talk) và nhận báo cáo chẩn đoán chuyên sâu mà không phải thanh toán bất kỳ khoản phí nào.
-            </p>
-            <p>
-              <strong>2. Trạng thái Thử nghiệm (Beta Status):</strong> Hệ thống đang liên tục được tinh chỉnh về năng lực hiểu giọng đọc, ngữ điệu và khả năng tính toán cao độ âm học. Vì vậy, hệ thống có thể được bảo trì cập nhật không báo trước để cải thiện chất lượng phục vụ.
-            </p>
-            <p>
-              <strong>3. Không kinh doanh mua bán hạn mức:</strong> Nghiêm cấm mọi hành vi mua bán lại tài khoản, môi giới cấp quyền hoặc trục lợi thương mại từ tài nguyên miễn phí của Classnia AI.
-            </p>
-          </div>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs">
+            <li>Người dùng từ đủ 18 tuổi trở lên có đầy đủ năng lực hành vi dân sự theo quy định pháp luật để tự chịu trách nhiệm về mọi hành vi tương tác trên mạng.</li>
+            <li>Trường hợp người học dưới 18 tuổi (bao gồm học sinh THCS, THPT hoặc thiếu nhi), việc đăng ký và làm bài thi phải có sự đồng thuận, hướng dẫn hoặc giám sát trực tiếp của cha mẹ hoặc người giám hộ hợp pháp. Cha mẹ/người giám hộ chịu trách nhiệm dân sự liên đới đối với mọi hoạt động của người học chưa thành niên.</li>
+            <li>Người dùng cam kết không thuộc diện bị hạn chế năng lực hành vi hoặc bị pháp luật cấm tham gia giao dịch trên không gian mạng.</li>
+          </ul>
         </section>
 
         {/* Section 3 */}
@@ -159,17 +165,23 @@ export default function TermsPage() {
               3
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Đăng Ký Tài Khoản & Trách Nhiệm Bảo Mật
+              Quy Chế Nền Tảng Thử Nghiệm Miễn Phí (Free Community Beta License)
             </h2>
           </div>
           <p>
-            Người dùng có trách nhiệm tự bảo vệ thông tin đăng nhập cá nhân:
+            Classnia AI hiện đang vận hành theo cơ chế <strong>Bản Thử Nghiệm Mở Hoàn Toàn Miễn Phí (Public Free Beta)</strong> phục vụ cộng đồng học sinh, sinh viên và người đi làm tại Việt Nam:
           </p>
-          <ul className="list-disc pl-5 space-y-1.5 text-xs">
-            <li>Mỗi tài khoản được đăng ký gắn liền với một địa chỉ thư điện tử hoặc một tài khoản Google duy nhất. Người dùng cam kết cung cấp thông tin chính xác.</li>
-            <li>Người dùng chịu trách nhiệm duy nhất đối với toàn bộ hoạt động diễn ra dưới tài khoản của mình. Không được chia sẻ mật khẩu hoặc cho người khác mượn tài khoản nhằm mục đích gian lận khảo thí.</li>
-            <li>Nếu phát hiện tài khoản bị xâm phạm hoặc có dấu hiệu truy cập trái phép, bạn có nghĩa vụ thông báo ngay cho đội ngũ hỗ trợ qua tab <strong>Yêu Cầu & Hỗ Trợ</strong>.</li>
-          </ul>
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+            <p>
+              <strong>1. Miễn phí bản quyền sử dụng:</strong> Người học được cấp quyền sử dụng cá nhân, phi thương mại, không thể chuyển nhượng để luyện thi khẩu ngữ 5 giai đoạn, phòng Trò chuyện tự do cùng Giám khảo AI và nhận báo cáo chẩn đoán 7 chiều kích mà không bị thu bất kỳ khoản phí nào.
+            </p>
+            <p>
+              <strong>2. Trạng thái phát triển kỹ thuật liên tục (Beta Status):</strong> Hệ thống liên tục được huấn luyện và tinh chỉnh về bộ phân giải thanh điệu tiếng Trung, tính toán độ biến thiên ngữ âm F0. Do đó, hệ thống có thể tạm gián đoạn hoặc bảo trì nâng cấp mà không bắt buộc phải có thông báo trước.
+            </p>
+            <p>
+              <strong>3. Nghiêm cấm thương mại hóa tài nguyên miễn phí:</strong> Bất kỳ cá nhân hoặc tổ chức nào có hành vi thu tiền của học viên để cung cấp quyền truy cập vào Classnia AI, hoặc bán lại tài khoản Classnia AI đều bị coi là hành vi gian lận thương mại nghiêm trọng và sẽ bị xử lý pháp lý.
+            </p>
+          </div>
         </section>
 
         {/* Section 4 */}
@@ -179,219 +191,253 @@ export default function TermsPage() {
               4
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Tuyên Bố Miễn Trừ Trách Nhiệm Về Chứng Chỉ & Điểm Thi
+              Tuyên Bố Miễn Trừ Trách Nhiệm Về Văn Bằng & Chứng Chỉ Khảo Thí
             </h2>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-            <div className="flex items-center gap-2 font-bold text-rose-600 dark:text-rose-400">
-              <AlertOctagon className="h-4 w-4 shrink-0" />
-              <span>Độc Lập Khảo Thí & Phạm Vi Áp Dụng:</span>
+          <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-xs space-y-2.5">
+            <div className="flex items-center gap-2 font-bold text-rose-700 dark:text-rose-400">
+              <Scale className="h-4 w-4 shrink-0" />
+              <span>ĐỘC LẬP HỌC THUẬT & PHẠM VI GIÁ TRỊ CỦA BÁO CÁO:</span>
             </div>
-            <p>
-              Các kết quả điểm số (0 - 100 điểm), cấp độ tương ứng (HSK 1 - HSK 6, CEFR A1 - C2, HSKK Sơ cấp / Trung cấp / Cao cấp) và các khuyến nghị phát âm tại Classnia AI là kết quả phân tích thuật toán ngôn ngữ học độc lập nhằm mục đích rèn luyện cá nhân và hỗ trợ giáo viên theo dõi năng lực học viên.
+            <p className="leading-relaxed text-slate-700 dark:text-slate-300">
+              Các chỉ số điểm số (thang 100), ước lượng trình độ HSK (HSK 1 - HSK 6), khung tham chiếu châu Âu (CEFR A1 - C2), chứng chỉ hoàn thành hoặc báo cáo điểm 7 chiều kích của Classnia AI là kết quả đánh giá bằng thuật toán đối thoại AI nhằm mục đích tự ôn luyện, rèn luyện phản xạ và hỗ trợ công tác giảng dạy.
             </p>
-            <p>
-              <strong>Classnia AI KHÔNG LIÊN KẾT, KHÔNG ĐẠI DIỆN VÀ KHÔNG THAY THẾ</strong> cho cơ quan tổ chức khảo thí HSK quốc tế (CTI - Chinese Testing International), Viện Khổng Tử hoặc Bộ Giáo dục Trung Quốc. Báo cáo chẩn đoán của Classnia AI không thể sử dụng để thay thế chứng chỉ pháp lý phục vụ du học, xin thị thực (visa), tốt nghiệp đại học hoặc ứng tuyển việc làm đòi hỏi văn bằng nhà nước.
+            <p className="leading-relaxed font-bold text-slate-900 dark:text-white">
+              Classnia AI KHÔNG CÓ BẤT KỲ MỐI QUAN HỆ ĐẠI DIỆN, LIÊN DOANH, ỦY QUYỀN HOẶC THAY THẾ NÀO đối với Ủy ban Khảo thí Giáo dục Quốc tế Trung Quốc (CTI - Chinese Testing International), Viện Khổng Tử, Trung tâm Hợp tác Giao lưu Ngôn ngữ Bộ Giáo dục Trung Quốc (CLEC), hoặc bất kỳ cơ quan khảo thí cấp nhà nước nào.
             </p>
-            <p>
-              Classnia AI không chịu trách nhiệm đối với bất kỳ quyết định tuyển sinh, xét học bổng, cấp visa hoặc điểm số thực tế của thí sinh trong các kỳ thi thực địa bên ngoài.
+            <p className="leading-relaxed text-slate-600 dark:text-slate-400">
+              Báo cáo của Classnia AI không mang giá trị văn bằng nhà nước, không có giá trị thay thế chứng chỉ pháp lý phục vụ du học, xin thị thực (visa), xét tốt nghiệp đại học hoặc tuyển dụng cán bộ công chức đòi hỏi chứng chỉ chuẩn quốc gia. Classnia AI hoàn toàn miễn trừ trách nhiệm pháp lý nếu kết quả thi thực tế của thí sinh tại các kỳ thi thực địa ngoài xã hội khác biệt so với điểm số chẩn đoán của AI.
             </p>
           </div>
         </section>
 
-        {/* Section 5: Các Hành Vi Bị Cấm Tuyệt Đối */}
+        {/* Section 5 */}
         <section id="section-5" className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center">
               5
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Quy Định Nghiêm Cấm Tuyệt Đối & Chế Tài Xử Phạt
+              Trách Nhiệm Quản Lý Định Danh, Mật Khẩu & Phiên Đăng Nhập
             </h2>
           </div>
           <p>
-            Để bảo vệ cộng đồng học tập văn minh và môi trường kỹ thuật an toàn, người dùng cam kết <strong>TUYỆT ĐỐI KHÔNG</strong> thực hiện các hành vi sau:
+            Người dùng có trách nhiệm tuyệt đối trong việc bảo vệ bí mật thông tin tài khoản:
           </p>
-
-          <div className="space-y-2 text-xs">
-            <div className="p-3 rounded-xl border border-rose-200/80 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 space-y-1">
-              <strong className="text-rose-700 dark:text-rose-300 block font-bold">
-                1. Tấn công mạng & Khai thác tự động (Anti-Scraping / Anti-Bot):
-              </strong>
-              Nghiêm cấm sử dụng robot, web crawler, scraper, extension tự động, script can thiệp hoặc bất kỳ phần mềm nào để tự động gửi request, cào đề thi, mô phỏng âm thanh giả lập nhằm đánh lừa hệ thống chấm điểm hoặc gây quá tải tài nguyên máy chủ.
-            </div>
-
-            <div className="p-3 rounded-xl border border-rose-200/80 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 space-y-1">
-              <strong className="text-rose-700 dark:text-rose-300 block font-bold">
-                2. Dịch ngược & Đánh cắp Prompt (Anti-Reverse Engineering / Anti-Jailbreak):
-              </strong>
-              Nghiêm cấm thực hiện hành vi dịch ngược mã nguồn (reverse engineering), can thiệp API nội bộ, cố tình nhập câu lệnh độc hại (Prompt Injection / Jailbreak) nhằm trích xuất prompt sư phạm bí mật của Giám khảo AI, trọng số thang điểm rubric hoặc cơ sở dữ liệu đề thi bản quyền.
-            </div>
-
-            <div className="p-3 rounded-xl border border-rose-200/80 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 space-y-1">
-              <strong className="text-rose-700 dark:text-rose-300 block font-bold">
-                3. Phát ngôn vi phạm pháp luật & Đạo đức:
-              </strong>
-              Nghiêm cấm phát ngôn vào micro các nội dung kích động bạo lực, khiêu dâm, xúc phạm danh dự nhân phẩm, xuyên tạc lịch sử, chống phá Nhà nước, tuyên truyền văn hóa phẩm độc hại hoặc vi phạm Luật An ninh mạng Việt Nam.
-            </div>
-
-            <div className="p-3 rounded-xl border border-rose-200/80 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 space-y-1">
-              <strong className="text-rose-700 dark:text-rose-300 block font-bold">
-                4. Tạo tài khoản giả mạo & Gian lận có tổ chức:
-              </strong>
-              Nghiêm cấm đăng ký hàng loạt tài khoản ảo (clone accounts) bằng công cụ tự động hoặc mua bán chuyển nhượng tài khoản.
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-slate-900 text-slate-100 dark:bg-slate-950 border border-slate-800 text-xs space-y-1.5">
-            <div className="flex items-center gap-2 font-bold text-rose-400">
-              <Ban className="h-4 w-4 shrink-0" />
-              <span>CHẾ TÀI XỬ LÝ VI PHẠM TỨC THÌ:</span>
-            </div>
-            <p>
-              Khi phát hiện bất kỳ dấu hiệu vi phạm nào, Classnia AI có toàn quyền:
-            </p>
-            <ul className="list-disc pl-5 space-y-1 text-slate-300">
-              <li><strong>Đình chỉ và khóa vĩnh viễn</strong> tài khoản người dùng ngay lập tức mà không cần báo trước và không có nghĩa vụ khôi phục dữ liệu.</li>
-              <li><strong>Chặn địa chỉ IP và mã thiết bị</strong> vi phạm trên toàn bộ hệ thống Classnia.</li>
-              <li><strong>Bảo lưu quyền khởi kiện yêu cầu bồi thường thiệt hại</strong> đối với mọi tổn thất về hạ tầng hoặc tài sản sở hữu trí tuệ, đồng thời chuyển giao hồ sơ chứng cứ cho Cơ quan An ninh mạng và Phòng chống tội phạm sử dụng công nghệ cao (A05) xử lý theo quy định pháp luật.</li>
-            </ul>
-          </div>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs">
+            <li>Người dùng cam kết cung cấp thông tin trung thực khi đăng ký hoặc xác thực qua tài khoản Google. Nghiêm cấm mạo danh cá nhân, tổ chức khác.</li>
+            <li>Mỗi tài khoản được cấp cho duy nhất một cá nhân sử dụng. Nghiêm cấm hành vi chia sẻ tài khoản cho nhiều người cùng thi, cho mượn tài khoản nhằm gian lận chỉ số năng lực.</li>
+            <li>Người dùng tự chịu toàn bộ trách nhiệm về mọi hành vi, lời nói, tương tác diễn ra dưới phiên đăng nhập của tài khoản mình.</li>
+            <li>Nếu nghi ngờ tài khoản bị lộ mật khẩu, bị truy cập trái phép hoặc có dấu hiệu chiếm đoạt, bạn phải thông báo ngay lập tức cho Classnia AI qua hệ thống <Link href="/dashboard/support" className="text-rose-600 font-semibold hover:underline">Tiếp Nhận Yêu Cầu Hỗ Trợ</Link> để phong tỏa tài khoản.</li>
+          </ul>
         </section>
 
-        {/* Section 6: Sở Hữu Trí Tuệ */}
+        {/* Section 6: Các Hành Vi Bị Cấm Tuyệt Đối */}
         <section id="section-6" className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center">
               6
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Quyền Sở Hữu Trí Tuệ & Tài Sản Vô Hình Độc Quyền
+              Quy Định Các Hành Vi Bị Nghiêm Cấm Tuyệt Đối (Zero Tolerance)
             </h2>
           </div>
           <p>
-            Toàn bộ tài nguyên số cấu thành nên Classnia AI là tài sản trí tuệ độc quyền được pháp luật Việt Nam và các điều ước quốc tế về sở hữu trí tuệ bảo hộ:
+            Nhằm bảo đảm môi trường khảo thí trong sạch, an toàn kỹ thuật và tuân thủ tuyệt đối Luật An ninh mạng Việt Nam, người dùng cam kết <strong>TUYỆT ĐỐI KHÔNG THỰC HIỆN</strong> các hành vi sau:
           </p>
-          <ul className="list-disc pl-5 space-y-1.5 text-xs">
-            <li><strong>Nhãn hiệu & Nhận diện:</strong> Tên thương hiệu "Classnia", "Classnia AI", biểu trưng (Logo HSK/Classnia), giao diện phòng thi, đồ họa âm thanh và hệ thống design token.</li>
-            <li><strong>Bí quyết công nghệ sư phạm:</strong> Hệ thống prompt dẫn dắt khảo thí 5 chặng, thuật toán trắc lượng tâm lý học chấm điểm đa chiều, bộ quy tắc nhận diện biến điệu ngữ âm tiếng Trung và kiến trúc phần mềm SaaS.</li>
-            <li><strong>Ngữ liệu đề thi:</strong> Tuyển tập kịch bản đề thi phỏng vấn, câu hỏi thử thách, bài đọc trích đoạn và gợi ý phản xạ giao tiếp.</li>
-            <li>Mọi hành vi sao chép, làm giả, phân phối lại hoặc tạo ra sản phẩm phái sinh đều bị nghiêm cấm tuyệt đối nếu không có thỏa thuận văn bản có chữ ký của đại diện có thẩm quyền Classnia AI.</li>
-          </ul>
+
+          <div className="space-y-3 text-xs">
+            <div className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 space-y-1">
+              <strong className="text-rose-700 dark:text-rose-300 block font-bold text-sm">
+                1. Tấn công mạng, Khai thác tự động & Cào dữ liệu (Anti-Scraping / Anti-Bot):
+              </strong>
+              Nghiêm cấm sử dụng robot, spider, crawler, scraper, extension tự động, script can thiệp hoặc bất kỳ phần mềm bên thứ ba nào để cào đề thi, tải hàng loạt ngân hàng câu hỏi, mô phỏng luồng âm thanh giả lập nhằm đánh lừa thuật toán nhận dạng hoặc gây quá tải hệ thống máy chủ (DDoS / DoS).
+            </div>
+
+            <div className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 space-y-1">
+              <strong className="text-rose-700 dark:text-rose-300 block font-bold text-sm">
+                2. Dịch ngược mã nguồn & Tấn công Prompt (Anti-Jailbreak / Prompt Injection):
+              </strong>
+              Nghiêm cấm hành vi dịch ngược (reverse engineering), decompile, deobfuscate mã nguồn; can thiệp trái phép vào các API nội bộ; cố tình truyền các chuỗi câu lệnh độc hại (Prompt Injection, System Jailbreak, Roleplay bypass) nhằm ép Giám khảo AI tiết lộ cấu hình hệ thống, prompt chỉ đạo sư phạm hoặc trọng số thuật toán rubric.
+            </div>
+
+            <div className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 space-y-1">
+              <strong className="text-rose-700 dark:text-rose-300 block font-bold text-sm">
+                3. Phát ngôn vi phạm an ninh quốc gia & Thuần phong mỹ tục:
+              </strong>
+              Nghiêm cấm nói vào micro các nội dung chống phá Nhà nước CHXHCN Việt Nam; xúc phạm lãnh tụ, danh nhân; kích động hận thù dân tộc, tôn giáo; tuyên truyền văn hóa phẩm đồi trụy; quấy rối, xúc phạm danh dự nhân phẩm của người khác hoặc vi phạm Điều 8, Điều 18 Luật An ninh mạng 2018.
+            </div>
+
+            <div className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 space-y-1">
+              <strong className="text-rose-700 dark:text-rose-300 block font-bold text-sm">
+                4. Tạo tài khoản hàng loạt & Gian lận có tổ chức:
+              </strong>
+              Nghiêm cấm sử dụng công cụ tạo hàng loạt tài khoản rác (clone accounts) nhằm spam tài nguyên máy tính, chiếm dụng hạn ngạch hoặc thực hiện các hành vi gian dối trong quá trình kiểm tra đánh giá.
+            </div>
+          </div>
         </section>
 
-        {/* Section 7: Bản Quyền Giọng Nói Của Học Viên */}
+        {/* Section 7: Sở Hữu Trí Tuệ */}
         <section id="section-7" className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center">
               7
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Bản Quyền Nội Dung Giọng Nói Của Học Viên
+              Quyền Sở Hữu Trí Tuệ & Bảo Hộ Bí Mật Kinh Doanh
             </h2>
           </div>
           <p>
-            Người học giữ nguyên quyền tác giả và quyền nhân thân đối với nội dung phát ngôn nguyên bản của mình trong bài thi. Khi người học tương tác qua micro, người học cấp cho Classnia AI một giấy phép sử dụng có giới hạn, phi độc quyền và miễn phí bản quyền nhằm các mục đích:
+            Toàn bộ các yếu tố cấu thành nên nền tảng Classnia AI là tài sản trí tuệ độc quyền được pháp luật Việt Nam (Luật Sở hữu trí tuệ 2022) và các điều ước quốc tế bảo vệ toàn diện:
           </p>
-          <ul className="list-disc pl-5 space-y-1 text-xs">
-            <li>Nhận dạng tiếng nói thành văn bản chữ Hán (Speech-to-Text).</li>
-            <li>Trích xuất các đặc trưng âm học phục vụ đối chiếu rubric 7 chiều.</li>
-            <li>Lưu trữ tạm thời trong tài khoản của bạn để bạn và giáo viên trong lớp có thể nghe lại và xem biểu đồ tiến độ.</li>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs">
+            <li><strong>Nhãn hiệu & Thương hiệu:</strong> Tên gọi &ldquo;Classnia&rdquo;, &ldquo;Classnia AI&rdquo;, biểu trưng logo, bộ nhận diện đồ họa phòng thi, slogan và tài sản thương mại.</li>
+            <li><strong>Bí quyết công nghệ & Thuật toán:</strong> Toàn bộ cấu trúc kịch bản dẫn dắt phỏng vấn 5 giai đoạn thích ứng, hệ thống prompt sư phạm độc quyền, thuật toán phân tích đường nét cao độ F0, bộ tiêu chí chấm điểm 7 chiều kích tâm trắc học và mã nguồn nền tảng.</li>
+            <li><strong>Ngân hàng dữ liệu đề thi:</strong> Tuyển tập đề thi, tình huống giao tiếp HSK/HSKK, câu hỏi gợi mở và phiên âm Pinyin chuẩn hóa.</li>
+            <li>Mọi hành vi sao chép, làm nhái, phân phối lại, cho thuê, thương mại hóa hoặc tạo ra sản phẩm phái sinh đều cấu thành tội xâm phạm quyền tác giả và bí mật kinh doanh, sẽ bị truy cứu trách nhiệm dân sự và hình sự theo quy định pháp luật.</li>
           </ul>
-          <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
-            ✓ Classnia AI cam kết không bán bản ghi âm giọng nói của bạn cho bất kỳ đơn vị quảng cáo hoặc bên thứ ba nào.
-          </p>
         </section>
 
-        {/* Section 8: Giới Hạn Trách Nhiệm Dịch Vụ */}
+        {/* Section 8: Bản Quyền Âm Thanh */}
         <section id="section-8" className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center">
               8
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Giới Hạn Trách Nhiệm Pháp Lý Tối Đa
+              Bản Quyền Tín Hiệu Âm Thanh & Phát Ngôn Của Người Học
             </h2>
           </div>
           <p>
-            Trong phạm vi tối đa được pháp luật Việt Nam cho phép:
+            Người học giữ nguyên quyền tác giả và quyền nhân thân đối với nội dung phát ngôn nguyên bản của mình trong bài thi. Khi người học tương tác qua micro, người học cấp cho Classnia AI một giấy phép sử dụng có giới hạn, phi độc quyền và miễn phí bản quyền nhằm các mục đích kỹ thuật hợp pháp sau:
           </p>
           <ul className="list-disc pl-5 space-y-1 text-xs">
-            <li>Dịch vụ được cung cấp trên cơ sở nguyên trạng ("AS-IS") và khi có sẵn ("AS-AVAILABLE"). Do đặc thù thử nghiệm công nghệ, Classnia AI không đảm bảo rằng dịch vụ sẽ hoàn toàn không xảy ra lỗi gián đoạn âm thanh hoặc lỗi đường truyền mạng cục bộ từ phía người dùng.</li>
-            <li>Classnia AI không chịu trách nhiệm đối với bất kỳ thiệt hại gián tiếp, thiệt hại ngẫu nhiên, mất mát dữ liệu do sự cố phần cứng của người dùng (micro hỏng, trình duyệt không tương thích, rớt mạng Internet cá nhân).</li>
-            <li>Trong mọi tình huống, tổng mức trách nhiệm bồi thường cao nhất của Classnia AI (nếu có) đối với mọi khiếu nại phát sinh từ việc sử dụng dịch vụ sẽ không vượt quá số tiền mà người dùng đã thực tế chi trả cho Classnia AI (với nền tảng miễn phí, mức giới hạn tối đa là 0 VNĐ).</li>
+            <li>Nhận dạng luồng âm thanh thành văn bản chữ Hán (Speech-to-Text).</li>
+            <li>Trích xuất các đặc trưng âm học phục vụ đối chiếu rubric 7 chiều kích.</li>
+            <li>Lưu trữ an toàn trong tài khoản của bạn để bạn và giáo viên trong lớp có thể nghe lại và xem biểu đồ tiến độ.</li>
           </ul>
+          <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900">
+            ✓ Classnia AI cam kết KHÔNG BAO GIỜ bán hoặc chuyển giao bản ghi âm giọng nói của bạn cho bất kỳ đơn vị quảng cáo hoặc bên thứ ba nào.
+          </p>
         </section>
 
-        {/* Section 9: Chấm Dứt Dịch Vụ */}
+        {/* Section 9: Giới Hạn Trách Nhiệm Pháp Lý Tối Đa */}
         <section id="section-9" className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center">
               9
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Đình Chỉ, Chấm Dứt & Thay Đổi Điều Khoản
+              Giới Hạn Trách Nhiệm Pháp Lý Tối Đa (Limitation of Liability)
             </h2>
           </div>
           <p>
-            Classnia AI bảo lưu quyền sửa đổi, bổ sung các điều khoản này tại bất kỳ thời điểm nào nhằm tuân thủ quy định pháp luật mới hoặc điều chỉnh theo nâng cấp tính năng. Mọi sửa đổi có hiệu lực ngay khi được công bố trên trang web.
+            Trong phạm vi tối đa được pháp luật Việt Nam cho phép:
           </p>
-          <p>
-            Việc người dùng tiếp tục sử dụng hệ thống sau khi các điều khoản sửa đổi được công bố đồng nghĩa với việc chấp thuận toàn bộ các sửa đổi đó. Nếu không đồng ý, người dùng có quyền ngừng sử dụng và yêu cầu xóa tài khoản.
-          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs">
+            <li>Dịch vụ được cung cấp trên cơ sở nguyên trạng (&ldquo;AS-IS&rdquo;) và khi sẵn có (&ldquo;AS-AVAILABLE&rdquo;). Classnia AI không bảo đảm rằng dịch vụ sẽ hoàn toàn không bị gián đoạn do lỗi đường truyền mạng Internet cá nhân của người học, lỗi phần cứng micro hoặc trình duyệt không tương thích.</li>
+            <li>Classnia AI được miễn trừ hoàn toàn khỏi mọi trách nhiệm đối với các thiệt hại gián tiếp, thiệt hại ngẫu nhiên, thiệt hại hệ quả, mất cơ hội du học, mất cơ hội việc làm, mất học bổng hoặc tổn thất dữ liệu cục bộ từ phía người dùng.</li>
+            <li>Trong mọi tình huống, mức trách nhiệm bồi thường cao nhất của Classnia AI (nếu có theo phán quyết của Tòa án có thẩm quyền) sẽ không vượt quá tổng số tiền thực tế mà người dùng đã thanh toán cho Classnia AI trong vòng 30 ngày trước khi phát sinh tranh chấp (đối với nền tảng thử nghiệm miễn phí, mức bồi thường tối đa ấn định là 0 VNĐ).</li>
+          </ul>
         </section>
 
-        {/* Section 10: Luật Điều Chỉnh & Kênh Liên Hệ */}
+        {/* Section 10: Chế Tài Xử Phạt */}
         <section id="section-10" className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center">
               10
             </span>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              Chế Tài Xử Lý Vi Phạm, Đơn Phương Chấm Dứt & Bồi Thường
+            </h2>
+          </div>
+          <p>
+            Khi phát hiện bất kỳ dấu hiệu vi phạm nào đối với Thỏa thuận này, Classnia AI có toàn quyền áp dụng các biện pháp xử lý sau mà không cần báo trước:
+          </p>
+          <div className="p-4 rounded-2xl bg-slate-900 text-slate-100 border border-slate-800 space-y-2 text-xs">
+            <div className="flex items-center gap-2 font-bold text-rose-400">
+              <Ban className="h-4 w-4" />
+              <span>HỆ THỐNG CHẾ TÀI XỬ LÝ VI PHẠM TỨC THÌ:</span>
+            </div>
+            <ul className="list-disc pl-5 space-y-1.5 text-slate-300">
+              <li><strong>Khóa vĩnh viễn và tiêu hủy tài khoản:</strong> Đóng toàn bộ quyền truy cập của người vi phạm ngay lập tức, không có nghĩa vụ sao lưu hay hoàn trả dữ liệu.</li>
+              <li><strong>Chặn địa chỉ IP và mã thiết bị (Hardware Fingerprint):</strong> Ngăn chặn vĩnh viễn thiết bị và mạng vi phạm truy cập vào hệ thống Classnia.</li>
+              <li><strong>Khởi kiện yêu cầu bồi thường thiệt hại:</strong> Buộc bên vi phạm bồi thường toàn bộ thiệt hại về hạ tầng, tổn thất uy tín thương hiệu cùng toàn bộ chi phí thuê luật sư, chi phí giám định kỹ thuật số.</li>
+              <li><strong>Chuyển hồ sơ cơ quan bảo vệ pháp luật:</strong> Trình báo và cung cấp nhật ký kỹ thuật cho Cơ quan Công an và Cơ quan An ninh mạng để điều tra khởi tố theo quy định của Bộ luật Hình sự.</li>
+            </ul>
+          </div>
+        </section>
+
+        {/* Section 11: Sửa Đổi Điều Khoản */}
+        <section id="section-11" className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center">
+              11
+            </span>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              Sửa Đổi, Bổ Sung & Hiệu Lực Của Điều Khoản Mới
+            </h2>
+          </div>
+          <p>
+            Classnia AI có toàn quyền sửa đổi, bổ sung hoặc điều chỉnh các điều khoản này tại bất kỳ thời điểm nào nhằm cập nhật theo tiến bộ công nghệ hoặc thay đổi của pháp luật.
+          </p>
+          <p>
+            Bản điều khoản sửa đổi sẽ có hiệu lực ngay khi được công bố công khai trên trang web này kèm theo ngày cập nhật mới nhất. Việc bạn tiếp tục sử dụng hệ thống sau khi các điều chỉnh được công bố cấu thành việc bạn đã đọc và đồng thuận hoàn toàn với các nội dung sửa đổi đó.
+          </p>
+        </section>
+
+        {/* Section 12: Luật Điều Chỉnh & Kênh Liên Hệ */}
+        <section id="section-12" className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-6 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center">
+              12
+            </span>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
               Luật Điều Chỉnh, Giải Quyết Tranh Chấp & Kênh Pháp Lý
             </h2>
           </div>
           <p>
-            Bản Điều khoản này được điều chỉnh, diễn giải và thi hành hoàn toàn theo quy định của pháp luật Nước Cộng hòa Xã hội Chủ nghĩa Việt Nam.
+            Thỏa thuận này được điều chỉnh, diễn giải và thi hành hoàn toàn theo quy định của <strong>pháp luật Nước Cộng hòa Xã hội Chủ nghĩa Việt Nam</strong>.
           </p>
           <p>
-            Mọi tranh chấp, khiếu nại phát sinh từ hoặc liên quan đến Thỏa thuận này trước hết sẽ được ưu tiên giải quyết thông qua thương lượng thiện chí giữa các bên trong thời hạn 30 (ba mươi) ngày làm việc. Nếu không đạt được thỏa thuận, tranh chấp sẽ được đưa ra giải quyết tại Tòa án Nhân dân có thẩm quyền tại Thành phố Hồ Chí Minh, Việt Nam. Phán quyết của Tòa án là chung thẩm và ràng buộc đối với các bên.
+            Mọi bất đồng hoặc tranh chấp phát sinh sẽ được các bên ưu tiên giải quyết thông qua thương lượng thiện chí trong vòng 30 (ba mươi) ngày làm việc. Trường hợp không thể thống nhất, tranh chấp sẽ được đệ trình lên giải quyết tại <strong>Tòa án Nhân dân có thẩm quyền tại Thành phố Hồ Chí Minh, Việt Nam</strong>. Bản án hoặc phán quyết của Tòa án là chung thẩm và có hiệu lực thi hành bắt buộc đối với các bên.
           </p>
 
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-1.5 mt-4">
-            <p><strong>Cơ quan Đại diện Pháp lý & Điều hành Nền tảng:</strong> Ban Quản trị Dự án Classnia AI</p>
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-2 mt-4">
+            <p className="font-bold text-slate-900 dark:text-white text-sm">THÔNG TIN ĐƠN VỊ VẬN HÀNH & KÊNH PHÁP LÝ:</p>
+            <p><strong>Cơ quan Đại diện Điều hành Nền tảng:</strong> Ban Điều Hành Dự Án Nền Tảng Classnia AI</p>
             <p>
-              <strong>Hệ thống tiếp nhận phản hồi & Hỗ trợ kỹ thuật:</strong>{" "}
-              <Link href="/dashboard/support" className="text-rose-600 font-semibold hover:underline">
-                Hệ thống tiếp nhận Ticket & Hỗ Trợ Trực Tuyến
+              <strong>Kênh tiếp nhận khiếu nại & Hỗ trợ kỹ thuật:</strong>{" "}
+              <Link href="/dashboard/support" className="text-rose-600 font-bold hover:underline">
+                Hệ Thống Yêu Cầu & Báo Lỗi Trực Tuyến
               </Link>
             </p>
             <p>
-              <strong>Địa chỉ hệ sinh thái đào tạo:</strong>{" "}
+              <strong>Cổng thông tin hệ sinh thái:</strong>{" "}
               <a
                 href={process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://classnia.id.vn"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-rose-600 font-semibold hover:underline"
+                className="text-rose-600 font-bold hover:underline"
               >
                 https://classnia.id.vn
               </a>
             </p>
           </div>
 
-          <div className="pt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800">
             <Link
               href="/privacy"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400"
             >
-              <span>Đọc Chính Sách Bảo Mật (Privacy Policy)</span>
+              <span>Xem Chính Sách Bảo Mật (Nghị định 13/2023/NĐ-CP)</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               href="/dashboard/support"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
             >
-              <span>Trung Tâm Hỗ Trợ & Báo Lỗi</span>
+              <span>Gửi Phiếu Yêu Cầu Hỗ Trợ Kỹ Thuật</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
