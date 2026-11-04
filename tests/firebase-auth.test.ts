@@ -46,4 +46,27 @@ describe("Firebase & Subdomain Authentication Tests", () => {
     const invalidToken = "eyJ1c2VySWQiOiIxMjMifQ.invalidsig123";
     expect(verifyClassniaToken(invalidToken)).toBeNull();
   });
+
+  it("should successfully process Firebase SSO sync via /api/auth/firebase-sync without scoping ReferenceError", async () => {
+    const { POST } = await import("../src/app/api/auth/firebase-sync/route");
+    const { NextRequest } = await import("next/server");
+
+    const req = new NextRequest("http://localhost:3000/api/auth/firebase-sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "test.firebase.user@classnia.id.vn",
+        displayName: "Firebase Test User",
+        uid: "uid_firebase_test_12345",
+        photoURL: "https://example.com/avatar.png",
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.user.email).toBe("test.firebase.user@classnia.id.vn");
+    expect(data.user.id).toBe("uid_firebase_test_12345");
+  });
 });

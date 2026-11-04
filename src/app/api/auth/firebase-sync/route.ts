@@ -28,10 +28,11 @@ export async function POST(req: NextRequest) {
     let userId = uid || `firebase_${normalizedEmail.replace(/[^a-z0-9]/g, "_")}`;
     let name = displayName || normalizedEmail.split("@")[0];
     let targetLevel = "HSK 3";
+    let fbUser: any = null;
 
     // 1. Resolve from Firebase Firestore (Primary DB)
     try {
-      const fbUser =
+      fbUser =
         (uid ? await FirebaseDb.findUserById(uid) : null) ||
         (await FirebaseDb.findUserByEmail(normalizedEmail));
 
