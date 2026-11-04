@@ -32,6 +32,8 @@ import {
   getSystemAudioSettings,
   saveSystemAudioSettings,
   getBestChineseVoice,
+  FIXED_VOICE_NAME,
+  FIXED_VOICE_LABEL,
 } from "@/lib/audio/system-audio-settings";
 import { LegalModal } from "@/components/legal/legal-modal";
 
@@ -1354,20 +1356,20 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                   Giọng đọc Giám khảo HSK:
                 </label>
                 <select
-                  value={selectedVoiceName}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    setSelectedVoiceName(name);
-                    saveSystemAudioSettings({ voiceName: name });
+                  value={FIXED_VOICE_NAME}
+                  onChange={() => {
+                    setSelectedVoiceName(FIXED_VOICE_NAME);
+                    saveSystemAudioSettings({ voiceName: FIXED_VOICE_NAME });
                   }}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-rose-500"
                 >
-                  {availableVoices.map((v) => (
-                    <option key={v.name} value={v.name}>
-                      {v.name} ({v.lang})
-                    </option>
-                  ))}
+                  <option value={FIXED_VOICE_NAME}>
+                    {FIXED_VOICE_LABEL}
+                  </option>
                 </select>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  ✓ Cố định giọng chuẩn khảo thí HSK / HSKK
+                </p>
               </div>
 
               <div>
