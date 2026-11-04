@@ -293,7 +293,9 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
                     </td>
 
                     <td className="py-3 px-4 text-slate-400 text-[11px]">
-                      {formatDate(session.createdAt || session.startedAt)}
+                      {session.createdAt || session.startedAt
+                        ? formatDate(session.createdAt || session.startedAt!)
+                        : "-"}
                     </td>
 
                     <td className="py-3 px-4 text-right">

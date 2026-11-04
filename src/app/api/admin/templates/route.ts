@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       rubricId: "rubric-standard-v1",
       isActive: Boolean(isActive),
       isPublic: Boolean(isPublic),
-      createdById: user.userId,
+      createdById: user?.userId || "admin",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

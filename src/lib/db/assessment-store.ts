@@ -295,7 +295,7 @@ class AssessmentStore {
     this.init();
   }
 
-  private init() {
+  public init() {
     if (this.initialized) return;
     this.initialized = true;
 
@@ -310,7 +310,7 @@ class AssessmentStore {
     }
   }
 
-  private reloadFromDisk() {
+  public reloadFromDisk() {
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, "utf-8");
@@ -846,7 +846,7 @@ class AssessmentStore {
       templatesCount: Object.keys(this.data.templates || {}).length,
       profilesCount: Object.keys(this.data.profiles || {}).length,
       ticketsCount: Object.keys(this.data.tickets || {}).length,
-      storagePath: this.storageFile,
+      storagePath: this.filePath,
     };
   }
 }

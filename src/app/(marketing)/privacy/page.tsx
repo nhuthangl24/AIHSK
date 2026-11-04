@@ -319,7 +319,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc pl-5 space-y-1 text-xs">
             <li>Người học dưới 16 tuổi khi đăng ký cần có sự đồng thuận hoặc giám sát của cha mẹ hoặc người giám hộ hợp pháp.</li>
-            <li>Cha mẹ hoặc người giám hộ có toàn quyền xem, yêu cầu chỉnh sửa hoặc xóa bỏ toàn bộ dữ liệu khảo thí của con em mình bất kỳ lúc nào bằng cách gửi yêu cầu tới email pháp lý & bảo mật privacy@classnia.id.vn hoặc qua Trung Tâm Hỗ Trợ.</li>
+            <li>Cha mẹ hoặc người giám hộ có toàn quyền xem, yêu cầu chỉnh sửa hoặc xóa bỏ toàn bộ dữ liệu khảo thí của con em mình bất kỳ lúc nào bằng cách gửi yêu cầu trực tiếp qua Trung Tâm Yêu Cầu & Hỗ Trợ.</li>
           </ul>
         </section>
 
@@ -339,15 +339,9 @@ export default function PrivacyPage() {
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
             <p><strong>Bộ phận chuyên trách:</strong> Classnia AI Data Protection Office (DPO)</p>
             <p>
-              <strong>Email pháp lý & bảo mật:</strong>{" "}
-              <a href="mailto:privacy@classnia.id.vn" className="text-rose-600 font-semibold hover:underline">
-                privacy@classnia.id.vn
-              </a>
-            </p>
-            <p>
-              <strong>Kênh báo lỗi & hỗ trợ học viên:</strong>{" "}
+              <strong>Kênh tiếp nhận yêu cầu & bảo mật dữ liệu:</strong>{" "}
               <Link href="/dashboard/support" className="text-rose-600 font-semibold hover:underline">
-                Tab Yêu Cầu & Hỗ Trợ (Hệ thống tiếp nhận Ticket)
+                Hệ thống tiếp nhận Ticket & Hỗ Trợ Trực Tuyến
               </Link>
             </p>
             <p>
