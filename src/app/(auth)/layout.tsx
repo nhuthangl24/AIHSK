@@ -1,8 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Tài Khoản Khảo Thí",
+  description:
+    "Đăng nhập hoặc đăng ký tài khoản Classnia AI để tham gia phòng thi Giám khảo AI và nhận báo cáo chẩn đoán khẩu ngữ tiếng Trung.",
+  alternates: {
+    canonical: "/login",
+  },
+};
 
 export default async function AuthLayout({
   children,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import {
@@ -17,10 +18,17 @@ import {
   Mail,
 } from "lucide-react";
 
-export const metadata = {
-  title: "Chính Sách Bảo Mật & Bảo Vệ Dữ Liệu Cá Nhân | Classnia AI",
+export const metadata: Metadata = {
+  title: "Chính Sách Bảo Mật & Bảo Vệ Dữ Liệu Cá Nhân",
   description:
     "Chính sách bảo mật toàn diện tuân thủ Nghị định 13/2023/NĐ-CP, quy chế bảo vệ âm thanh giọng nói và quyền riêng tư tại Classnia AI.",
+  alternates: {
+    canonical: "/privacy",
+  },
+  openGraph: {
+    title: "Chính Sách Bảo Mật & Bảo Vệ Dữ Liệu Cá Nhân | Classnia AI",
+    description: "Chính sách bảo vệ dữ liệu cá nhân, âm thanh giọng nói và quyền riêng tư người học tại Classnia AI.",
+  },
 };
 
 export default function PrivacyPage() {

@@ -1,10 +1,23 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Mic, BarChart3, Users, BookOpen, Volume2, ShieldCheck, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+export const metadata: Metadata = {
+  title: "Tính Năng Giám Khảo AI & Thang Điểm 7 Chiều",
+  description:
+    "Khám phá các tính năng hàng đầu của Classnia AI: Giám khảo AI thích ứng 5 giai đoạn, chấm điểm ngữ âm 7 chiều, chẩn đoán thanh điệu và quản lý lớp học.",
+  alternates: {
+    canonical: "/features",
+  },
+  openGraph: {
+    title: "Tính Năng Giám Khảo AI & Thang Điểm 7 Chiều | Classnia AI",
+    description:
+      "Bộ giải pháp toàn diện kết hợp Voice AI, phân tích âm học và chẩn đoán khẩu ngữ tiếng Trung chuẩn HSK.",
+  },
+};
 
 export default function FeaturesPage() {
   return (
@@ -37,7 +50,7 @@ export default function FeaturesPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 dark:border-slate-800">
+          <Card className="border-slate-200 dark:border-slate-800" id="scoring">
             <CardContent className="p-8 space-y-4">
               <div className="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 flex items-center justify-center">
                 <BarChart3 className="h-6 w-6" />

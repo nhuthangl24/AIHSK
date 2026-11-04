@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import {
@@ -15,10 +16,17 @@ import {
   Globe,
 } from "lucide-react";
 
-export const metadata = {
-  title: "Điều Khoản Sử Dụng Dịch Vụ (Terms of Service) | Classnia AI",
+export const metadata: Metadata = {
+  title: "Điều Khoản Sử Dụng Dịch Vụ (Terms of Service)",
   description:
     "Quy chuẩn pháp lý, thỏa thuận dịch vụ thử nghiệm miễn phí và điều kiện sử dụng nền tảng khảo thí khẩu ngữ tiếng Trung Classnia AI.",
+  alternates: {
+    canonical: "/terms",
+  },
+  openGraph: {
+    title: "Điều Khoản Sử Dụng Dịch Vụ | Classnia AI",
+    description: "Quy chuẩn pháp lý và điều kiện sử dụng dịch vụ khảo thí khẩu ngữ tiếng Trung Classnia AI.",
+  },
 };
 
 export default function TermsPage() {

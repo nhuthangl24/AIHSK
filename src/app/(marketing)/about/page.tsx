@@ -1,11 +1,22 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShieldCheck, BookOpen, Award, CheckCircle2 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Triết Lý Khảo Thí Khẩu Ngữ & Chuẩn HSK",
+  description:
+    "Tìm hiểu về phương pháp khảo thí khẩu ngữ 5 giai đoạn và hệ thống chấm điểm tâm trắc học 7 chiều của Classnia AI theo khung chuẩn HSK 3.0 & HSKK.",
+  alternates: {
+    canonical: "/about",
+  },
+  openGraph: {
+    title: "Triết Lý Khảo Thí Khẩu Ngữ & Chuẩn HSK | Classnia AI",
+    description:
+      "Tìm hiểu phương pháp phỏng vấn hội thoại toàn diện và chuẩn mực khảo thí khẩu ngữ tiếng Trung bằng Giám khảo AI.",
+  },
+};
 
 export default function AboutPage() {
   return (

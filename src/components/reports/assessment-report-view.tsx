@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Award,
@@ -12,6 +13,8 @@ import {
   Sparkles,
   FileText,
   Lightbulb,
+  Printer,
+  X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +23,7 @@ import { formatDate, formatScore } from "@/lib/utils";
 import { PrintButton } from "@/components/reports/print-button";
 import { PostReportPracticeCard } from "@/components/reports/post-report-practice-card";
 import { generatePostAssessmentQuestions } from "@/lib/practice/practice-bank-generator";
+import { OfficialReportPrintTemplate } from "@/components/reports/official-report-print";
 
 function formatPerformanceLevel(level?: string): string {
   switch (level) {
@@ -203,9 +207,10 @@ export function AssessmentReportView({
 
   // Generate 5 contextual practice questions for this report's topic
   const practiceQuestions = generatePostAssessmentQuestions(template.title, hskLabel);
+  const [showCertificatePreview, setShowCertificatePreview] = useState(false);
 
   return (
-    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-20 print:p-0 print:space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-20 print:p-0 print:space-y-0 animate-in fade-in duration-200">
       {/* 1. BACK & EXPORT BAR */}
       <div className="flex items-center justify-between print:hidden gap-2">
         <Link href="/dashboard/reports">
@@ -225,11 +230,13 @@ export function AssessmentReportView({
               Đã đồng bộ thiết bị
             </Badge>
           )}
-          <PrintButton />
+          <PrintButton onPreviewClick={() => setShowCertificatePreview(true)} />
         </div>
       </div>
 
-      {/* 2. REPORT HEADER CARD (Hero Overview) */}
+      {/* WEB INTERACTIVE REPORT CARDS (HIDDEN WHEN PRINTING) */}
+      <div className="space-y-6 sm:space-y-8 print:hidden">
+        {/* 2. REPORT HEADER CARD (Hero Overview) */}
       <Card className="border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden rounded-3xl bg-gradient-to-br from-white via-rose-50/20 to-white dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
         <CardContent className="p-5 sm:p-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100 dark:border-slate-800">
@@ -773,6 +780,88 @@ export function AssessmentReportView({
           </CardContent>
         </Card>
       )}
+      </div>
+
+      {/* 4. OFFICIAL A4 CERTIFICATE PREVIEW MODAL */}
+      {showCertificatePreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150 print:hidden overflow-y-auto">
+          <div className="relative w-full max-w-4xl bg-slate-100 dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
+            {/* Modal Top Bar */}
+            <div className="p-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs">
+                  A4
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Xem Trước Bản Điểm Khẩu Ngữ A4 (Test Report Form)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Mẫu chứng nhận chuẩn hóa xuất sang tệp PDF hoặc in ấn
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => window.print()}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl h-8 px-3 gap-1.5 shadow-xs"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>In / Lưu PDF Ngay</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCertificatePreview(false)}
+                  className="h-8 w-8 p-0 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Certificate Preview Scrollable Container */}
+            <div className="p-4 sm:p-6 max-h-[80vh] overflow-y-auto bg-slate-200/80 dark:bg-slate-950/80 flex justify-center">
+              <div className="shadow-2xl rounded-2xl overflow-hidden bg-white w-full max-w-[210mm]">
+                <OfficialReportPrintTemplate
+                  session={session}
+                  user={user}
+                  hskLabel={hskLabel}
+                  cefrLabel={cefrLabel}
+                  overallScoreVal={overallScoreVal}
+                  confidencePercent={confidencePercent}
+                  summaryText={summaryText}
+                  scoreDimensions={scoreDimensions}
+                  allRecommendations={allRecommendations}
+                  strengths={strengths}
+                  weaknesses={weaknesses}
+                  userName={userName}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. DEDICATED OFFICIAL PRINT TEMPLATE (Activated on window.print()) */}
+      <div className="hidden print:block w-full">
+        <OfficialReportPrintTemplate
+          session={session}
+          user={user}
+          hskLabel={hskLabel}
+          cefrLabel={cefrLabel}
+          overallScoreVal={overallScoreVal}
+          confidencePercent={confidencePercent}
+          summaryText={summaryText}
+          scoreDimensions={scoreDimensions}
+          allRecommendations={allRecommendations}
+          strengths={strengths}
+          weaknesses={weaknesses}
+          userName={userName}
+        />
+      </div>
     </div>
   );
 }

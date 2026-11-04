@@ -72,7 +72,7 @@ export function DashboardSidebar({
       {/* ==================================================================== */}
       {/* 1. MOBILE TOP NAVIGATION BAR (Visible on < md screens)               */}
       {/* ==================================================================== */}
-      <div className="flex md:hidden sticky top-0 z-30 h-14 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-3.5 items-center justify-between">
+      <div className="flex md:hidden sticky top-0 z-30 h-14 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-3.5 items-center justify-between print:hidden">
         <Link href="/dashboard" className="flex items-center gap-2">
           <BrandLogo size={28} />
           <div className="flex items-center gap-1.5">
@@ -107,7 +107,7 @@ export function DashboardSidebar({
       {/* 2. MOBILE DRAWER OVERLAY & SLIDE-OUT PANEL                           */}
       {/* ==================================================================== */}
       {isMobileDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex md:hidden animate-in fade-in duration-150 print:hidden">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs"
@@ -236,7 +236,7 @@ export function DashboardSidebar({
       {/* ==================================================================== */}
       {/* 3. MOBILE BOTTOM NAVIGATION DOCK (Ergonomic thumb access on phones)  */}
       {/* ==================================================================== */}
-      <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200/80 dark:border-slate-800/80 backdrop-blur-lg px-0.5 items-center justify-around shadow-sm">
+      <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200/80 dark:border-slate-800/80 backdrop-blur-lg px-0.5 items-center justify-around shadow-sm print:hidden">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/dashboard"
@@ -276,7 +276,7 @@ export function DashboardSidebar({
       {/* ==================================================================== */}
       {/* 4. DESKTOP PERMANENT SIDEBAR (Visible on >= md screens)              */}
       {/* ==================================================================== */}
-      <aside className="hidden md:flex w-64 border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 flex-col justify-between shrink-0 h-screen sticky top-0 transition-colors z-20">
+      <aside className="hidden md:flex w-64 border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 flex-col justify-between shrink-0 h-screen sticky top-0 transition-colors z-20 print:hidden">
         <div className="p-5 overflow-y-auto">
           {/* Brand */}
           <Link href="/dashboard" className="flex items-center gap-2.5 mb-6 group">
