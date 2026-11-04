@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
+import { AssessmentService } from "@/services/assessment-service";
+import { ScoringWorker } from "@/lib/queue/scoring-worker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,26 +72,19 @@ export default async function AssessmentReportPage({
 
   let session: any = null;
   try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    session = await prisma.assessmentSession.findUnique({
-      where: { id },
-      include: {
-        template: true,
-        result: {
-          include: {
-            scoreDimensions: { orderBy: { weight: "desc" } },
-            recommendations: { orderBy: { priority: "asc" } },
-          },
-        },
-        turns: {
-          orderBy: { turnIndex: "asc" },
-          include: { recording: true },
-        },
-        user: { select: { name: true, email: true } },
-      },
-    });
+    session = await AssessmentService.getSessionWithReport(id, user?.userId || "");
   } catch {
     session = null;
+  }
+
+  // Auto-recovery: If session is in PROCESSING status and has no result yet, guarantee scoring completion
+  if (session && session.status === "PROCESSING" && !session.result) {
+    try {
+      await ScoringWorker.ensureSessionScored(id);
+      session = await AssessmentService.getSessionWithReport(id, user?.userId || "");
+    } catch (err) {
+      console.error("Auto-recovery scoring error:", err);
+    }
   }
 
   if (!session || !session.result) {

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { AssessmentService } from "@/services/assessment-service";
+import { assessmentStore } from "@/lib/db/assessment-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,25 +40,8 @@ export default async function LearningProgressPage() {
   const [sessions, profile] = await Promise.all([
     (async () => {
       try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        return await prisma.assessmentSession.findMany({
-          where: {
-            userId: user.userId,
-            status: "COMPLETED",
-            result: { isNot: null },
-          },
-          include: {
-            result: {
-              include: {
-                scoreDimensions: {
-                  orderBy: { weight: "desc" },
-                },
-              },
-            },
-            template: true,
-          },
-          orderBy: { createdAt: "asc" },
-        });
+        const list = await AssessmentService.getUserSessions(user.userId);
+        return (list || []).filter((s: any) => s.status === "COMPLETED" && s.result);
       } catch {
         return [];
       }
@@ -64,12 +49,14 @@ export default async function LearningProgressPage() {
     (async () => {
       try {
         const { default: prisma } = await import("@/lib/db/prisma");
-        return await prisma.userProfile.findUnique({
+        const p = await prisma.userProfile.findUnique({
           where: { userId: user.userId },
         });
+        if (p) return p;
       } catch {
-        return null;
+        // ignore
       }
+      return assessmentStore.getProfile(user.userId);
     })(),
   ]);
 

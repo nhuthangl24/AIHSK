@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
-import prisma from "@/lib/db/prisma";
+import { assessmentStore } from "@/lib/db/assessment-store";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -19,14 +19,16 @@ export async function GET() {
     userRecord = null;
   }
 
+  const storedProfile = assessmentStore.getProfile(user.userId);
+
   return NextResponse.json({
     user: {
-      name: userRecord?.name || user.name || "",
-      email: userRecord?.email || user.email || "",
-      targetLevel: userRecord?.profile?.targetLevel || "HSK 3",
-      nativeLanguage: userRecord?.profile?.nativeLanguage || "Tiếng Việt",
-      studyHoursWeekly: userRecord?.profile?.studyHoursWeekly ?? 3,
-      learningGoal: userRecord?.profile?.learningGoal || "",
+      name: userRecord?.name || storedProfile?.name || user.name || "",
+      email: userRecord?.email || storedProfile?.email || user.email || "",
+      targetLevel: userRecord?.profile?.targetLevel || storedProfile?.targetLevel || "HSK 3",
+      nativeLanguage: userRecord?.profile?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
+      studyHoursWeekly: userRecord?.profile?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
+      learningGoal: userRecord?.profile?.learningGoal || storedProfile?.learningGoal || "",
     },
   });
 }
@@ -41,36 +43,61 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { name, targetLevel, nativeLanguage, studyHoursWeekly, learningGoal } = body;
 
-    if (name && typeof name === "string" && name.trim().length > 0) {
-      await prisma.user.update({
-        where: { id: user.userId },
-        data: { name: name.trim() },
-      });
-    }
-
     const hours = Number(studyHoursWeekly);
     const validHours = !isNaN(hours) && hours > 0 ? Math.min(hours, 60) : 3;
 
-    const updatedProfile = await prisma.userProfile.upsert({
-      where: { userId: user.userId },
-      update: {
-        targetLevel: targetLevel ? String(targetLevel).trim() : "HSK 3",
-        nativeLanguage: nativeLanguage ? String(nativeLanguage).trim() : "Tiếng Việt",
-        studyHoursWeekly: validHours,
-        learningGoal: typeof learningGoal === "string" ? learningGoal.trim() : null,
-      },
-      create: {
-        userId: user.userId,
-        targetLevel: targetLevel ? String(targetLevel).trim() : "HSK 3",
-        nativeLanguage: nativeLanguage ? String(nativeLanguage).trim() : "Tiếng Việt",
-        studyHoursWeekly: validHours,
-        learningGoal: typeof learningGoal === "string" ? learningGoal.trim() : null,
-      },
-    });
+    const profileData = {
+      userId: user.userId,
+      name: name && typeof name === "string" ? name.trim() : user.name,
+      email: user.email,
+      targetLevel: targetLevel ? String(targetLevel).trim() : "HSK 3",
+      nativeLanguage: nativeLanguage ? String(nativeLanguage).trim() : "Tiếng Việt",
+      studyHoursWeekly: validHours,
+      learningGoal: typeof learningGoal === "string" ? learningGoal.trim() : "",
+      updatedAt: new Date().toISOString(),
+    };
 
-    return NextResponse.json({ success: true, profile: updatedProfile });
+    assessmentStore.saveProfile(profileData);
+
+    try {
+      const { default: prisma } = await import("@/lib/db/prisma");
+      if (name && typeof name === "string" && name.trim().length > 0) {
+        await prisma.user.update({
+          where: { id: user.userId },
+          data: { name: name.trim() },
+        }).catch(() => null);
+      }
+
+      await prisma.userProfile.upsert({
+        where: { userId: user.userId },
+        update: {
+          targetLevel: profileData.targetLevel,
+          nativeLanguage: profileData.nativeLanguage,
+          studyHoursWeekly: validHours,
+          learningGoal: profileData.learningGoal,
+        },
+        create: {
+          userId: user.userId,
+          targetLevel: profileData.targetLevel,
+          nativeLanguage: profileData.nativeLanguage,
+          studyHoursWeekly: validHours,
+          learningGoal: profileData.learningGoal,
+        },
+      }).catch(() => null);
+    } catch {
+      // Prisma offline, fallback store is primary
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Cập nhật hồ sơ học tập thành công!",
+      profile: profileData,
+    });
   } catch (err: any) {
     console.error("Profile update error:", err);
-    return NextResponse.json({ error: err.message || "Failed to update profile" }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message || "Không thể cập nhật hồ sơ" },
+      { status: 500 }
+    );
   }
 }

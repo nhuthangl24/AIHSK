@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { assessmentStore } from "@/lib/db/assessment-store";
 import ProfileClient from "./profile-client";
 
 export const dynamic = "force-dynamic";
@@ -21,13 +22,15 @@ export default async function ProfilePage() {
     userRecord = null;
   }
 
+  const storedProfile = assessmentStore.getProfile(user.userId);
+
   const initialData = {
-    name: userRecord?.name || user.name || "",
-    email: userRecord?.email || user.email || "",
-    targetLevel: userRecord?.profile?.targetLevel || "HSK 3",
-    nativeLanguage: userRecord?.profile?.nativeLanguage || "Tiếng Việt",
-    studyHoursWeekly: userRecord?.profile?.studyHoursWeekly ?? 3,
-    learningGoal: userRecord?.profile?.learningGoal || "",
+    name: userRecord?.name || storedProfile?.name || user.name || "",
+    email: userRecord?.email || storedProfile?.email || user.email || "",
+    targetLevel: userRecord?.profile?.targetLevel || storedProfile?.targetLevel || "HSK 3",
+    nativeLanguage: userRecord?.profile?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
+    studyHoursWeekly: userRecord?.profile?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
+    learningGoal: userRecord?.profile?.learningGoal || storedProfile?.learningGoal || "",
   };
 
   return (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { AssessmentService } from "@/services/assessment-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,19 +18,10 @@ export default async function ReportsListPage() {
 
   let sessions: any[] = [];
   try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    sessions = await prisma.assessmentSession.findMany({
-      where: {
-        userId: user.userId,
-        status: "COMPLETED",
-      },
-      include: {
-        template: true,
-        result: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-  } catch {
+    const userSessions = await AssessmentService.getUserSessions(user.userId);
+    sessions = (userSessions || []).filter((s: any) => s.status === "COMPLETED" && s.result);
+  } catch (e) {
+    console.warn("Could not load user sessions for reports:", e);
     sessions = [];
   }
 
@@ -60,51 +52,64 @@ export default async function ReportsListPage() {
           </Link>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sessions.map((s) => {
-            const score = s.result?.overallScore || 0;
-            const badge = getScoreBadgeColor(score);
+        <div className="space-y-4">
+          {sessions.map((session) => {
+            const result = session.result;
+            const scoreColor = result ? getScoreBadgeColor(result.overallScore) : "bg-slate-100 text-slate-700";
 
             return (
               <Card
-                key={s.id}
-                className="border-slate-200 dark:border-slate-800 flex flex-col justify-between hover:border-rose-300 dark:hover:border-rose-900 transition-all shadow-sm"
+                key={session.id}
+                className="border-slate-200 dark:border-slate-800 hover:shadow-md transition-shadow"
               >
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500">
-                      {formatDate(s.createdAt)}
-                    </span>
-                    <Badge variant="cinnabar" className="text-[10px]">
-                      {s.result?.hskEstimate || "Chẩn đoán HSK"}
-                    </Badge>
-                  </div>
+                <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs font-semibold">
+                        {session.template?.targetLevel || "HSK"}
+                      </Badge>
+                      {result?.hskEstimate && (
+                        <Badge variant="cinnabar" className="text-xs">
+                          {result.hskEstimate}
+                        </Badge>
+                      )}
+                      <span className="text-xs text-slate-400 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(session.completedAt || session.createdAt)}
+                      </span>
+                    </div>
 
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 dark:text-white leading-tight">
-                      {s.template.title}
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      {session.template?.title || "Bài khảo thí khẩu ngữ"}
                     </h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Cấp độ khảo thí: <span className="font-semibold text-slate-700 dark:text-slate-300">{s.result?.hskEstimate || s.template.targetLevel}</span>
+
+                    <p className="text-xs text-slate-500 line-clamp-1 max-w-xl">
+                      {result?.performanceSummary || session.template?.description}
                     </p>
                   </div>
 
-                  <div className="flex items-baseline gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                      {formatScore(score)}
-                    </span>
-                    <span className="text-xs text-slate-400">/ 100</span>
-                    <span className="text-xs text-emerald-600 font-semibold ml-auto flex items-center gap-1">
-                      <Award className="h-3.5 w-3.5" /> Độ tin cậy cao
-                    </span>
-                  </div>
+                  <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 dark:border-slate-800">
+                    {result ? (
+                      <div className="text-left sm:text-right">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                          Điểm số
+                        </span>
+                        <span className={`text-xl font-extrabold ${scoreColor}`}>
+                          {formatScore(result.overallScore)}
+                          <span className="text-xs text-slate-400 font-normal"> / 100</span>
+                        </span>
+                      </div>
+                    ) : (
+                      <Badge variant="outline">Đang xử lý</Badge>
+                    )}
 
-                  <Link href={`/dashboard/reports/${s.id}`} className="block pt-2">
-                    <Button variant="outline" className="w-full text-xs font-semibold flex items-center justify-center gap-2">
-                      <span>Xem Báo Cáo Chẩn Đoán Chi Tiết</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
+                    <Link href={`/dashboard/reports/${session.id}`}>
+                      <Button size="sm" variant="outline" className="gap-1.5 text-xs">
+                        <span>Chi tiết</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             );
