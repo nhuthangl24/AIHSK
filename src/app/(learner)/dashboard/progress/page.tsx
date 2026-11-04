@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/session";
+import { cookies } from "next/headers";
+import { getCurrentUser, getUserProfileCookie } from "@/lib/auth/session";
 import { AssessmentService } from "@/services/assessment-service";
 import { assessmentStore } from "@/lib/db/assessment-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,24 +49,33 @@ export default async function LearningProgressPage() {
       }
     })(),
     (async () => {
-      const cookieStore = await cookies();
-      const { getUserProfileCookie } = await import("@/lib/auth/session");
-      const profileCookie = getUserProfileCookie(cookieStore);
-      if (profileCookie) {
-        return {
-          targetLevel: profileCookie.targetLevel || "HSK 3",
-          name: profileCookie.name || user.name,
-          email: user.email,
-        };
+      try {
+        const cookieStore = await cookies();
+        const profileCookie = getUserProfileCookie(cookieStore);
+        if (profileCookie) {
+          return {
+            targetLevel: profileCookie.targetLevel || "HSK 3",
+            name: profileCookie.name || user.name,
+            email: user.email,
+          };
+        }
+      } catch {
+        // cookies read safe fallback
       }
-      const stored = assessmentStore.getProfile(user.userId) || assessmentStore.getProfile(user.email);
-      if (stored) {
-        return {
-          targetLevel: stored.targetLevel || "HSK 3",
-          name: stored.name || user.name,
-          email: user.email,
-        };
+
+      try {
+        const stored = assessmentStore.getProfile(user.userId) || assessmentStore.getProfile(user.email);
+        if (stored) {
+          return {
+            targetLevel: stored.targetLevel || "HSK 3",
+            name: stored.name || user.name,
+            email: user.email,
+          };
+        }
+      } catch {
+        // assessmentStore safe fallback
       }
+
       try {
         const { FirebaseDb } = await import("@/lib/firebase-db");
         const fb =
@@ -231,8 +241,9 @@ export default async function LearningProgressPage() {
                     </p>
                   ) : (
                     latestDimensions.map((dim: any, idx: number) => {
-                      const max = dim.maxScore || 20;
-                      const percent = Math.min(100, Math.max(0, Number(((dim.score / max) * 100).toFixed(1))));
+                      const score = typeof dim.score === "number" ? dim.score : 0;
+                      const max = typeof dim.maxScore === "number" && dim.maxScore > 0 ? dim.maxScore : 20;
+                      const percent = Math.min(100, Math.max(0, Math.round((score / max) * 100)));
 
                       let deltaDisplay: string | null = null;
                       let isPositive = true;
