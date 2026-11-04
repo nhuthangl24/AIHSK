@@ -98,24 +98,38 @@ export default async function LearningProgressPage() {
         </Card>
       ) : (
         (() => {
-          const initialSession = sessions[0];
+          // Chronological sort: oldest first, newest last
+          const chronological = [...sessions].sort(
+            (a, b) => new Date(a.completedAt || a.createdAt).getTime() - new Date(b.completedAt || b.createdAt).getTime()
+          );
+
+          const initialSession = chronological[0];
           const initialScore = initialSession.result?.overallScore || 0;
           const initialLevel =
             (initialSession.result as any)?.hskEstimate || (initialSession.template as any)?.targetLevel || "HSK 1";
 
-          const latestSession = sessions[sessions.length - 1];
+          const latestSession = chronological[chronological.length - 1];
           const latestScore = latestSession.result?.overallScore || 0;
           const currentLevel =
             (latestSession.result as any)?.hskEstimate || profile?.targetLevel || "HSK 1";
 
           const highestScore = Math.max(
-            ...sessions.map((s) => s.result?.overallScore || 0)
+            ...chronological.map((s) => s.result?.overallScore || 0)
           );
 
           const growthDelta = Number((latestScore - initialScore).toFixed(1));
 
-          const latestDimensions = (latestSession.result as any)?.scoreDimensions || [];
-          const initialDimensions = (initialSession.result as any)?.scoreDimensions || [];
+          // Find the most recent session that has dimension breakdowns
+          const sessionWithDimensions = [...chronological].reverse().find(
+            (s) => Array.isArray(s.result?.scoreDimensions) && s.result.scoreDimensions.length > 0
+          ) || latestSession;
+
+          const initialSessionWithDimensions = chronological.find(
+            (s) => Array.isArray(s.result?.scoreDimensions) && s.result.scoreDimensions.length > 0
+          ) || initialSession;
+
+          const latestDimensions = (sessionWithDimensions?.result as any)?.scoreDimensions || [];
+          const initialDimensions = (initialSessionWithDimensions?.result as any)?.scoreDimensions || [];
 
           return (
             <>
@@ -132,7 +146,7 @@ export default async function LearningProgressPage() {
                     </div>
                     <p className="text-xs text-slate-500 flex items-center gap-1.5 pt-1">
                       <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                      <span>{formatDate(initialSession.createdAt)} &bull; {initialLevel}</span>
+                      <span>{formatDate(initialSession.completedAt || initialSession.createdAt)} &bull; {initialLevel}</span>
                     </p>
                   </CardContent>
                 </Card>
@@ -188,7 +202,7 @@ export default async function LearningProgressPage() {
                       <span>Mức Độ Thành Thạo Theo Chiều Kích (Thực Tế)</span>
                     </CardTitle>
                     <span className="text-xs text-slate-500">
-                      Dữ liệu tính từ bài thi gần nhất ({formatDate(latestSession.createdAt)})
+                      Dữ liệu tính từ bài thi gần nhất ({formatDate(latestSession.completedAt || latestSession.createdAt)})
                     </span>
                   </div>
                 </CardHeader>
@@ -198,16 +212,18 @@ export default async function LearningProgressPage() {
                       Chưa có phân tích chiều kích điểm số cho bài thi này.
                     </p>
                   ) : (
-                    latestDimensions.map((dim: any) => {
+                    latestDimensions.map((dim: any, idx: number) => {
                       const max = dim.maxScore || 20;
                       const percent = Math.min(100, Math.max(0, Number(((dim.score / max) * 100).toFixed(1))));
 
                       let deltaDisplay: string | null = null;
                       let isPositive = true;
 
-                      if (sessions.length > 1) {
+                      if (chronological.length > 1) {
                         const initDim = initialDimensions.find(
-                          (d: any) => d.dimensionKey === dim.dimensionKey
+                          (d: any) =>
+                            (d.dimensionKey && d.dimensionKey === dim.dimensionKey) ||
+                            (d.dimensionName && d.dimensionName === dim.dimensionName)
                         );
                         if (initDim && initDim.maxScore) {
                           const initPercent = (initDim.score / initDim.maxScore) * 100;
@@ -217,18 +233,23 @@ export default async function LearningProgressPage() {
                         }
                       }
 
-                      const displayName = DIM_LABELS[dim.dimensionKey] || dim.dimensionName;
+                      const displayName =
+                        (dim.dimensionKey && DIM_LABELS[dim.dimensionKey]) ||
+                        dim.dimensionName ||
+                        `Kỹ năng ${idx + 1}`;
 
                       return (
-                        <div key={dim.id} className="space-y-1.5">
+                        <div key={dim.id || dim.dimensionKey || idx} className="space-y-1.5">
                           <div className="flex items-center justify-between text-xs font-medium">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-slate-800 dark:text-slate-200">
                                 {displayName}
                               </span>
-                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-slate-500">
-                                {dim.performanceLevel}
-                              </Badge>
+                              {dim.performanceLevel && (
+                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-slate-500">
+                                  {dim.performanceLevel}
+                                </Badge>
+                              )}
                             </div>
                             <span className="text-slate-500 shrink-0">
                               <span className="font-black text-slate-900 dark:text-white">

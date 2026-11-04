@@ -75,7 +75,9 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
       if (fbUser) {
         if (fbUser.name) payload.name = fbUser.name;
         if (fbUser.role) payload.role = fbUser.role as any;
-        if (fbUser.id) payload.userId = fbUser.id;
+        if (!payload.userId && fbUser.id) {
+          payload.userId = fbUser.id;
+        }
       }
     } catch {
       // In edge/serverless, continue with JWT payload

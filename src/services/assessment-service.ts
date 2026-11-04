@@ -82,6 +82,25 @@ export class AssessmentService {
       // Firebase optional
     }
 
+    // Also check profiles in assessmentStore
+    try {
+      const allProfiles = Object.values((assessmentStore as any).data?.profiles || {});
+      for (const prof of allProfiles) {
+        if (prof && typeof prof === "object") {
+          const p = prof as any;
+          if (
+            (resolvedEmail && p.email?.toLowerCase().trim() === resolvedEmail.toLowerCase().trim()) ||
+            candidateUserIds.has(p.userId)
+          ) {
+            if (p.userId) candidateUserIds.add(p.userId);
+            if (p.email) candidateUserIds.add(p.email.toLowerCase().trim());
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     let prismaSessions: any[] = [];
     if (await this.canUsePrisma()) {
       try {
@@ -114,10 +133,15 @@ export class AssessmentService {
           where: { userId: { in: Array.from(candidateUserIds) } },
           include: {
             template: true,
-            result: true,
+            result: {
+              include: {
+                scoreDimensions: { orderBy: { weight: "desc" } },
+                recommendations: { orderBy: { priority: "asc" } },
+              },
+            },
           },
           orderBy: { createdAt: "desc" },
-          take: 30,
+          take: 50,
         });
       } catch (err) {
         console.warn("Prisma getUserSessions failed, falling back to assessment store:", err);
@@ -166,6 +190,8 @@ export class AssessmentService {
             hskEstimate: s.result.hskEstimate || s.result.hskLevel || s.template?.targetLevel || "HSK",
             cefrEstimate: s.result.cefrEstimate || s.result.cefrLevel || "A2",
             performanceSummary: s.result.performanceSummary || s.result.feedbackSummary || s.template?.description,
+            scoreDimensions: s.result.scoreDimensions || [],
+            recommendations: s.result.recommendations || [],
           }
         : null,
     }));

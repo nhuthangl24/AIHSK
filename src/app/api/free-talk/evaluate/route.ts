@@ -159,11 +159,39 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        // Verify or resolve Prisma user to satisfy FK constraint
+        let targetUserId = user.userId;
+        const pUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { id: user.userId },
+              ...(user.email ? [{ email: user.email.toLowerCase().trim() }] : []),
+            ],
+          },
+        });
+        if (pUser) {
+          targetUserId = pUser.id;
+        } else {
+          const created = await prisma.user.upsert({
+            where: { id: user.userId },
+            update: {},
+            create: {
+              id: user.userId,
+              email: user.email || `${user.userId}@classnia.local`,
+              name: user.name || "Học viên",
+              passwordHash: "",
+              role: (user.role || "USER") as any,
+              emailVerified: true,
+            },
+          });
+          targetUserId = created.id;
+        }
+
         await prisma.assessmentSession.create({
           data: {
             id: sessionId,
             templateId: dbTemplate.id,
-            userId: user.userId,
+            userId: targetUserId,
             status: "COMPLETED",
             currentStage: 1,
             currentTurn: messages.length,
@@ -180,6 +208,40 @@ export async function POST(req: NextRequest) {
                 weaknessesJson: evaluation.improvements || [],
                 priorityAreasJson: [],
                 improvementPlanJson: [],
+                scoreDimensions: {
+                  create: [
+                    {
+                      dimensionKey: "fluency",
+                      dimensionName: "Độ Lưu Loát & Trôi Chảy (流利度)",
+                      score: evaluation.fluencyScore,
+                      maxScore: 100,
+                      weight: 0.35,
+                      performanceLevel:
+                        evaluation.fluencyScore >= 80 ? "Mastery" : evaluation.fluencyScore >= 60 ? "Proficient" : "Developing",
+                      rationale: "Tốc độ phản xạ và độ tự nhiên khi đàm thoại.",
+                    },
+                    {
+                      dimensionKey: "grammar",
+                      dimensionName: "Độ Chuẩn Ngữ Pháp & Cấu Trúc (语法准确度)",
+                      score: evaluation.grammarScore,
+                      maxScore: 100,
+                      weight: 0.35,
+                      performanceLevel:
+                        evaluation.grammarScore >= 80 ? "Mastery" : evaluation.grammarScore >= 60 ? "Proficient" : "Developing",
+                      rationale: "Trật tự câu, trợ từ và độ chuẩn ngữ pháp tiếng Trung.",
+                    },
+                    {
+                      dimensionKey: "vocabulary",
+                      dimensionName: "Vốn Từ Vựng & Độ Phong Phú (词汇广度)",
+                      score: evaluation.vocabularyScore,
+                      maxScore: 100,
+                      weight: 0.3,
+                      performanceLevel:
+                        evaluation.vocabularyScore >= 80 ? "Mastery" : evaluation.vocabularyScore >= 60 ? "Proficient" : "Developing",
+                      rationale: "Độ phong phú từ vựng và diễn đạt tự nhiên.",
+                    },
+                  ],
+                },
               },
             },
           },
