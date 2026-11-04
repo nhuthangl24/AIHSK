@@ -19,6 +19,8 @@ import {
   saveSystemAudioSettings,
   getAvailableChineseVoices,
   SystemAudioSettings,
+  FIXED_VOICE_NAME,
+  FIXED_VOICE_LABEL,
 } from "@/lib/audio/system-audio-settings";
 import {
   Mic,
@@ -666,8 +668,8 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
                     </span>
                     <p className="text-[11px] text-slate-400">
                       Tốc độ: <span className="text-rose-400 font-bold">{playbackSpeed}x</span> &bull; Giọng:{" "}
-                      <span className="text-rose-400 font-semibold truncate inline-block max-w-[140px] align-bottom">
-                        {selectedVoiceName || "Tiếng Trung Chuẩn HSK"}
+                      <span className="text-rose-400 font-semibold truncate inline-block max-w-[180px] align-bottom">
+                        {FIXED_VOICE_NAME} ⭐
                       </span>
                     </p>
                   </div>
@@ -1374,24 +1376,20 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
                   Giọng đọc Giám khảo HSK (TTS):
                 </label>
                 <select
-                  value={selectedVoiceName}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    setSelectedVoiceName(name);
-                    saveSystemAudioSettings({ voiceName: name });
+                  value={FIXED_VOICE_NAME}
+                  onChange={() => {
+                    setSelectedVoiceName(FIXED_VOICE_NAME);
+                    saveSystemAudioSettings({ voiceName: FIXED_VOICE_NAME });
                   }}
-                  className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:ring-2 focus:ring-rose-500"
+                  className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs font-semibold focus:ring-2 focus:ring-rose-500"
                 >
-                  {availableVoices.length === 0 ? (
-                    <option value="">Giọng đọc mặc định của trình duyệt</option>
-                  ) : (
-                    availableVoices.map((v) => (
-                      <option key={v.name} value={v.name}>
-                        {v.name} ({v.lang})
-                      </option>
-                    ))
-                  )}
+                  <option value={FIXED_VOICE_NAME}>
+                    {FIXED_VOICE_LABEL}
+                  </option>
                 </select>
+                <p className="text-[11px] text-emerald-400 mt-1 font-medium">
+                  ✓ Cố định giọng chuẩn khảo thí HSK / HSKK
+                </p>
               </div>
 
               <div>
