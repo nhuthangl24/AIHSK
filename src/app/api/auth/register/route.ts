@@ -16,58 +16,60 @@ export async function POST(req: NextRequest) {
     // 1. Cố gắng ghi vào PostgreSQL nếu có
     let userId = `user_${crypto.randomUUID().slice(0, 12)}`;
     try {
-      const { default: prisma } = await import("@/lib/db/prisma");
-      const existingUser = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
+      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+      if (await isPrismaAvailable()) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+        });
 
-      if (existingUser) {
-        return NextResponse.json(
-          { error: "Tài khoản với email này đã tồn tại trong hệ thống." },
-          { status: 409 }
-        );
-      }
+        if (existingUser) {
+          return NextResponse.json(
+            { error: "Tài khoản với email này đã tồn tại trong hệ thống." },
+            { status: 409 }
+          );
+        }
 
-      const passwordHash = await hashPassword(validated.password);
-      const user = await prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          passwordHash,
-          name: validated.name,
-          role,
-          emailVerified: true,
-          profile: {
-            create: {
-              targetLevel: validated.targetLevel || "HSK 3",
-              nativeLanguage: validated.nativeLanguage || "Tiếng Việt",
-              learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
+        const passwordHash = await hashPassword(validated.password);
+        const user = await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            passwordHash,
+            name: validated.name,
+            role,
+            emailVerified: true,
+            profile: {
+              create: {
+                targetLevel: validated.targetLevel || "HSK 3",
+                nativeLanguage: validated.nativeLanguage || "Tiếng Việt",
+                learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
+              },
             },
           },
-        },
-      });
-      userId = user.id;
-
-      try {
-        const freePlan = await prisma.subscriptionPlan.findUnique({
-          where: { slug: "free" },
         });
-        if (freePlan) {
-          await prisma.subscription.create({
-            data: {
-              userId: user.id,
-              planId: freePlan.id,
-              status: "ACTIVE",
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 3600 * 1000),
-            },
+        userId = user.id;
+
+        try {
+          const freePlan = await prisma.subscriptionPlan.findUnique({
+            where: { slug: "free" },
           });
+          if (freePlan) {
+            await prisma.subscription.create({
+              data: {
+                userId: user.id,
+                planId: freePlan.id,
+                status: "ACTIVE",
+                currentPeriodStart: new Date(),
+                currentPeriodEnd: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+              },
+            });
+          }
+        } catch {
+          /* plan optional */
         }
-      } catch {
-        /* plan optional */
       }
     } catch (dbErr: any) {
       if (dbErr?.name === "ZodError") throw dbErr;
-      console.warn("DB write skipped, falling back to pure JWT token session:", dbErr?.message);
+      // DB write skipped, falling back to pure JWT token session
     }
 
     // 2. Ký JWT session token (hoạt động độc lập không cần DB)

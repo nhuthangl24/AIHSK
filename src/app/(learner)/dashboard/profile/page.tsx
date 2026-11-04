@@ -13,11 +13,13 @@ export default async function ProfilePage() {
 
   let userRecord: any = null;
   try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    userRecord = await prisma.user.findUnique({
-      where: { id: user.userId },
-      include: { profile: true },
-    });
+    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+    if (await isPrismaAvailable()) {
+      userRecord = await prisma.user.findUnique({
+        where: { id: user.userId },
+        include: { profile: true },
+      });
+    }
   } catch {
     userRecord = null;
   }

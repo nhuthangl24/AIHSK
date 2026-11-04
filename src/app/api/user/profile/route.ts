@@ -10,11 +10,13 @@ export async function GET() {
 
   let userRecord: any = null;
   try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    userRecord = await prisma.user.findUnique({
-      where: { id: user.userId },
-      include: { profile: true },
-    });
+    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+    if (await isPrismaAvailable()) {
+      userRecord = await prisma.user.findUnique({
+        where: { id: user.userId },
+        include: { profile: true },
+      });
+    }
   } catch {
     userRecord = null;
   }
@@ -60,30 +62,32 @@ export async function PUT(req: NextRequest) {
     assessmentStore.saveProfile(profileData);
 
     try {
-      const { default: prisma } = await import("@/lib/db/prisma");
-      if (name && typeof name === "string" && name.trim().length > 0) {
-        await prisma.user.update({
-          where: { id: user.userId },
-          data: { name: name.trim() },
+      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+      if (await isPrismaAvailable()) {
+        if (name && typeof name === "string" && name.trim().length > 0) {
+          await prisma.user.update({
+            where: { id: user.userId },
+            data: { name: name.trim() },
+          }).catch(() => null);
+        }
+
+        await prisma.userProfile.upsert({
+          where: { userId: user.userId },
+          update: {
+            targetLevel: profileData.targetLevel,
+            nativeLanguage: profileData.nativeLanguage,
+            studyHoursWeekly: validHours,
+            learningGoal: profileData.learningGoal,
+          },
+          create: {
+            userId: user.userId,
+            targetLevel: profileData.targetLevel,
+            nativeLanguage: profileData.nativeLanguage,
+            studyHoursWeekly: validHours,
+            learningGoal: profileData.learningGoal,
+          },
         }).catch(() => null);
       }
-
-      await prisma.userProfile.upsert({
-        where: { userId: user.userId },
-        update: {
-          targetLevel: profileData.targetLevel,
-          nativeLanguage: profileData.nativeLanguage,
-          studyHoursWeekly: validHours,
-          learningGoal: profileData.learningGoal,
-        },
-        create: {
-          userId: user.userId,
-          targetLevel: profileData.targetLevel,
-          nativeLanguage: profileData.nativeLanguage,
-          studyHoursWeekly: validHours,
-          learningGoal: profileData.learningGoal,
-        },
-      }).catch(() => null);
     } catch {
       // Prisma offline, fallback store is primary
     }

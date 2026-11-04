@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
   ChevronRight,
   Flame,
   Search,
+  MessageCircle,
 } from "lucide-react";
 
 interface AssessmentTemplate {
@@ -252,6 +254,35 @@ export default function AssessmentSelectionPage() {
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
           Tự do nhập bất kỳ chủ đề, ngữ cảnh nào bạn muốn luyện phản xạ, hoặc chọn các đề thi chuẩn hoá theo khung khảo thí HSK quốc tế. Giám khảo AI sẽ trực tiếp trò chuyện và phản biện 5 giai đoạn theo đúng chủ đề bạn đã chọn.
         </p>
+      </div>
+
+      {/* FREE-TALK PROMOTION CALLOUT */}
+      <div className="rounded-3xl bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-indigo-500/10 border border-amber-300/60 dark:border-amber-900/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div className="h-11 w-11 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <MessageCircle className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Thấy bài thi 5 chặng quá gò bó?
+              </h3>
+              <Badge variant="outline" className="text-[10px] font-bold bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300">
+                Mới &bull; Không áp lực điểm số
+              </Badge>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+              Trải nghiệm ngay chế độ <strong>Trò Chuyện Tự Do (Free Talk)</strong> để tán gẫu tự nhiên theo ý bạn, có Pinyin và dịch nghĩa tiếng Việt tức thì!
+            </p>
+          </div>
+        </div>
+        <Link href="/dashboard/free-talk" className="shrink-0">
+          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl h-10 px-4 text-xs gap-1.5 shadow-xs w-full sm:w-auto">
+            <MessageCircle className="h-4 w-4" />
+            <span>Vào Trò Chuyện Tự Do</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </Link>
       </div>
 
       {/* 2. MODE SWITCHER TABS (Responsive Segmented Control) */}

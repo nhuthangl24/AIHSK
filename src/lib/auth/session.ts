@@ -67,45 +67,47 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
 
     // 3. Ensure userId matches an existing User in the database so foreign key constraints never fail
     try {
-      const { default: prisma } = await import("@/lib/db/prisma");
-      const normalizedEmail = payload.email.toLowerCase().trim();
+      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+      if (await isPrismaAvailable()) {
+        const normalizedEmail = payload.email.toLowerCase().trim();
 
-      let dbUser = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: payload.userId },
-            { email: normalizedEmail },
-          ],
-        },
-      });
-
-      if (!dbUser) {
-        const { hashPassword } = await import("@/lib/auth/password");
-        const passwordHash = await hashPassword(crypto.randomUUID() + "!AiHsk2025");
-        const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
-        dbUser = await prisma.user.create({
-          data: {
-            id: payload.userId.startsWith("cm") ? payload.userId : undefined,
-            email: normalizedEmail,
-            name: payload.name || normalizedEmail.split("@")[0],
-            passwordHash,
-            role: payload.role || (isAdmin ? "ADMIN" : "USER"),
-            emailVerified: true,
-            profile: {
-              create: {
-                targetLevel: "HSK 3",
-                nativeLanguage: "Tiếng Việt",
-                studyHoursWeekly: 3,
-              },
-            },
+        let dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { id: payload.userId },
+              { email: normalizedEmail },
+            ],
           },
         });
-      }
 
-      if (dbUser) {
-        payload.userId = dbUser.id;
-        payload.role = dbUser.role as any;
-        if (dbUser.name) payload.name = dbUser.name;
+        if (!dbUser) {
+          const { hashPassword } = await import("@/lib/auth/password");
+          const passwordHash = await hashPassword(crypto.randomUUID() + "!AiHsk2025");
+          const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
+          dbUser = await prisma.user.create({
+            data: {
+              id: payload.userId.startsWith("cm") ? payload.userId : undefined,
+              email: normalizedEmail,
+              name: payload.name || normalizedEmail.split("@")[0],
+              passwordHash,
+              role: payload.role || (isAdmin ? "ADMIN" : "USER"),
+              emailVerified: true,
+              profile: {
+                create: {
+                  targetLevel: "HSK 3",
+                  nativeLanguage: "Tiếng Việt",
+                  studyHoursWeekly: 3,
+                },
+              },
+            },
+          });
+        }
+
+        if (dbUser) {
+          payload.userId = dbUser.id;
+          payload.role = dbUser.role as any;
+          if (dbUser.name) payload.name = dbUser.name;
+        }
       }
     } catch {
       // In edge/serverless without DB, continue with JWT payload
@@ -123,12 +125,14 @@ export async function getCurrentUserWithProfile() {
 
   // Try to enrich from DB if available, otherwise return session data directly
   try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      include: { profile: true },
-    });
-    if (user && user.isActive) return user;
+    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+    if (await isPrismaAvailable()) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        include: { profile: true },
+      });
+      if (user && user.isActive) return user;
+    }
   } catch {
     // DB not available (e.g. no DATABASE_URL on edge/serverless) — return minimal profile
   }

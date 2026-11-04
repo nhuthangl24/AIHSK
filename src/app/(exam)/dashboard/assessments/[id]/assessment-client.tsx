@@ -274,7 +274,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         behavior: "smooth",
       });
     }
-  }, [session?.turns, isRecording, learnerTranscript, isExaminerSpeaking]);
+  }, [session?.turns, isRecording, learnerTranscript, isExaminerSpeaking, isSubmittingTurn]);
 
   // Examiner Voice TTS
   const speakExaminerText = (text: string, speedOverride?: number) => {
@@ -412,7 +412,8 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
   // Submit Spoken Learner Turn
   const handleSubmitTurn = async () => {
-    if (!learnerTranscript.trim() || isSubmittingTurn) return;
+    const textToSubmit = learnerTranscript.trim();
+    if (!textToSubmit || isSubmittingTurn) return;
 
     if (session?.status === "PROCESSING" || session?.status === "COMPLETED" || isFinalizing) {
       setIsFinalizing(true);
@@ -420,6 +421,29 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     }
 
     stopRecording();
+
+    // 1. Immediately clear input so the candidate feels instant tactile response
+    setLearnerTranscript("");
+    setRecordingSeconds(0);
+    setShowHint(false);
+
+    // 2. Optimistically append learner message to conversation stream
+    const optimisticLearnerTurn: Turn = {
+      turnIndex: (session?.turns.length || 0) + 1,
+      stage: session?.currentStage || 1,
+      speaker: "LEARNER",
+      textContent: textToSubmit,
+    };
+    setSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            turns: [...prev.turns, optimisticLearnerTurn],
+          }
+        : null
+    );
+
+    // 3. Immediately show AI thinking / response bubble in chat
     setIsSubmittingTurn(true);
 
     const actualDurationMs = Math.max(recordingSeconds * 1000, 8000);
@@ -429,7 +453,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: learnerTranscript.trim(),
+          text: textToSubmit,
           durationMs: actualDurationMs,
         }),
       });
@@ -444,10 +468,6 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       if (!res.ok) {
         throw new Error(data?.error || `Gửi câu trả lời thất bại (mã phản hồi ${res.status}). Vui lòng thử lại.`);
       }
-
-      setLearnerTranscript("");
-      setRecordingSeconds(0);
-      setShowHint(false);
 
       if (data?.isCompleted) {
         setIsFinalizing(true);
@@ -470,10 +490,13 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       }
     } catch (err: any) {
       console.error("Turn submission error:", err);
+      // Restore the user's text so it's not lost on error
+      setLearnerTranscript(textToSubmit);
+      await fetchSession();
       const friendlyMsg =
         err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
-          ? "Máy chủ đang xử lý hoặc kết nối bị gián đoạn. Vui lòng bấm gửi lại."
-          : (err?.message || "Không thể gửi câu trả lời. Vui lòng thử lại.");
+          ? "Máy chủ đang xử lý hoặc kết nối bị gián đoạn. Đã giữ lại câu trả lời để bạn gửi lại."
+          : (err?.message || "Không thể gửi câu trả lời. Đã giữ lại câu trả lời để bạn gửi lại.");
       alert(friendlyMsg);
     } finally {
       setIsSubmittingTurn(false);
@@ -493,10 +516,10 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     return (
       <div className="fixed inset-0 z-30 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 space-y-4">
         <div className="relative">
-          <div className="h-16 w-16 rounded-full border-4 border-rose-100 dark:border-rose-950/60 border-t-rose-600 animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center text-rose-600 font-bold text-lg font-serif">
-            李
+          <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-800">
+            <img src="/icon.svg" alt="HSK Logo" className="w-full h-full object-contain" />
           </div>
+          <div className="absolute -inset-2 rounded-3xl border-2 border-emerald-500/30 border-t-emerald-600 animate-spin" />
         </div>
         <div className="text-center space-y-1">
           <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
@@ -541,18 +564,18 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const currentTurnInStage = Math.min(Math.max(currentStageExaminerTurns, 1), 2);
 
   return (
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-40 flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-none m-0 p-0">
+    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-40 flex flex-col h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-none m-0 p-0">
       {/* ====================================================================== */}
       {/* 1. TOP HEADER BAR (Compact, responsive, zero collision)               */}
       {/* ====================================================================== */}
-      <header className="h-14 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 sm:px-6 flex items-center justify-between shrink-0 z-20 shadow-xs">
+      <header className="h-12 sm:h-14 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 sm:px-6 flex items-center justify-between shrink-0 z-20 shadow-xs">
         {/* Left: Exit + Level badge + Exam title */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setShowExitConfirm(true)}
-            className="text-slate-500 hover:text-slate-900 dark:hover:text-white h-8 px-2 sm:px-2.5 rounded-lg -ml-1 text-xs shrink-0"
+            className="text-slate-500 hover:text-slate-900 dark:hover:text-white h-7 sm:h-8 px-1.5 sm:px-2.5 rounded-lg -ml-1 text-xs shrink-0"
             title="Thoát phòng thi"
           >
             <ArrowLeft className="h-4 w-4 sm:mr-1" />
@@ -561,11 +584,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
           <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 hidden sm:block" />
 
-          <span className="inline-flex items-center bg-rose-600 text-white font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded-md shrink-0 shadow-xs">
+          <span className="inline-flex items-center bg-rose-600 text-white font-bold text-[10px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-md shrink-0 shadow-xs">
             {session.template.targetLevel}
           </span>
 
-          <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:white truncate max-w-[140px] sm:max-w-xs md:max-w-md">
+          <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate max-w-[130px] sm:max-w-xs md:max-w-md">
             {session.template.title}
           </h1>
 
@@ -576,9 +599,9 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         </div>
 
         {/* Right Controls: Timer + Status + Tips + Settings */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Timer */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/60">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700/60">
             <Clock className="h-3.5 w-3.5 text-rose-600 shrink-0" />
             <span className="font-mono text-xs">{formatDuration(elapsedSeconds)}</span>
           </div>
@@ -588,7 +611,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             <button
               type="button"
               onClick={stopExaminerVoice}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all shadow-xs"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all shadow-xs"
               title="Dừng phát giọng đọc (Esc)"
             >
               <Square className="h-2.5 w-2.5 fill-current animate-pulse" />
@@ -601,11 +624,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             variant="outline"
             size="sm"
             onClick={() => setShowRubricDrawer(true)}
-            className="h-8 px-2 sm:px-2.5 text-xs font-semibold text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60 bg-rose-50/50 hover:bg-rose-100/60 dark:bg-rose-950/40 rounded-lg gap-1.5"
+            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs font-semibold text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60 bg-rose-50/50 hover:bg-rose-100/60 dark:bg-rose-950/40 rounded-lg gap-1"
             title="Xem tiêu chí chấm điểm và mẹo chặng thi"
           >
             <Award className="h-3.5 w-3.5 text-rose-600" />
-            <span className="hidden md:inline">Mẹo & Tiêu chí</span>
+            <span className="hidden sm:inline">Mẹo</span>
           </Button>
 
           {/* Audio Config Modal */}
@@ -613,10 +636,10 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             variant="ghost"
             size="icon"
             onClick={() => setShowAudioModal(true)}
-            className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg"
+            className="h-7 w-7 sm:h-8 sm:w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg"
             title="Cài đặt âm thanh và giọng đọc"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
         </div>
       </header>
@@ -702,28 +725,8 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       {/* ====================================================================== */}
       <main
         ref={chatScrollRef}
-        className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 max-w-3xl w-full mx-auto"
+        className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-3 sm:py-5 space-y-3 max-w-3xl w-full mx-auto"
       >
-        {/* Examiner Studio Greeting Card at top (Grounds the page at Start) */}
-        <div className="rounded-2xl bg-gradient-to-r from-rose-500/10 via-rose-500/5 to-transparent border border-rose-200/60 dark:border-rose-900/40 p-3.5 sm:p-4 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-white flex items-center justify-center font-bold text-base font-serif shadow-sm shrink-0">
-            李
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                Giám khảo AI Lý Lão Sư (考官李老师)
-              </h2>
-              <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-100/70 dark:bg-rose-950/80 px-2 py-0.5 rounded-full">
-                Khảo thí khẩu ngữ HSK thích ứng
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Lắng nghe câu hỏi và bấm Micro bên dưới để trả lời bằng tiếng Trung.
-            </p>
-          </div>
-        </div>
-
         {/* Conversation Turns List */}
         {session.turns.map((turn, i) => {
           const isExaminer = turn.speaker === "EXAMINER";
@@ -731,11 +734,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
           const isFirstInStage = i === 0 || session.turns[i - 1]?.stage !== turn.stage;
 
           return (
-            <div key={turn.id || i} className="space-y-3">
+            <div key={turn.id || i} className="space-y-2.5">
               {/* Stage Transition Divider */}
               {isFirstInStage && (
-                <div className="flex items-center justify-center my-3 sm:my-4">
-                  <span className="px-3.5 py-1 rounded-full bg-slate-200/70 dark:bg-slate-800 text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wider uppercase border border-slate-300/60 dark:border-slate-700/60 shadow-2xs">
+                <div className="flex items-center justify-center my-2 sm:my-3">
+                  <span className="px-3 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-800 text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wider uppercase border border-slate-300/60 dark:border-slate-700/60 shadow-2xs">
                     Chặng {turn.stage} &bull; {STAGES.find((s) => s.num === turn.stage)?.name} ({STAGES.find((s) => s.num === turn.stage)?.zh})
                   </span>
                 </div>
@@ -743,52 +746,52 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
               {/* Examiner Bubble */}
               {isExaminer ? (
-                <div className="flex items-start gap-2.5 sm:gap-3.5 max-w-[96%] sm:max-w-[90%]">
-                  {/* Examiner Avatar */}
-                  <div className="relative shrink-0 mt-1">
+                <div className="flex items-start gap-2 sm:gap-3.5 max-w-[98%] sm:max-w-[90%]">
+                  {/* Examiner Avatar (HSK Logo) */}
+                  <div className="relative shrink-0 mt-0.5 sm:mt-1">
                     <div
-                      className={`h-9 w-9 sm:h-10 sm:w-10 rounded-2xl flex items-center justify-center font-bold text-sm font-serif transition-all ${
+                      className={`h-8 w-8 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl overflow-hidden shadow-xs border transition-all ${
                         isLatest && isExaminerSpeaking
-                          ? "bg-rose-600 text-white shadow-md shadow-rose-600/30 scale-105 ring-2 ring-rose-400"
-                          : "bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+                          ? "border-emerald-500 ring-2 ring-emerald-400 scale-105"
+                          : "border-slate-200/90 dark:border-slate-800 bg-emerald-50/20"
                       }`}
                     >
-                      李
+                      <img src="/icon.svg" alt="HSK Logo" className="w-full h-full object-contain" />
                     </div>
                     {isLatest && isExaminerSpeaking && (
                       <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600" />
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600" />
                       </span>
                     )}
                   </div>
 
                   {/* Examiner Card Body */}
                   <div
-                    className={`rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 flex-1 ${
+                    className={`rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xs space-y-2.5 flex-1 min-w-0 ${
                       isLatest
                         ? "bg-white dark:bg-slate-900 border-2 border-rose-500/80 ring-4 ring-rose-500/5"
                         : "bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 opacity-95"
                     }`}
                   >
-                    {/* Card Header Toolbar (Responsive & Clean) */}
-                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                          Giám khảo Lý
+                    {/* Card Header Toolbar (Responsive, wrap-friendly, zero overlap) */}
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-2">
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white">
+                          Giám khảo AI
                         </span>
-                        <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200/80 dark:border-rose-900/60 shrink-0">
-                          Chặng {turn.stage} &bull; Câu {session.turns.slice(0, i + 1).filter((t) => t.stage === turn.stage && t.speaker === "EXAMINER").length}/2
+                        <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200/80 dark:border-rose-900/60">
+                          Câu {session.turns.slice(0, i + 1).filter((t) => t.stage === turn.stage && t.speaker === "EXAMINER").length}/2
                         </span>
                         {isLatest && (
-                          <span className="text-[10px] font-semibold text-rose-600 bg-rose-100/70 dark:bg-rose-900/40 px-2 py-0.5 rounded-full shrink-0 animate-pulse">
-                            Câu hỏi hiện tại
+                          <span className="hidden sm:inline-flex text-[10px] font-semibold text-rose-600 bg-rose-100/70 dark:bg-rose-900/40 px-2 py-0.5 rounded-full animate-pulse">
+                            Đang hỏi
                           </span>
                         )}
                       </div>
 
                       {/* Controls: Speed, Pinyin Toggle, Audio Playback */}
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1 sm:gap-1.5 ml-auto shrink-0">
                         {isLatest && (
                           <button
                             type="button"
@@ -807,11 +810,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                         <button
                           type="button"
                           onClick={() => setShowPinyin(!showPinyin)}
-                          className="h-6 px-2 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1"
+                          className="h-6 px-1.5 sm:px-2 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1"
                           title="Bật/Tắt phiên âm Pinyin"
                         >
                           <Languages className="h-3 w-3" />
-                          <span>{showPinyin ? "Ẩn Pinyin" : "Pinyin"}</span>
+                          <span>{showPinyin ? "Ẩn" : "Pinyin"}</span>
                         </button>
 
                         {isLatest && isExaminerSpeaking ? (
@@ -843,7 +846,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                     {/* Question Hanzi text */}
                     <p
                       className={`font-bold text-slate-900 dark:text-white leading-relaxed tracking-wide ${
-                        isLatest ? "text-lg sm:text-xl md:text-2xl" : "text-sm sm:text-base"
+                        isLatest ? "text-base sm:text-lg md:text-xl" : "text-sm sm:text-base"
                       }`}
                     >
                       {turn.textContent}
@@ -858,7 +861,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
                     {/* Hint Accordion for active question */}
                     {isLatest && (
-                      <div className="pt-1">
+                      <div className="pt-0.5">
                         <button
                           type="button"
                           onClick={() => setShowHint(!showHint)}
@@ -913,6 +916,52 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
           );
         })}
 
+        {/* AI Examiner Response / Thinking Animation Card */}
+        {isSubmittingTurn && (
+          <div className="flex items-start gap-2 sm:gap-3.5 max-w-[98%] sm:max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* HSK Logo Avatar */}
+            <div className="relative shrink-0 mt-0.5 sm:mt-1">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl overflow-hidden shadow-xs border border-emerald-500/60 ring-2 ring-emerald-400/40">
+                <img src="/icon.svg" alt="HSK Logo" className="w-full h-full object-contain" />
+              </div>
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600" />
+              </span>
+            </div>
+
+            {/* Thinking Card Body */}
+            <div className="rounded-2xl sm:rounded-3xl p-3 sm:p-4 bg-white dark:bg-slate-900 border-2 border-emerald-500/70 dark:border-emerald-600/50 shadow-sm space-y-2 flex-1 min-w-0">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-bold text-xs text-slate-900 dark:text-white">
+                    Giám khảo AI
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                    HSK Examiner
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-pulse shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  Đang phản hồi...
+                </span>
+              </div>
+
+              {/* Bouncing Dots Animation + Status Message */}
+              <div className="flex items-center gap-2.5 py-1.5">
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-bounce" />
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                  Giám khảo đang lắng nghe &amp; chuẩn bị câu hỏi tiếp theo...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Live Interim Subtitle when Candidate is speaking */}
         {isRecording && learnerTranscript && (
           <div className="flex flex-col items-end space-y-1 ml-auto max-w-[94%] sm:max-w-[85%] animate-in fade-in">
@@ -930,16 +979,16 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       {/* ====================================================================== */}
       {/* 4. BOTTOM RESPONSE DOCK (Tactile, Ergonomic, Mobile-First)             */}
       {/* ====================================================================== */}
-      <footer className="shrink-0 border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 sm:px-6 py-3 sm:py-4 z-20 shadow-lg">
-        <div className="max-w-3xl mx-auto space-y-2.5">
+      <footer className="shrink-0 border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 sm:px-6 py-2 sm:py-3.5 z-20 shadow-lg pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-3xl mx-auto space-y-2">
           {/* Active Voice Mode Console */}
           {inputMode === "voice" ? (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {/* If transcript exists, show review/confirmation box */}
               {learnerTranscript && (
-                <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 p-3 sm:p-3.5 space-y-2">
+                <div className="rounded-xl sm:rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 p-2.5 sm:p-3.5 space-y-1.5">
                   <div className="flex items-center justify-between text-xs font-semibold text-rose-900 dark:text-rose-200">
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 text-[11px] sm:text-xs">
                       <Sparkles className="h-3.5 w-3.5 text-rose-600" />
                       Câu trả lời của bạn:
                     </span>
@@ -949,7 +998,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                       className="text-[11px] text-slate-500 hover:text-rose-600 flex items-center gap-1"
                     >
                       <RotateCcw className="h-3 w-3" />
-                      <span>Xóa câu này</span>
+                      <span>Xóa</span>
                     </button>
                   </div>
                   <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-relaxed">
@@ -965,15 +1014,28 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                   <Button
                     onClick={startRecording}
                     disabled={isSubmittingTurn || isExaminerSpeaking || isFinalizing || session?.status === "PROCESSING"}
-                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm h-11 sm:h-12 rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all"
+                    className={`flex-1 font-bold text-xs sm:text-sm h-11 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all ${
+                      isSubmittingTurn
+                        ? "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                        : "bg-rose-600 hover:bg-rose-700 text-white"
+                    }`}
                   >
-                    <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
-                    <span>{learnerTranscript ? "Nói thêm vào câu trả lời" : "Bấm để bắt đầu nói (开始录音)"}</span>
+                    {isSubmittingTurn ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                        <span>Giám khảo đang xử lý phản hồi...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span>{learnerTranscript ? "Nói thêm vào câu trả lời" : "Bấm để bắt đầu nói (开始录音)"}</span>
+                      </>
+                    )}
                   </Button>
                 ) : (
                   <Button
                     onClick={stopRecording}
-                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm h-11 sm:h-12 rounded-2xl flex items-center justify-center gap-2 shadow-sm animate-pulse transition-all"
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm h-11 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 shadow-sm animate-pulse transition-all"
                   >
                     <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />
                     <span>Hoàn tất nói ({recordingSeconds}s) &bull; Dừng thu</span>
@@ -985,7 +1047,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                   <Button
                     onClick={handleSubmitTurn}
                     disabled={isSubmittingTurn || isFinalizing}
-                    className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700 font-bold text-xs sm:text-sm h-11 sm:h-12 px-5 sm:px-6 rounded-2xl flex items-center justify-center gap-2 shadow-sm shrink-0 transition-all"
+                    className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700 font-bold text-xs sm:text-sm h-11 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl flex items-center justify-center gap-1.5 shadow-sm shrink-0 transition-all"
                   >
                     {isSubmittingTurn ? (
                       <>
@@ -994,7 +1056,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                       </>
                     ) : (
                       <>
-                        <span>Gửi câu trả lời (提交)</span>
+                        <span>Gửi trả lời (提交)</span>
                         <Send className="h-3.5 w-3.5" />
                       </>
                     )}
@@ -1008,7 +1070,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                     setInputMode("text");
                     setTimeout(() => textareaRef.current?.focus(), 100);
                   }}
-                  className="h-11 sm:h-12 px-3 rounded-2xl text-xs font-semibold text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 shrink-0"
+                  className="h-11 sm:h-12 px-3 rounded-xl sm:rounded-2xl text-xs font-semibold text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 shrink-0"
                   title="Chuyển sang gõ chữ bằng bàn phím"
                 >
                   <Keyboard className="h-4 w-4 sm:mr-1.5" />
@@ -1025,7 +1087,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                   value={learnerTranscript}
                   onChange={(e) => setLearnerTranscript(e.target.value)}
                   disabled={isSubmittingTurn || isFinalizing || session?.status === "PROCESSING"}
-                  placeholder="Gõ câu trả lời bằng tiếng Trung tại đây (hoặc dùng bộ gõ Pinyin)..."
+                  placeholder={
+                    isSubmittingTurn
+                      ? "Giám khảo đang xử lý phản hồi..."
+                      : "Gõ câu trả lời bằng tiếng Trung tại đây (hoặc dùng bộ gõ Pinyin)..."
+                  }
                   rows={2}
                   className="w-full border-0 bg-transparent p-0 text-sm sm:text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none leading-relaxed font-medium disabled:opacity-60 max-h-20"
                   onKeyDown={(e) => {

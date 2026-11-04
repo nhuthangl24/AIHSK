@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Sparkles,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/brand-logo";
@@ -22,6 +23,7 @@ import { BrandLogo } from "@/components/ui/brand-logo";
 const NAV_ITEMS = [
   { name: "Tổng Quan", shortName: "Tổng quan", href: "/dashboard", icon: LayoutDashboard },
   { name: "Bắt Đầu Thi Nói", shortName: "Thi nói", href: "/dashboard/assessments", icon: PlayCircle },
+  { name: "Trò Chuyện Tự Do", shortName: "Tự do", href: "/dashboard/free-talk", icon: MessageCircle },
   { name: "Báo Cáo Đánh Giá", shortName: "Báo cáo", href: "/dashboard/reports", icon: FileText },
   { name: "Tiến Độ Khẩu Ngữ", shortName: "Tiến độ", href: "/dashboard/progress", icon: TrendingUp },
   { name: "Hồ Sơ & Mục Tiêu", shortName: "Hồ sơ", href: "/dashboard/profile", icon: User },

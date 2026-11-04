@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Target,
   Flame,
+  MessageCircle,
 } from "lucide-react";
 import { formatDate, formatScore, getScoreBadgeColor } from "@/lib/utils";
 
@@ -174,6 +175,17 @@ export default function LearnerDashboardPage() {
                 <Mic className="h-4 w-4 text-rose-600" />
                 <span>Thi Ngay Bây Giờ</span>
                 <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+
+            <Link href="/dashboard/free-talk" className="w-full sm:w-auto">
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto bg-white/15 hover:bg-white/25 text-white border-white/30 backdrop-blur-md font-bold shadow-xs transition-all h-12 px-5 rounded-2xl flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="h-4 w-4 text-white" />
+                <span>Trò Chuyện Tự Do</span>
               </Button>
             </Link>
           </div>
@@ -352,6 +364,39 @@ export default function LearnerDashboardPage() {
               </Button>
             </Link>
           </div>
+        </div>
+      </Card>
+
+      {/* CASUAL FREE TALK PROMO CARD */}
+      <Card className="rounded-3xl border border-amber-200/90 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-rose-50/50 dark:from-amber-950/20 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-500 to-rose-500 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-xs">
+              <MessageCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Phòng Trò Chuyện Tự Do (Free Talk)
+                </h3>
+                <Badge variant="outline" className="text-[10px] font-bold bg-amber-100/70 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300">
+                  Không áp lực khảo thí
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Tán gẫu thoải mái cùng bạn học AI hoặc gia sư kiên nhẫn. Có Pinyin, dịch nghĩa tức thì và gợi ý câu trả lời thông minh.
+              </p>
+            </div>
+          </div>
+
+          <Link href="/dashboard/free-talk" className="shrink-0">
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs h-10 px-5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs w-full sm:w-auto"
+            >
+              <span>Vào Tán Gẫu Ngay</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
         </div>
       </Card>
 

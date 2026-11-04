@@ -1,4 +1,4 @@
-import prisma from "@/lib/db/prisma";
+import { prisma, isPrismaAvailable } from "@/lib/db/prisma";
 
 export interface LLMConfig {
   providerName: string; // "hhtech" | "openai" | "anthropic" | "deepseek" | "custom"
@@ -94,29 +94,31 @@ export class AIClient {
    */
   static async getActiveConfig(): Promise<LLMConfig> {
     try {
-      const dbConfig = await prisma.aIProviderConfiguration.findFirst({
-        where: {
-          providerType: "LLM",
-          isEnabled: true,
-          isDefault: true,
-        },
-      });
+      if (await isPrismaAvailable()) {
+        const dbConfig = await prisma.aIProviderConfiguration.findFirst({
+          where: {
+            providerType: "LLM",
+            isEnabled: true,
+            isDefault: true,
+          },
+        });
 
-      if (dbConfig) {
-        const json = (dbConfig.configJson as Record<string, any>) || {};
-        return {
-          providerName: dbConfig.providerName || "hhtech",
-          baseUrl: json.baseUrl || "https://hhtechapi.net/v1",
-          apiKey: json.apiKey || process.env.HHTECH_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "",
-          modelId: dbConfig.modelId || "claude-sonnet-4.6",
-          temperature: typeof json.temperature === "number" ? json.temperature : 0.7,
-          isEnabled: dbConfig.isEnabled,
-          isDefault: dbConfig.isDefault,
-          notes: json.notes || "Configured via Classnia Admin Panel",
-        };
+        if (dbConfig) {
+          const json = (dbConfig.configJson as Record<string, any>) || {};
+          return {
+            providerName: dbConfig.providerName || "hhtech",
+            baseUrl: json.baseUrl || "https://hhtechapi.net/v1",
+            apiKey: json.apiKey || process.env.HHTECH_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "",
+            modelId: dbConfig.modelId || "claude-sonnet-4.6",
+            temperature: typeof json.temperature === "number" ? json.temperature : 0.7,
+            isEnabled: dbConfig.isEnabled,
+            isDefault: dbConfig.isDefault,
+            notes: json.notes || "Configured via Classnia Admin Panel",
+          };
+        }
       }
-    } catch (e) {
-      console.warn("Could not query AIProviderConfiguration from DB, falling back to ENV variables:", e);
+    } catch {
+      // Could not query AIProviderConfiguration from DB, falling back to ENV variables
     }
 
     // Default fallback from environment variables

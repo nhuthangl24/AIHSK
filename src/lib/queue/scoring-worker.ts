@@ -10,30 +10,32 @@ export class ScoringWorker {
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     try {
-      const { default: prisma } = await import("@/lib/db/prisma");
-      const { JobStatus } = await import("@prisma/client");
-      const job = await prisma.backgroundJob.create({
-        data: {
-          jobType: "SCORING_PIPELINE",
-          status: JobStatus.PENDING,
-          payloadJson: { sessionId },
-        },
-      });
-      setTimeout(() => {
-        this.processJob(job.id).catch((err) => {
-          console.error(`Error processing background job ${job.id}:`, err);
+      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+      if (await isPrismaAvailable()) {
+        const { JobStatus } = await import("@prisma/client");
+        const job = await prisma.backgroundJob.create({
+          data: {
+            jobType: "SCORING_PIPELINE",
+            status: JobStatus.PENDING,
+            payloadJson: { sessionId },
+          },
         });
-      }, 50);
-      return job.id;
+        setTimeout(() => {
+          this.processJob(job.id).catch((err) => {
+            console.error(`Error processing background job ${job.id}:`, err);
+          });
+        }, 50);
+        return job.id;
+      }
     } catch {
       // Prisma offline, run directly in background
-      setTimeout(() => {
-        this.processSession(sessionId).catch((err) => {
-          console.error(`Error processing fallback scoring for session ${sessionId}:`, err);
-        });
-      }, 50);
-      return jobId;
     }
+    setTimeout(() => {
+      this.processSession(sessionId).catch((err) => {
+        console.error(`Error processing fallback scoring for session ${sessionId}:`, err);
+      });
+    }, 50);
+    return jobId;
   }
 
   /**
@@ -41,14 +43,16 @@ export class ScoringWorker {
    */
   static async ensureSessionScored(sessionId: string): Promise<void> {
     try {
-      const { default: prisma } = await import("@/lib/db/prisma");
-      const { SessionStatus } = await import("@prisma/client");
-      const session = await prisma.assessmentSession.findUnique({
-        where: { id: sessionId },
-        include: { result: true },
-      });
-      if (session && session.status === SessionStatus.COMPLETED && session.result) {
-        return;
+      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+      if (await isPrismaAvailable()) {
+        const { SessionStatus } = await import("@prisma/client");
+        const session = await prisma.assessmentSession.findUnique({
+          where: { id: sessionId },
+          include: { result: true },
+        });
+        if (session && session.status === SessionStatus.COMPLETED && session.result) {
+          return;
+        }
       }
     } catch {
       // Prisma offline, proceed to check store

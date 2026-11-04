@@ -11,22 +11,10 @@ export class AssessmentService {
    * Quick non-blocking probe to verify if PostgreSQL/Prisma is operational.
    */
   static async canUsePrisma(): Promise<boolean> {
-    const now = Date.now();
-    if (this.prismaStatus !== null && now - this.lastCheck < 15000) {
-      return this.prismaStatus;
-    }
     try {
-      const { default: prisma } = await import("@/lib/db/prisma");
-      await Promise.race([
-        prisma.$queryRaw`SELECT 1`,
-        new Promise((_, reject) => setTimeout(() => reject(new Error("DB timeout")), 1200)),
-      ]);
-      this.prismaStatus = true;
-      this.lastCheck = now;
-      return true;
+      const { isPrismaAvailable } = await import("@/lib/db/prisma");
+      return await isPrismaAvailable();
     } catch {
-      this.prismaStatus = false;
-      this.lastCheck = now;
       return false;
     }
   }

@@ -20,7 +20,7 @@ export default async function ExamLayout({
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 m-0 p-0 fixed inset-0">
+    <div className="h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 m-0 p-0 fixed inset-0">
       {children}
     </div>
   );

@@ -9,22 +9,24 @@ export async function GET() {
 
   // Try to get full profile from DB if available
   try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      include: { profile: true },
-    });
-    if (user && user.isActive) {
-      return NextResponse.json({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          avatarUrl: user.avatarUrl,
-          profile: user.profile,
-        },
+    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+    if (await isPrismaAvailable()) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        include: { profile: true },
       });
+      if (user && user.isActive) {
+        return NextResponse.json({
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            avatarUrl: user.avatarUrl,
+            profile: user.profile,
+          },
+        });
+      }
     }
   } catch {
     // DB unavailable — return JWT session data

@@ -49,11 +49,13 @@ export default async function LearningProgressPage() {
     })(),
     (async () => {
       try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        const p = await prisma.userProfile.findUnique({
-          where: { userId: user.userId },
-        });
-        if (p) return p;
+        const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+        if (await isPrismaAvailable()) {
+          const p = await prisma.userProfile.findUnique({
+            where: { userId: user.userId },
+          });
+          if (p) return p;
+        }
       } catch {
         // ignore
       }

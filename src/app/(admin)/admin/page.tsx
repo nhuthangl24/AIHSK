@@ -1,5 +1,4 @@
 import { getCurrentUser } from "@/lib/auth/session";
-import prisma from "@/lib/db/prisma";
 import { AIClient } from "@/lib/ai/ai-client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,42 +25,44 @@ export default async function PlatformAdminPage() {
   let activeAI: any = { providerName: "hhtech", modelId: "claude-sonnet-4.6", isEnabled: true, apiKey: "configured" };
 
   try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    const [
-      uCount,
-      aCount,
-      cCount,
-      fCount,
-      rJobs,
-      aLogs,
-      tpls,
-      aAI,
-    ] = await Promise.all([
-      prisma.user.count().catch(() => 0),
-      prisma.assessmentSession.count().catch(() => 0),
-      prisma.assessmentSession.count({ where: { status: "COMPLETED" } }).catch(() => 0),
-      prisma.assessmentSession.count({ where: { status: "FAILED" } }).catch(() => 0),
-      prisma.backgroundJob.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      }).catch(() => []),
-      prisma.auditLog.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 6,
-        include: { actor: true },
-      }).catch(() => []),
-      prisma.assessmentTemplate.findMany().catch(() => []),
-      AIClient.getActiveConfig().catch(() => ({ providerName: "hhtech", modelId: "claude-sonnet-4.6", isEnabled: true, apiKey: "configured" })),
-    ]);
+    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+    if (await isPrismaAvailable()) {
+      const [
+        uCount,
+        aCount,
+        cCount,
+        fCount,
+        rJobs,
+        aLogs,
+        tpls,
+        aAI,
+      ] = await Promise.all([
+        prisma.user.count().catch(() => 0),
+        prisma.assessmentSession.count().catch(() => 0),
+        prisma.assessmentSession.count({ where: { status: "COMPLETED" } }).catch(() => 0),
+        prisma.assessmentSession.count({ where: { status: "FAILED" } }).catch(() => 0),
+        prisma.backgroundJob.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        }).catch(() => []),
+        prisma.auditLog.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 6,
+          include: { actor: true },
+        }).catch(() => []),
+        prisma.assessmentTemplate.findMany().catch(() => []),
+        AIClient.getActiveConfig().catch(() => ({ providerName: "hhtech", modelId: "claude-sonnet-4.6", isEnabled: true, apiKey: "configured" })),
+      ]);
 
-    userCount = uCount;
-    assessmentCount = aCount;
-    completedCount = cCount;
-    failedCount = fCount;
-    recentJobs = rJobs;
-    auditLogs = aLogs;
-    templates = tpls;
-    activeAI = aAI;
+      userCount = uCount;
+      assessmentCount = aCount;
+      completedCount = cCount;
+      failedCount = fCount;
+      recentJobs = rJobs;
+      auditLogs = aLogs;
+      templates = tpls;
+      activeAI = aAI;
+    }
   } catch {
     // DB not connected, keep safe defaults
   }
