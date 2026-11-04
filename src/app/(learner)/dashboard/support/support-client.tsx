@@ -196,7 +196,6 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
             setTickets((prev) => {
               const map = new Map<string, StoredSupportTicket>();
               parsed.forEach((t) => map.set(t.id, t));
-              // Server state is source of truth and overrides local cache
               prev.forEach((t) => map.set(t.id, t));
               return Array.from(map.values()).sort(
                 (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -208,18 +207,55 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
         }
       }
 
-      // Always fetch latest tickets from server to get admin response updates
-      fetch("/api/support/ticket")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.tickets && Array.isArray(data.tickets)) {
-            setTickets(data.tickets);
-            try {
-              localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(data.tickets));
-            } catch {}
-          }
+      // Fresh fetch helper with no-cache and timestamp
+      const fetchLatest = () => {
+        fetch(`/api/support/ticket?_t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
         })
-        .catch(() => {});
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.tickets && Array.isArray(data.tickets)) {
+              setTickets(data.tickets);
+              try {
+                localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(data.tickets));
+              } catch {}
+            }
+          })
+          .catch(() => {});
+      };
+
+      // Always fetch latest tickets from server immediately
+      fetchLatest();
+
+      // Listen for real-time cross-tab updates (e.g. when admin resolves in another tab)
+      let bc: BroadcastChannel | null = null;
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        bc = new BroadcastChannel("classnia_support_sync");
+        bc.onmessage = (event) => {
+          if (event.data?.type === "TICKET_UPDATED" && event.data?.ticket) {
+            const updated: StoredSupportTicket = event.data.ticket;
+            setTickets((prev) => {
+              const next = prev.map((t) => (t.id === updated.id ? updated : t));
+              if (!next.some((t) => t.id === updated.id)) {
+                next.unshift(updated);
+              }
+              try {
+                localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(next));
+              } catch {}
+              return next;
+            });
+          }
+        };
+      }
+
+      // Auto-poll every 12 seconds to ensure user sees admin response without hard reload
+      const pollTimer = setInterval(fetchLatest, 12000);
+
+      return () => {
+        clearInterval(pollTimer);
+        if (bc) bc.close();
+      };
     } catch (e) {
       console.warn("Diagnostics note:", e);
     }
@@ -277,6 +313,15 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
         return next;
       });
 
+      // Broadcast creation to other tabs (e.g. Admin desk)
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        try {
+          const bc = new BroadcastChannel("classnia_support_sync");
+          bc.postMessage({ type: "TICKET_CREATED", ticket: createdTicket });
+          bc.close();
+        } catch {}
+      }
+
       setSuccessMessage(data.message || `Đã tiếp nhận yêu cầu mã #${createdTicket.id}!`);
       setTitle("");
       setDescription("");
@@ -292,6 +337,9 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
       setIsSubmitting(false);
     }
   };
+
+  const openCount = tickets.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length;
+  const resolvedCount = tickets.filter((t) => t.status === "RESOLVED" || t.status === "CLOSED").length;
 
   const filteredTickets = tickets.filter((ticket) => {
     if (ticketFilter === "OPEN") {
@@ -650,12 +698,15 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
               </div>
 
               {/* Filter tabs & Refresh button */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   type="button"
                   onClick={async () => {
                     try {
-                      const res = await fetch("/api/support/ticket");
+                      const res = await fetch(`/api/support/ticket?_t=${Date.now()}`, {
+                        cache: "no-store",
+                        headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
+                      });
                       const data = await res.json();
                       if (data.tickets) {
                         setTickets(data.tickets);
@@ -676,25 +727,50 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
                     type="button"
                     onClick={() => setTicketFilter("ALL")}
                     className={cn(
-                      "px-2 py-1 rounded-lg font-bold transition-all",
+                      "px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-1",
                       ticketFilter === "ALL"
                         ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
                         : "text-slate-500 hover:text-slate-900"
                     )}
                   >
-                    Tất cả
+                    <span>Tất cả</span>
+                    <span className="text-[9px] px-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                      {tickets.length}
+                    </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setTicketFilter("OPEN")}
                     className={cn(
-                      "px-2 py-1 rounded-lg font-bold transition-all",
+                      "px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-1",
                       ticketFilter === "OPEN"
                         ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-2xs"
                         : "text-slate-500 hover:text-slate-900"
                     )}
                   >
-                    Chờ xử lý
+                    <span>Chờ xử lý</span>
+                    {openCount > 0 && (
+                      <span className="text-[9px] px-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                        {openCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTicketFilter("RESOLVED")}
+                    className={cn(
+                      "px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-1",
+                      ticketFilter === "RESOLVED"
+                        ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    <span>Đã xử lý</span>
+                    {resolvedCount > 0 && (
+                      <span className="text-[9px] px-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        {resolvedCount}
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>

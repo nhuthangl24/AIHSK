@@ -4,6 +4,7 @@ import { assessmentStore } from "@/lib/db/assessment-store";
 import SupportClient from "./support-client";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata = {
   title: "Yêu Cầu & Hỗ Trợ | Classnia AI HSK",

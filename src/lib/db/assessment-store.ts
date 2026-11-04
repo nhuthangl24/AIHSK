@@ -103,6 +103,7 @@ export interface StoredSession {
   template?: StoredTemplate;
   turns: StoredTurn[];
   result?: StoredResult | null;
+  metadata?: any;
 }
 
 export interface StoredUserProfile {

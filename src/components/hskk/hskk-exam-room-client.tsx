@@ -561,7 +561,7 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
             Kỳ thi Khẩu ngữ Tiếng Trung HSKK chính thức bắt đầu. Toàn bài thi gồm 3 phần. Xin vui lòng lắng nghe kỹ hướng dẫn...
           </p>
         </div>
-        <SoundWave isRecording={true} barCount={16} />
+        <SoundWave isActive={true} size="lg" />
       </div>
     );
   }
@@ -946,7 +946,7 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
           {/* Visual Waveform & Timers */}
           {phase === "RECORDING" ? (
             <div className="space-y-3 pt-2">
-              <SoundWave isRecording={true} barCount={18} />
+              <SoundWave isActive={true} size="lg" />
               <div className="text-4xl sm:text-5xl font-black text-rose-500 font-mono">
                 00:{String(speakingSecondsLeft).padStart(2, "0")}
               </div>

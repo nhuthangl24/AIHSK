@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   LifeBuoy,
@@ -69,8 +69,55 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
       open: tickets.filter((t) => t.status === "OPEN").length,
       inProgress: tickets.filter((t) => t.status === "IN_PROGRESS").length,
       resolved: tickets.filter((t) => t.status === "RESOLVED").length,
+      closed: tickets.filter((t) => t.status === "CLOSED").length,
     };
   }, [tickets]);
+
+  const fetchFreshTickets = async () => {
+    try {
+      const res = await fetch(`/api/admin/support?_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
+      });
+      const d = await res.json();
+      if (d.tickets && Array.isArray(d.tickets)) {
+        setTickets(d.tickets);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    // 1. Fresh fetch on mount to bypass Next.js client router stale cache
+    fetchFreshTickets();
+
+    // 2. Real-time cross-tab broadcast synchronization
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      bc = new BroadcastChannel("classnia_support_sync");
+      bc.onmessage = (event) => {
+        if (event.data?.type === "TICKET_CREATED" && event.data?.ticket) {
+          const newTicket: StoredSupportTicket = event.data.ticket;
+          setTickets((prev) => {
+            if (prev.some((t) => t.id === newTicket.id)) return prev;
+            return [newTicket, ...prev];
+          });
+        } else if (event.data?.type === "TICKET_UPDATED" && event.data?.ticket) {
+          const updated: StoredSupportTicket = event.data.ticket;
+          setTickets((prev) =>
+            prev.map((t) => (t.id === updated.id ? updated : t))
+          );
+        }
+      };
+    }
+
+    // 3. Auto-poll every 12 seconds so admin sees incoming tickets live
+    const poll = setInterval(fetchFreshTickets, 12000);
+
+    return () => {
+      clearInterval(poll);
+      if (bc) bc.close();
+    };
+  }, []);
 
   const filteredTickets = useMemo(() => {
     return tickets.filter((t) => {
@@ -104,6 +151,7 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
     try {
       const res = await fetch("/api/admin/support", {
         method: "PATCH",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedTicket.id,
@@ -119,6 +167,15 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
         prev.map((t) => (t.id === selectedTicket.id ? data.ticket : t))
       );
       setSelectedTicket(data.ticket);
+
+      // Broadcast update across tabs
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        try {
+          const bc = new BroadcastChannel("classnia_support_sync");
+          bc.postMessage({ type: "TICKET_UPDATED", ticket: data.ticket });
+          bc.close();
+        } catch {}
+      }
 
       // If current filter excludes the new status, switch to ALL so ticket does not disappear from admin view
       if (statusFilter !== "ALL" && statusFilter !== newStatus) {
@@ -171,37 +228,65 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
         </div>
       </div>
 
-      {/* KPI Stats */}
+      {/* KPI Stats (Clickable Interactive Quick Filters) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="border-slate-200 dark:border-slate-800">
+        <Card
+          onClick={() => setStatusFilter("ALL")}
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            statusFilter === "ALL"
+              ? "border-purple-500 ring-2 ring-purple-500/20 shadow-sm"
+              : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
+          }`}
+        >
           <CardContent className="p-4">
             <span className="text-xs text-slate-500 font-medium">Tổng Yêu Cầu</span>
             <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.total}</div>
-            <p className="text-[11px] text-slate-400">Toàn thời gian</p>
+            <p className="text-[11px] text-slate-400">Tất cả đơn &bull; Bấm để xem</p>
           </CardContent>
         </Card>
 
-        <Card className="border-rose-200 dark:border-rose-900/50 bg-rose-50/30 dark:bg-rose-950/10">
+        <Card
+          onClick={() => setStatusFilter("OPEN")}
+          className={`cursor-pointer transition-all hover:shadow-md border-rose-200 dark:border-rose-900/50 bg-rose-50/30 dark:bg-rose-950/10 ${
+            statusFilter === "OPEN"
+              ? "border-rose-500 ring-2 ring-rose-500/30 shadow-sm"
+              : "hover:border-rose-300"
+          }`}
+        >
           <CardContent className="p-4">
             <span className="text-xs text-rose-600 dark:text-rose-400 font-bold">Chờ Xử Lý (Mới)</span>
             <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{stats.open}</div>
-            <p className="text-[11px] text-rose-500">Cần phản hồi sớm</p>
+            <p className="text-[11px] text-rose-500">Cần phản hồi sớm &bull; Bấm để lọc</p>
           </CardContent>
         </Card>
 
-        <Card className="border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-950/10">
+        <Card
+          onClick={() => setStatusFilter("IN_PROGRESS")}
+          className={`cursor-pointer transition-all hover:shadow-md border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-950/10 ${
+            statusFilter === "IN_PROGRESS"
+              ? "border-blue-500 ring-2 ring-blue-500/30 shadow-sm"
+              : "hover:border-blue-300"
+          }`}
+        >
           <CardContent className="p-4">
             <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">Đang Xử Lý</span>
             <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">{stats.inProgress}</div>
-            <p className="text-[11px] text-blue-500">Kỹ thuật đang kiểm tra</p>
+            <p className="text-[11px] text-blue-500">Kỹ thuật đang kiểm tra &bull; Bấm để lọc</p>
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/10">
+        <Card
+          onClick={() => setStatusFilter("RESOLVED")}
+          className={`cursor-pointer transition-all hover:shadow-md border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/10 ${
+            statusFilter === "RESOLVED"
+              ? "border-emerald-500 ring-2 ring-emerald-500/30 shadow-sm"
+              : "hover:border-emerald-300"
+          }`}
+        >
           <CardContent className="p-4">
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Đã Giải Quyết</span>
             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.resolved}</div>
-            <p className="text-[11px] text-emerald-500">Học viên hài lòng</p>
+            <p className="text-[11px] text-emerald-500">Đã xong phản hồi &bull; Bấm để lọc</p>
           </CardContent>
         </Card>
       </div>
@@ -220,18 +305,31 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-xs">
-            {["ALL", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].map((s) => (
+          <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-xs flex-wrap">
+            {[
+              { id: "ALL", label: "Tất cả", count: stats.total },
+              { id: "OPEN", label: "Mới gửi", count: stats.open },
+              { id: "IN_PROGRESS", label: "Đang xử lý", count: stats.inProgress },
+              { id: "RESOLVED", label: "Đã giải quyết", count: stats.resolved },
+              { id: "CLOSED", label: "Đã đóng", count: stats.closed },
+            ].map((s) => (
               <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-2.5 py-1.5 rounded-lg font-medium transition-all ${
-                  statusFilter === s
+                key={s.id}
+                onClick={() => setStatusFilter(s.id)}
+                className={`px-2.5 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                  statusFilter === s.id
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                {s === "ALL" ? "Tất cả" : STATUS_MAP[s]?.label || s}
+                <span>{s.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  statusFilter === s.id
+                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                    : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                }`}>
+                  {s.count}
+                </span>
               </button>
             ))}
           </div>

@@ -3,6 +3,15 @@ import { getCurrentUser, ADMIN_EMAILS } from "@/lib/auth/session";
 import { UserRole } from "@/types/database";
 import { assessmentStore } from "@/lib/db/assessment-store";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
 function isAuthorizedAdmin(user: any): boolean {
   if (!user) return false;
   return (
@@ -15,7 +24,7 @@ function isAuthorizedAdmin(user: any): boolean {
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!isAuthorizedAdmin(user)) {
-    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403, headers: NO_CACHE_HEADERS });
   }
 
   const { searchParams } = new URL(req.url);
@@ -53,13 +62,13 @@ export async function GET(req: NextRequest) {
     closed: assessmentStore.getAllSupportTickets().filter((t) => t.status === "CLOSED").length,
   };
 
-  return NextResponse.json({ tickets, stats });
+  return NextResponse.json({ tickets, stats }, { headers: NO_CACHE_HEADERS });
 }
 
 export async function PATCH(req: NextRequest) {
   const user = await getCurrentUser();
   if (!isAuthorizedAdmin(user)) {
-    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403, headers: NO_CACHE_HEADERS });
   }
 
   try {
@@ -67,7 +76,7 @@ export async function PATCH(req: NextRequest) {
     const { id, status, adminResponse } = body;
 
     if (!id) {
-      return NextResponse.json({ error: "Mã yêu cầu (id) là bắt buộc." }, { status: 400 });
+      return NextResponse.json({ error: "Mã yêu cầu (id) là bắt buộc." }, { status: 400, headers: NO_CACHE_HEADERS });
     }
 
     const updates: any = {};
@@ -76,35 +85,38 @@ export async function PATCH(req: NextRequest) {
 
     const updated = assessmentStore.updateSupportTicket(id, updates);
     if (!updated) {
-      return NextResponse.json({ error: "Không tìm thấy yêu cầu hỗ trợ tương ứng." }, { status: 404 });
+      return NextResponse.json({ error: "Không tìm thấy yêu cầu hỗ trợ tương ứng." }, { status: 404, headers: NO_CACHE_HEADERS });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: `Đã cập nhật yêu cầu #${id} thành công!`,
-      ticket: updated,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Đã cập nhật yêu cầu #${id} thành công!`,
+        ticket: updated,
+      },
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Lỗi cập nhật yêu cầu" }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Lỗi cập nhật yêu cầu" }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   const user = await getCurrentUser();
   if (!isAuthorizedAdmin(user)) {
-    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403, headers: NO_CACHE_HEADERS });
   }
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) {
-    return NextResponse.json({ error: "Mã yêu cầu là bắt buộc." }, { status: 400 });
+    return NextResponse.json({ error: "Mã yêu cầu là bắt buộc." }, { status: 400, headers: NO_CACHE_HEADERS });
   }
 
   const deleted = assessmentStore.deleteSupportTicket(id);
   if (!deleted) {
-    return NextResponse.json({ error: "Không tìm thấy yêu cầu để xóa." }, { status: 404 });
+    return NextResponse.json({ error: "Không tìm thấy yêu cầu để xóa." }, { status: 404, headers: NO_CACHE_HEADERS });
   }
 
-  return NextResponse.json({ success: true, message: `Đã xóa yêu cầu #${id}.` });
+  return NextResponse.json({ success: true, message: `Đã xóa yêu cầu #${id}.` }, { headers: NO_CACHE_HEADERS });
 }

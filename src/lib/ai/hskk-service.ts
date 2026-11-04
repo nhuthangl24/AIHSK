@@ -1097,7 +1097,7 @@ RETURN STRICT JSON ONLY:
       const config = await AIClient.getActiveConfig();
       const raw = await AIClient.chatCompletion({
         messages,
-        modelId: config.modelId,
+        model: config.modelId,
         temperature: 0.2,
       });
       if (raw) {
@@ -1238,12 +1238,22 @@ RETURN STRICT JSON ONLY:
     try {
       assessmentStore.saveSession({
         id: session.id,
+        assignmentId: null,
+        rubricId: null,
         userId: session.userId,
         userEmail: session.userEmail,
         templateId: session.templateId,
         status: "COMPLETED",
+        currentStage: 3,
+        currentTurn: 3,
+        totalTurns: 3,
+        totalDurationSeconds: 0,
+        failureReason: null,
+        createdAt: session.startedAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         startedAt: session.startedAt,
         completedAt: session.completedAt,
+        turns: [],
         template: {
           id: template.id,
           title: template.title,
