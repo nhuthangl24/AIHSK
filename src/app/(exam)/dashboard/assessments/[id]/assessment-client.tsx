@@ -61,6 +61,7 @@ const STAGES = [
   {
     num: 1,
     name: "Khởi động & Chào hỏi",
+    shortName: "Khởi động",
     zh: "问候导入",
     desc: "Chào hỏi & giới thiệu bản thân",
     tips: "Giới thiệu họ tên, tuổi tác, công việc hoặc lý do học tiếng Trung. Chú ý phát âm chuẩn xác 4 thanh điệu cơ bản.",
@@ -69,6 +70,7 @@ const STAGES = [
   {
     num: 2,
     name: "Giao tiếp đời sống",
+    shortName: "Giao tiếp",
     zh: "日常交流",
     desc: "Sở thích & thói quen sinh hoạt",
     tips: "Miêu tả thói quen cuối tuần, món ăn yêu thích hoặc sở thích cá nhân. Sử dụng các liên từ kết nối câu.",
@@ -77,6 +79,7 @@ const STAGES = [
   {
     num: 3,
     name: "Thuyết trình chủ đề",
+    shortName: "Thuyết trình",
     zh: "主题阐述",
     desc: "Bàn luận chủ đề chuyên sâu",
     tips: "Trình bày quan điểm rõ ràng về chủ đề được nêu. Đưa ra ví dụ cụ thể để minh họa luận điểm của bạn.",
@@ -85,6 +88,7 @@ const STAGES = [
   {
     num: 4,
     name: "Phản biện & Mở rộng",
+    shortName: "Phản biện",
     zh: "深入追问",
     desc: "Phản biện & câu hỏi mở rộng",
     tips: "Đề xuất giải pháp cho vấn đề được nêu. Giữ nhịp nói liên tục, hạn chế ngập ngừng quá lâu.",
@@ -93,6 +97,7 @@ const STAGES = [
   {
     num: 5,
     name: "Tổng kết & Đánh giá",
+    shortName: "Tổng kết",
     zh: "考试总结",
     desc: "Kết thúc & đánh giá tổng thể",
     tips: "Lắng nghe nhận xét tổng kết từ giám khảo và đáp lời chào cảm ơn lịch sự.",
@@ -720,7 +725,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         </div>
 
         {/* Desktop View: Elegant 5-Stage Stepper Deck */}
-        <div className="hidden md:flex items-center justify-between gap-2 max-w-5xl mx-auto px-4 py-2">
+        <div className="hidden md:grid grid-cols-5 gap-1.5 lg:gap-2 max-w-5xl mx-auto px-3 sm:px-4 py-2">
           {STAGES.map((st) => {
             const isCurrent = session.currentStage === st.num;
             const isPassed = session.currentStage > st.num;
@@ -728,12 +733,12 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             return (
               <div
                 key={st.num}
-                className={`flex-1 flex items-center gap-2 py-1.5 px-2.5 rounded-xl text-xs font-medium transition-all ${
+                className={`flex items-center gap-2 py-1.5 px-2.5 rounded-xl text-xs font-medium transition-all min-w-0 ${
                   isCurrent
                     ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-900/60 shadow-2xs"
                     : isPassed
                     ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20"
-                    : "text-slate-400 dark:text-slate-500"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
                 }`}
               >
                 <span
@@ -747,20 +752,32 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 >
                   {isPassed ? <Check className="h-3 w-3" /> : st.num}
                 </span>
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="truncate font-bold">{st.name}</span>
-                    <span className="text-[10px] opacity-75 hidden xl:inline">({st.zh})</span>
+                <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                  {/* Line 1: Adaptive Stage Title without truncation or awkward wrap */}
+                  <div className="truncate font-bold leading-tight">
+                    <span className="lg:hidden">{st.shortName}</span>
+                    <span className="hidden lg:inline">{st.name}</span>
                   </div>
-                  {isCurrent && (
-                    <span className="text-[9px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
-                      {session.currentStage === 5 ? "Tự đánh giá & Tổng kết" : `Câu ${currentTurnInStage}/${totalQuestionsInCurrentStage}`}
-                    </span>
-                  )}
-                  {isPassed && (
-                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400">Đã hoàn thành</span>
-                  )}
+
+                  {/* Line 2: Chinese name / question badge */}
+                  <div className="flex items-center gap-1 text-[10px] leading-tight truncate mt-0.5">
+                    {isCurrent ? (
+                      <span className="text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1 whitespace-nowrap truncate">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
+                        <span>{session.currentStage === 5 ? "Tổng kết" : `Câu ${currentTurnInStage}/${totalQuestionsInCurrentStage}`}</span>
+                        <span className="text-rose-500/70 font-normal hidden xl:inline shrink-0">({st.zh})</span>
+                      </span>
+                    ) : isPassed ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap truncate flex items-center gap-1">
+                        <span>Đã hoàn thành</span>
+                        <span className="text-emerald-600/70 font-normal hidden xl:inline shrink-0">({st.zh})</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-500 whitespace-nowrap truncate">
+                        {st.zh}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             );

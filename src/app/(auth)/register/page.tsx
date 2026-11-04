@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Lock, ArrowRight, Loader2, X, Globe } from "lucide-react";
+import { User, Mail, Lock, ArrowRight, Loader2, X, Globe, Check } from "lucide-react";
 import type { UserRole } from "@/lib/auth/jwt";
 import { getFirebaseServices, googleAuthProvider } from "@/lib/firebase";
 import { createUserWithEmailAndPassword, signInWithPopup, updateProfile as fbUpdateProfile } from "firebase/auth";
+import { LegalModal } from "@/components/legal/legal-modal";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -24,10 +25,16 @@ export default function RegisterPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [googleEmailInput, setGoogleEmailInput] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [legalModalType, setLegalModalType] = useState<"terms" | "privacy" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreeTerms) {
+      setError("Vui lòng đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật để tiếp tục.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
 
@@ -75,6 +82,10 @@ export default function RegisterPage() {
   };
 
   const handleGoogleSignInClick = async () => {
+    if (!agreeTerms) {
+      setError("Vui lòng đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật để tiếp tục.");
+      return;
+    }
     setIsGoogleLoading(true);
     setError(null);
 
@@ -115,6 +126,10 @@ export default function RegisterPage() {
   };
 
   const handleGoogleModalSubmit = async (targetEmail?: string) => {
+    if (!agreeTerms) {
+      setError("Vui lòng đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật để tiếp tục.");
+      return;
+    }
     setIsGoogleLoading(true);
     setError(null);
 
@@ -289,6 +304,60 @@ export default function RegisterPage() {
               </select>
             </div>
 
+            {/* Terms of Service & Privacy Policy Agreement Checkbox */}
+            <div className="flex items-start gap-2.5 pt-1 pb-1">
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={agreeTerms}
+                onClick={() => setAgreeTerms(!agreeTerms)}
+                className={`h-4.5 w-4.5 mt-0.5 rounded-[5px] flex items-center justify-center shrink-0 transition-all ${
+                  agreeTerms
+                    ? "bg-[#e06b53] hover:bg-[#d45d45] text-white shadow-sm"
+                    : "border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-400"
+                }`}
+                title="Đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật"
+              >
+                {agreeTerms && <Check className="h-3 w-3 stroke-[3]" />}
+              </button>
+              <div className="text-xs text-slate-600 dark:text-slate-400 select-none leading-relaxed">
+                <span>Tôi đồng ý với </span>
+                <button
+                  type="button"
+                  onClick={() => setLegalModalType("terms")}
+                  className="font-medium text-slate-900 dark:text-white underline hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                >
+                  Điều khoản Dịch vụ
+                </button>
+                <span> và </span>
+                <button
+                  type="button"
+                  onClick={() => setLegalModalType("privacy")}
+                  className="font-medium text-slate-900 dark:text-white underline hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                >
+                  Chính sách Bảo mật
+                </button>
+                <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  I agree to the{" "}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="underline hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                  >
+                    Terms of Service
+                  </Link>{" "}
+                  and the{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="underline hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                  >
+                    Privacy Policy
+                  </Link>
+                </div>
+              </div>
+            </div>
+
             <Button
               type="submit"
               disabled={isLoading || isGoogleLoading}
@@ -386,6 +455,13 @@ export default function RegisterPage() {
           </div>
         </div>
       )}
+      {/* Legal Modal Quick Preview */}
+      <LegalModal
+        isOpen={Boolean(legalModalType)}
+        type={legalModalType}
+        onClose={() => setLegalModalType(null)}
+        onAccept={() => setAgreeTerms(true)}
+      />
     </>
   );
 }
