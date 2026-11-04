@@ -492,7 +492,7 @@ export default function LearnerDashboardPage() {
                           <span className="text-[10px] font-normal text-slate-400">/100</span>
                         </div>
                         <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                          {s.result.hskEstimate}
+                          {s.result.hskEstimate || s.result.hskLevel || "HSK"}
                         </span>
                       </div>
                     )}
@@ -581,7 +581,7 @@ export default function LearnerDashboardPage() {
                       <td className="py-4 px-5">
                         {s.result ? (
                           <span className="font-bold text-rose-600 dark:text-rose-400">
-                            {s.result.hskEstimate}
+                            {s.result.hskEstimate || s.result.hskLevel || "HSK"}
                           </span>
                         ) : (
                           <span className="text-slate-400">—</span>
