@@ -323,27 +323,39 @@ RETURN STRICT JSON ONLY:
               ? "claude-haiku-4.5"
               : config.modelId;
 
-          const evalPrompt = `You are a certified Chinese Oral Proficiency Examiner (考官) and language coach.
-Analyze all spoken messages from this learner during a free-talk conversation with ${persona.name}.
-Target / Stated Level: ${level}
-Learner's Spoken Messages:
+          const evalPrompt = `You are a certified Chinese Oral Proficiency Examiner (考官) applying official HSK / HSKK scoring rubrics.
+CRITICAL MANDATE: CALIBRATE STRICTLY WITHOUT INFLATION! In genuine oral exams, candidates who only speak 1 or 2 brief formulaic sentences (e.g. "你好", "好的") CANNOT pass and must receive low scores (below 35/100). Do NOT give unearned flattering scores or praise.
+
+Dialogue Context:
+- Target / Stated Level: ${level}
+- Partner Persona: ${persona.name} (${persona.role})
+- Total turns spoken by learner: ${userMessages.length}
+- Learner's Spoken Utterances:
 ${userMessages.map((text, idx) => `[Turn ${idx + 1}]: "${text}"`).join("\n")}
 
-EVALUATE AND RETURN STRICT JSON:
+STRICT HSKK ORAL BENCHMARKS (0-100 scale):
+- 0 - 25 (Severely Insufficient / Incomplete): Only 1 turn, simple greeting (e.g. "你好", "吃了"), or < 8 Chinese characters total. Fails to demonstrate conversational sustainability. Max Level: HSK 1.
+- 26 - 45 (Rudimentary / Minimal): 1-2 brief turns, < 20 characters total. Short isolated answers without narrative or conjunctions. Max Level: HSK 1.
+- 46 - 59 (Beginner / Below Passing Standard): 2-3 turns, simple S+V+O phrases, no compound connectives, noticeable grammatical hesitations. Level: HSK 1 or HSK 2.
+- 60 - 74 (Competent Daily Speaker / Passing Standard): 4+ sustained turns with at least 35+ total Chinese characters. Clearly answers questions, uses basic connectives (因为, 所以, 但是, 虽然), comprehensible structures. Level: HSK 2 - HSK 3.
+- 75 - 88 (Fluent Conversationalist): 6+ well-developed turns, rich vocabulary diversity, natural particles (吧, 呢, 了), logical conjunctions, smooth discourse. Level: HSK 3 - HSK 4.
+- 89 - 100 (Advanced / Near-Native): 8+ turns of sustained, in-depth discussion, idiom (成语) or colloquial expressions, nuanced argumentation. Level: HSK 5 - HSK 6.
+
+EVALUATE AND RETURN STRICT JSON ONLY:
 {
-  "overallScore": number between 40 and 100,
+  "overallScore": number (integer between 0 and 100, adhering strictly to the benchmarks above),
   "hskEstimate": "HSK 1" | "HSK 2" | "HSK 3" | "HSK 4" | "HSK 5" | "HSK 6",
-  "fluencyScore": number between 40 and 100,
-  "grammarScore": number between 40 and 100,
-  "vocabularyScore": number between 40 and 100,
-  "summary": "Warm, encouraging evaluation in Vietnamese summarizing their performance (2-3 sentences)",
-  "strengths": ["Clear strength 1 in Vietnamese", "Clear strength 2 in Vietnamese"],
-  "improvements": ["Actionable improvement 1 in Vietnamese", "Actionable improvement 2 in Vietnamese"],
+  "fluencyScore": number (integer between 0 and 100),
+  "grammarScore": number (integer between 0 and 100),
+  "vocabularyScore": number (integer between 0 and 100),
+  "summary": "Objective, honest, and constructive evaluation in Vietnamese (2-3 sentences). If dialogue is too brief, state clearly that speech volume was insufficient to verify proficiency.",
+  "strengths": ["Objective strength 1 in Vietnamese (grounded in actual evidence)", "Objective strength 2 in Vietnamese"],
+  "improvements": ["Direct, actionable improvement 1 in Vietnamese", "Direct, actionable improvement 2 in Vietnamese"],
   "corrections": [
     {
-      "original": "The learner's original Chinese text",
-      "correction": "Native, idiomatic Chinese way to say it (with Pinyin)",
-      "explanation": "Clear grammatical or stylistic explanation in Vietnamese"
+      "original": "The learner's original Chinese phrase",
+      "correction": "More native, idiomatic Chinese way to say or expand it (with Pinyin)",
+      "explanation": "Clear grammatical or pragmatic explanation in Vietnamese"
     }
   ]
 }`;
@@ -353,12 +365,12 @@ EVALUATE AND RETURN STRICT JSON:
               {
                 role: "system",
                 content:
-                  "You evaluate Chinese oral proficiency strictly in JSON format. Always write summary, strengths, improvements, and explanations in Vietnamese.",
+                  "You evaluate Chinese oral proficiency strictly in JSON format. Always write summary, strengths, improvements, and explanations in Vietnamese. Do not inflate scores for minimal dialogue.",
               },
               { role: "user", content: evalPrompt },
             ],
             model: targetModel,
-            temperature: 0.3,
+            temperature: 0.2,
             max_tokens: 700,
             requireJson: true,
             timeoutMs: 15000,
@@ -366,15 +378,51 @@ EVALUATE AND RETURN STRICT JSON:
 
           const parsed = AIClient.extractJson(raw);
           if (parsed && typeof parsed.overallScore === "number") {
+            const allText = userMessages.join(" ");
+            const hanziCount = allText.replace(/[^\u4e00-\u9fa5]/g, "").length;
+            const turnCount = userMessages.length;
+
+            let overallScore = Math.min(100, Math.max(0, Math.round(parsed.overallScore)));
+            let fluencyScore = Math.min(100, Math.max(0, Math.round(parsed.fluencyScore || overallScore)));
+            let grammarScore = Math.min(100, Math.max(0, Math.round(parsed.grammarScore || overallScore)));
+            let vocabularyScore = Math.min(100, Math.max(0, Math.round(parsed.vocabularyScore || overallScore)));
+            let hskEstimate = parsed.hskEstimate || "HSK 1";
+
+            // Guardrail caps against LLM hallucinations/over-scoring on minimal volume
+            if (turnCount === 1) {
+              const cap = hanziCount <= 5 ? 25 : hanziCount <= 12 ? 35 : 42;
+              overallScore = Math.min(overallScore, cap);
+              fluencyScore = Math.min(fluencyScore, cap + 3);
+              grammarScore = Math.min(grammarScore, cap + 5);
+              vocabularyScore = Math.min(vocabularyScore, cap);
+              hskEstimate = "HSK 1";
+            } else if (turnCount === 2) {
+              const cap = hanziCount <= 12 ? 40 : 52;
+              overallScore = Math.min(overallScore, cap);
+              fluencyScore = Math.min(fluencyScore, cap + 4);
+              grammarScore = Math.min(grammarScore, cap + 5);
+              vocabularyScore = Math.min(vocabularyScore, cap + 2);
+              hskEstimate = "HSK 1";
+            } else if (turnCount === 3 && hanziCount <= 20) {
+              overallScore = Math.min(overallScore, 55);
+              hskEstimate = "HSK 1";
+            }
+
             return {
-              overallScore: Math.min(100, Math.max(0, Math.round(parsed.overallScore))),
-              hskEstimate: parsed.hskEstimate || "HSK 2",
-              fluencyScore: Math.min(100, Math.max(0, Math.round(parsed.fluencyScore || parsed.overallScore))),
-              grammarScore: Math.min(100, Math.max(0, Math.round(parsed.grammarScore || parsed.overallScore))),
-              vocabularyScore: Math.min(100, Math.max(0, Math.round(parsed.vocabularyScore || parsed.overallScore))),
-              summary: parsed.summary || "Buổi trò chuyện tự do diễn ra rất tích cực và tự nhiên.",
-              strengths: Array.isArray(parsed.strengths) ? parsed.strengths : ["Phản xạ chủ động và tự tin"],
-              improvements: Array.isArray(parsed.improvements) ? parsed.improvements : ["Luyện tập mở rộng câu ghép"],
+              overallScore,
+              hskEstimate,
+              fluencyScore,
+              grammarScore,
+              vocabularyScore,
+              summary: parsed.summary || "Buổi trò chuyện tự do đã được ghi nhận và phân tích.",
+              strengths:
+                Array.isArray(parsed.strengths) && parsed.strengths.length > 0
+                  ? parsed.strengths
+                  : ["Đã chủ động giao tiếp tiếng Trung"],
+              improvements:
+                Array.isArray(parsed.improvements) && parsed.improvements.length > 0
+                  ? parsed.improvements
+                  : ["Luyện tập mở rộng câu ghép và phản xạ liên tục"],
               corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
               extensionQuestions: this.generatePersonaExtensionQuestions(persona.id),
             };
@@ -489,91 +537,213 @@ EVALUATE AND RETURN STRICT JSON:
   }
 
   /**
-   * Fallback heuristic evaluator calibrated to HSK standards.
+   * Fallback heuristic evaluator calibrated strictly to HSK / HSKK oral standards.
    */
-  private static generateHeuristicEvaluation(
+  public static generateHeuristicEvaluation(
     userMessages: string[],
     level: string,
     persona: FreeTalkPersona
   ): FreeTalkEvaluation {
     const turnCount = userMessages.length;
-    const totalChars = userMessages.reduce((sum, m) => sum + m.trim().length, 0);
-    const avgCharsPerTurn = totalChars / (turnCount || 1);
-
-    // Baseline scores calculation
-    let fluency = Math.min(95, 70 + turnCount * 4 + Math.round(avgCharsPerTurn * 0.8));
-    let grammar = Math.min(92, 72 + Math.min(15, turnCount * 3));
-    let vocab = Math.min(94, 68 + Math.round(totalChars * 0.4));
-
-    // Refinements based on markers
     const allText = userMessages.join(" ");
-    const hasConnectives = /因为|所以|但是|虽然|而且|如果|比如/.test(allText);
-    const hasModalParticles = /吗|呢|吧|啊|呀/.test(allText);
+    const hanziOnly = allText.replace(/[^\u4e00-\u9fa5]/g, "");
+    const hanziCount = hanziOnly.length;
+    const uniqueHanzi = new Set(hanziOnly.split("")).size;
+    const avgHanziPerTurn = hanziCount / (turnCount || 1);
 
-    if (hasConnectives) {
-      grammar = Math.min(95, grammar + 4);
-      vocab = Math.min(96, vocab + 4);
-    }
-    if (hasModalParticles) {
-      fluency = Math.min(98, fluency + 3);
+    // Linguistic features
+    const hasConnectives = /因为|所以|但是|虽然|而且|如果|比如|不仅|或者|除了|不过/.test(allText);
+    const hasModalParticles = /吗|呢|吧|啊|呀|啦/.test(allText);
+    const hasAspectParticles = /了|过|着/.test(allText);
+
+    let fluency = 0;
+    let grammar = 0;
+    let vocab = 0;
+    let hskEstimate = "HSK 1";
+    let summary = "";
+    const strengths: string[] = [];
+    const improvements: string[] = [];
+
+    if (turnCount === 1) {
+      if (hanziCount <= 5) {
+        // e.g. "你好", "好的", "谢谢"
+        fluency = 20;
+        grammar = 25;
+        vocab = 18;
+        hskEstimate = "HSK 1";
+        summary = `Buổi trò chuyện chỉ mới dừng lại ở 1 phản xạ rất ngắn ("${userMessages[0]}", ${hanziCount} chữ Hán). Khối lượng lời thoại quá ít để đánh giá khả năng duy trì hội thoại. Cần tương tác tối thiểu 4-6 lượt để có kết quả chính xác.`;
+        strengths.push("Bước đầu chủ động mở lời bằng tiếng Trung.");
+        improvements.push(
+          "Cần duy trì hội thoại ít nhất 4-6 lượt nói thay vì chỉ chào hỏi 1 câu.",
+          "Thử trả lời mở rộng câu hỏi của bạn trò chuyện (kể thêm về sở thích, hoạt động trong ngày)."
+        );
+      } else if (hanziCount <= 15) {
+        // 1 simple sentence
+        fluency = 32;
+        grammar = 36;
+        vocab = 30;
+        hskEstimate = "HSK 1";
+        summary = `Bạn đã tạo được 1 câu đơn có nghĩa (${hanziCount} chữ Hán), tuy nhiên chỉ với 1 lượt nói thì hệ thống chưa đủ căn cứ để chứng minh năng lực phản xạ liên tục.`;
+        strengths.push("Cấu trúc câu đơn rõ ràng, diễn đạt được ý cơ bản.");
+        improvements.push(
+          "Tiếp tục đối đáp thêm các lượt sau khi bạn trò chuyện hỏi lại.",
+          "Tập dùng thêm trợ từ ngữ khí (呢, 吧) để câu tự nhiên hơn."
+        );
+      } else {
+        // 1 long sentence (> 15 chars)
+        fluency = 40;
+        grammar = 45;
+        vocab = 40;
+        hskEstimate = "HSK 1";
+        summary = `Bạn có khả năng cấu tạo câu dài khá tốt (${hanziCount} chữ Hán), nhưng một cuộc trò chuyện cần nhiều lượt tương tác hai chiều để kiểm tra độ trôi chảy thực tế.`;
+        strengths.push("Vốn từ vựng tương đối phong phú trong 1 câu.");
+        improvements.push("Tăng số lượt tương tác qua lại để luyện phản xạ nghe - đáp tức thì.");
+      }
+    } else if (turnCount === 2) {
+      if (hanziCount <= 12) {
+        fluency = 35;
+        grammar = 38;
+        vocab = 32;
+        hskEstimate = "HSK 1";
+        summary = `Bạn đã có 2 lượt đối đáp rất ngắn (${hanziCount} chữ Hán). Lời thoại còn mang tính phản xạ rời rạc, chưa kết nối thành mạch câu chuyện hoàn chỉnh.`;
+        strengths.push("Đã bắt đầu có sự tương tác 2 chiều với bạn trò chuyện.");
+        improvements.push(
+          "Thử mở rộng câu bằng các liên từ nối (vì vậy, nhưng mà...).",
+          "Kể thêm chi tiết cụ thể để lời thoại có chiều sâu hơn."
+        );
+      } else {
+        fluency = 46 + (hasConnectives ? 6 : 0);
+        grammar = 48 + (hasConnectives ? 6 : 0);
+        vocab = 44 + (hasConnectives ? 4 : 0);
+        hskEstimate = hasConnectives && hanziCount >= 30 ? "HSK 2" : "HSK 1";
+        summary = `Bạn đã trao đổi 2 lượt với nội dung rõ ý (${hanziCount} chữ Hán). Để đạt mức chuẩn HSK 2 trở lên, bạn cần duy trì tương tác liên tục từ 4 lượt trở lên.`;
+        strengths.push("Phản xạ đúng trọng tâm câu hỏi của bạn trò chuyện.");
+        if (hasConnectives) strengths.push("Biết cách sử dụng liên từ nối câu ghép.");
+        improvements.push("Nói thêm từ 3-4 lượt nữa để kiểm tra sức bền phản xạ khẩu ngữ.");
+      }
+    } else if (turnCount === 3) {
+      if (hanziCount <= 22) {
+        fluency = 48;
+        grammar = 50;
+        vocab = 46;
+        hskEstimate = "HSK 1";
+        summary = `Hoàn thành 3 lượt đối đáp ngắn (${hanziCount} chữ Hán). Bạn bắt nhịp được câu chuyện nhưng câu còn đơn giản, chưa sử dụng nhiều cấu trúc ngữ pháp nâng cao.`;
+      } else {
+        fluency = 56 + (hasConnectives ? 5 : 0);
+        grammar = 58 + (hasConnectives ? 5 : 0);
+        vocab = 55 + (hasConnectives ? 4 : 0);
+        hskEstimate = "HSK 2";
+        summary = `Bạn duy trì được mạch trò chuyện 3 lượt với dung lượng chữ Hán tốt (${hanziCount} chữ). Bắt đầu thể hiện khả năng giao tiếp thường nhật ở trình độ Sơ cấp 2 (HSK 2).`;
+      }
+      strengths.push("Duy trì được 3 lượt phản xạ liền mạch cùng bạn trò chuyện.");
+      if (hasConnectives) strengths.push("Biết cách sử dụng liên từ nối cơ bản.");
+      improvements.push("Thử thách nói những câu ghép dài hơn và phong phú từ vựng.");
+    } else if (turnCount >= 4 && turnCount <= 6) {
+      // Competent daily dialogue (passing standard)
+      fluency = Math.min(80, 56 + turnCount * 3 + Math.round(avgHanziPerTurn * 0.8));
+      grammar = Math.min(80, 58 + Math.min(12, turnCount * 2));
+      vocab = Math.min(80, 54 + Math.round(uniqueHanzi * 0.5));
+
+      if (hasConnectives) {
+        grammar = Math.min(84, grammar + 5);
+        vocab = Math.min(84, vocab + 4);
+      }
+      if (hasModalParticles || hasAspectParticles) {
+        fluency = Math.min(85, fluency + 4);
+      }
+
+      hskEstimate = hanziCount >= 50 && hasConnectives ? "HSK 3" : "HSK 2";
+      summary = `Cuộc trò chuyện diễn ra trôi chảy với ${turnCount} lượt đối đáp (${hanziCount} chữ Hán). Bạn thể hiện phản xạ tự nhiên, nội dung mạch lạc và bám sát chủ đề với ${persona.name}.`;
+      strengths.push(`Duy trì tương tác tốt qua ${turnCount} lượt đối đáp liên tục.`);
+      if (hasConnectives) {
+        strengths.push("Chủ động sử dụng liên từ ghép câu để diễn đạt nguyên nhân và kết quả.");
+      } else {
+        strengths.push("Phản xạ đều đặn và thể hiện thái độ giao tiếp tích cực.");
+      }
+      improvements.push(
+        "Mở rộng thêm vốn thành ngữ hoặc quán dụng ngữ thường ngày.",
+        "Luyện tập ngắt nghỉ tự nhiên giữa các vế câu dài."
+      );
+    } else {
+      // 7+ turns: well-sustained advanced dialogue
+      fluency = Math.min(94, 66 + turnCount * 2 + Math.round(avgHanziPerTurn * 0.6));
+      grammar = Math.min(92, 68 + Math.min(14, turnCount * 1.5));
+      vocab = Math.min(92, 64 + Math.round(uniqueHanzi * 0.45));
+
+      if (hasConnectives) {
+        grammar = Math.min(95, grammar + 6);
+        vocab = Math.min(95, vocab + 5);
+      }
+      if (hasModalParticles && hasAspectParticles) {
+        fluency = Math.min(96, fluency + 5);
+      }
+
+      if (hanziCount >= 120 && hasConnectives && uniqueHanzi >= 45) {
+        hskEstimate = "HSK 4";
+      } else if (hanziCount >= 70 && hasConnectives) {
+        hskEstimate = "HSK 3";
+      } else {
+        hskEstimate = "HSK 2";
+      }
+
+      summary = `Phiên luyện tập khẩu ngữ rất sâu sắc và ấn tượng! Bạn đã duy trì ${turnCount} lượt đối đáp (${hanziCount} chữ Hán), thể hiện vốn từ vững vàng và khả năng ứng biến ngôn ngữ linh hoạt.`;
+      strengths.push(`Sức bền hội thoại tuyệt vời với ${turnCount} lượt giao tiếp hai chiều.`);
+      strengths.push("Diễn đạt tự nhiên, giàu hình ảnh và giữ vững ngữ điệu chuẩn xác.");
+      improvements.push(
+        "Thử thách bản thân ở các chủ đề phản biện chuyên sâu hơn (kinh tế, công nghệ, xã hội).",
+        "Chú ý trau chuốt thêm các cặp liên từ nâng cao (不仅...而且..., 与其...不如...)."
+      );
     }
 
-    const overallScore = Math.round((fluency * 0.35) + (grammar * 0.35) + (vocab * 0.3));
-
-    // Determine estimated HSK level
-    let hskEstimate = "HSK 2";
-    if (level.includes("HSK")) {
-      hskEstimate = level.split(" ")[0] + " " + (level.split(" ")[1] || "2");
-    } else if (totalChars > 80 && hasConnectives) {
-      hskEstimate = "HSK 3";
-    } else if (totalChars > 150) {
-      hskEstimate = "HSK 4";
-    } else if (turnCount <= 2) {
-      hskEstimate = "HSK 1";
-    }
+    const overallScore = Math.round(fluency * 0.35 + grammar * 0.35 + vocab * 0.3);
 
     // Build corrections from real utterances
     const corrections: FreeTalkCorrection[] = [];
     for (const msg of userMessages) {
-      // Common pattern 1: Missing 的 in adjective + noun
-      if (msg.includes("好吃菜") || msg.includes("好菜")) {
+      const clean = msg.trim();
+      // Case 1: Simple greeting expansion (instead of appending "觉得挺有意思的")
+      if (/^(你好|嗨|哈喽|您好)[!！,.，。 ]*$/.test(clean)) {
         corrections.push({
-          original: msg,
-          correction: msg.replace(/好吃菜|好菜/g, "好吃的菜 (hǎochī de cài)"),
-          explanation: "Nên thêm trợ từ '的' sau tính từ đa âm tiết như '好吃' để bổ nghĩa cho danh từ tự nhiên hơn.",
+          original: clean,
+          correction: "你好！很高兴能和你聊天。(Nǐ hǎo! Hěn gāoxìng néng hé nǐ liáotiān.)",
+          explanation: "Trong giao tiếp khẩu ngữ, sau lời chào nên kèm câu mở đầu tự nhiên để khơi gợi mạch trò chuyện.",
         });
       }
-      // Common pattern 2: Double verb or phrasing
-      else if (msg.includes("我很喜欢去") && !msg.includes("爬") && !msg.includes("玩")) {
+      // Case 2: Missing 的 in adjective + noun
+      else if (clean.includes("好吃菜") || clean.includes("好菜")) {
         corrections.push({
-          original: msg,
-          correction: msg + " 走走看看 (zǒuzou kànkan)",
-          explanation: "Thêm thành ngữ đi dạo/tham quan '走走看看' giúp diễn đạt giàu hình ảnh và bản xứ hơn.",
+          original: clean,
+          correction: clean.replace(/好吃菜|好菜/g, "好吃的菜 (hǎochī de cài)"),
+          explanation: "Nên thêm trợ từ '的' sau tính từ đa âm tiết như '好吃' khi bổ nghĩa cho danh từ.",
+        });
+      }
+      // Case 3: Double verb or phrasing
+      else if (clean.includes("我很喜欢去") && !clean.includes("走") && !clean.includes("玩")) {
+        corrections.push({
+          original: clean,
+          correction: clean + " 走走看看 (zǒuzou kànkan)",
+          explanation: "Thêm thành ngữ đi dạo/tham quan '走走看看' giúp diễn đạt giàu hình ảnh và chuẩn bản xứ hơn.",
         });
       }
     }
 
-    // If no direct rule matched, provide a high-value contextual refinement on the longest utterance
+    // Contextual refinement if no rule matched
     if (corrections.length === 0 && userMessages.length > 0) {
       const longest = [...userMessages].sort((a, b) => b.length - a.length)[0];
-      corrections.push({
-        original: longest,
-        correction: longest + "，觉得挺有意思的。(juéde tǐng yǒuyìsi de.)",
-        explanation: "Thêm cụm cảm thán '觉得挺有意思的' (cảm thấy khá là thú vị) ở cuối câu sẽ giúp giọng điệu thân thiện và mềm mại hơn.",
-      });
+      if (longest.length >= 10 && !/吧|呢|啊|呀/.test(longest)) {
+        corrections.push({
+          original: longest,
+          correction: longest + "，觉得挺有意思的。(juéde tǐng yǒuyìsi de.)",
+          explanation: "Thêm cụm cảm thán '觉得挺有意思的' (cảm thấy khá là thú vị) ở cuối câu sẽ giúp giọng điệu thân thiện và mềm mại hơn.",
+        });
+      } else if (longest.length < 10 && !/你好|谢谢|再见/.test(longest)) {
+        corrections.push({
+          original: longest,
+          correction: `我平时也${longest}，你呢？(Wǒ píngshí yě..., nǐ ne?)`,
+          explanation: "Thêm câu hỏi ngược lại '你呢？' (còn bạn thì sao?) giúp tạo đà đối thoại tương tác hai chiều.",
+        });
+      }
     }
-
-    const strengths: string[] = [
-      `Duy trì tương tác rất tốt với ${turnCount} lượt đối đáp liên tục cùng ${persona.name}.`,
-      hasConnectives
-        ? "Đã chủ động sử dụng liên từ ghép câu để diễn đạt ý tưởng hoàn chỉnh."
-        : "Phát âm rõ ràng, nhịp độ nói vừa vặn và sẵn sàng chia sẻ suy nghĩ.",
-    ];
-
-    const improvements: string[] = [
-      "Thử mở rộng câu bằng cách kể thêm nguyên nhân (因为...) hoặc cảm nghĩ cá nhân (我觉得...).",
-      "Chú ý luyện biến điệu hai thanh 3 đi liền nhau (ví dụ: '你好' phát âm thành 'Ní hǎo').",
-    ];
 
     return {
       overallScore,
@@ -581,7 +751,7 @@ EVALUATE AND RETURN STRICT JSON:
       fluencyScore: fluency,
       grammarScore: grammar,
       vocabularyScore: vocab,
-      summary: `Bạn đã hoàn thành phiên trò chuyện tự do cùng ${persona.name} rất xuất sắc! Tinh thần giao tiếp cởi mở và phản xạ tự nhiên là chìa khóa then chốt để tiến bộ khẩu ngữ HSK.`,
+      summary,
       strengths,
       improvements,
       corrections,

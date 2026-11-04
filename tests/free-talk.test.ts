@@ -151,12 +151,16 @@ describe("Free Talk (Trò Chuyện Tự Do) Unit Tests", () => {
   });
 
   describe("Free Talk Evaluation & Scoring", () => {
-    it("should evaluate a session with multiple turns and return scores across 3 criteria", async () => {
+    it("should evaluate a sustained session with multiple turns and return passing scores across 3 criteria", async () => {
       const messages = [
-        { role: "assistant" as const, content: "你好！今天怎么样？" },
-        { role: "user" as const, content: "我今天挺好的，因为天气很好，所以我想去公园。" },
-        { role: "assistant" as const, content: "公园风景一定很美！" },
-        { role: "user" as const, content: "是的，我也吃了好吃菜，心情特别好。" },
+        { role: "assistant" as const, content: "你好！今天过得怎么样？" },
+        { role: "user" as const, content: "我今天挺好的，因为天气很好，所以我想去公园散步。" },
+        { role: "assistant" as const, content: "公园风景一定很美！你平时还喜欢做什么？" },
+        { role: "user" as const, content: "是的，我也吃了好吃的菜，而且下午打算看书。" },
+        { role: "assistant" as const, content: "你觉得学中文有哪些有趣的地方？" },
+        { role: "user" as const, content: "我觉得学汉字很有意思，虽然有点难，但是很有成就感。" },
+        { role: "assistant" as const, content: "说得真好！下次再聊！" },
+        { role: "user" as const, content: "好的，今天和你聊天很开心，下次见！" },
       ];
 
       const evaluation = await FreeTalkService.evaluateSession({
@@ -174,6 +178,48 @@ describe("Free Talk (Trò Chuyện Tự Do) Unit Tests", () => {
       expect(evaluation.strengths.length).toBeGreaterThanOrEqual(1);
       expect(evaluation.summary).toBeTruthy();
       expect(Array.isArray(evaluation.corrections)).toBe(true);
+    });
+
+    it("should strictly prevent score inflation on minimal 1-turn greetings", async () => {
+      const messages = [
+        { role: "assistant" as const, content: "嗨！今天过得怎么样？" },
+        { role: "user" as const, content: "你好" },
+      ];
+
+      const evaluation = await FreeTalkService.evaluateSession({
+        messages,
+        level: "HSK 3 (Trung cấp 1)",
+        personaId: "friendly_peer",
+      });
+
+      // Must be calibrated strictly: 1 single greeting word cannot exceed 30 points
+      expect(evaluation.overallScore).toBeLessThanOrEqual(30);
+      expect(evaluation.overallScore).toBeGreaterThan(0);
+      expect(evaluation.hskEstimate).toBe("HSK 1");
+      expect(evaluation.summary).toContain("quá ít");
+      expect(evaluation.improvements.length).toBeGreaterThanOrEqual(1);
+      // Correction should not append nonsensical phrases like "觉得挺有意思的"
+      expect(evaluation.corrections[0].original).toBe("你好");
+      expect(evaluation.corrections[0].correction).toContain("很高兴");
+    });
+
+    it("should calibrate 2 short turns below passing standard (score < 55, HSK 1)", async () => {
+      const messages = [
+        { role: "assistant" as const, content: "你好！今天怎么样？" },
+        { role: "user" as const, content: "你好" },
+        { role: "assistant" as const, content: "今天吃了什么好吃的吗？" },
+        { role: "user" as const, content: "吃过了" },
+      ];
+
+      const evaluation = await FreeTalkService.evaluateSession({
+        messages,
+        level: "HSK 2",
+        personaId: "friendly_peer",
+      });
+
+      expect(evaluation.overallScore).toBeLessThanOrEqual(50);
+      expect(evaluation.hskEstimate).toBe("HSK 1");
+      expect(evaluation.summary).toContain("2 lượt đối đáp");
     });
 
     it("should return 0 score when user has 0 turns", async () => {
