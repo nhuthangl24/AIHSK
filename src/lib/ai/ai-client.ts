@@ -211,12 +211,16 @@ export class AIClient {
     messages,
     model,
     temperature,
+    max_tokens,
     requireJson = false,
+    timeoutMs,
   }: {
     messages: ChatMessage[];
     model?: string;
     temperature?: number;
+    max_tokens?: number;
     requireJson?: boolean;
+    timeoutMs?: number;
   }): Promise<string> {
     const config = await this.getActiveConfig();
 
@@ -239,11 +243,17 @@ export class AIClient {
       temperature: targetTemp,
     };
 
+    if (typeof max_tokens === "number" && max_tokens > 0) {
+      requestBody.max_tokens = max_tokens;
+    }
+
     if (requireJson) {
       requestBody.response_format = { type: "json_object" };
     }
 
-    const timeoutMs = requireJson ? 60000 : 25000;
+    const defaultTimeout = requireJson ? 60000 : 25000;
+    const effectiveTimeoutMs = timeoutMs || defaultTimeout;
+
     let response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -251,7 +261,7 @@ export class AIClient {
         Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: AbortSignal.timeout(effectiveTimeoutMs),
     });
 
     // If 400 bad request due to response_format not supported by proxy model, retry without response_format
@@ -267,7 +277,7 @@ export class AIClient {
           Authorization: `Bearer ${config.apiKey}`,
         },
         body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: AbortSignal.timeout(effectiveTimeoutMs),
       });
     }
 

@@ -135,35 +135,37 @@ export class FreeTalkService {
       if (!process.env.VITEST) {
         const config = await AIClient.getActiveConfig();
         if (config.apiKey && config.isEnabled) {
+          // Route to high-speed conversational model (claude-haiku-4.5) to keep turn latency ~1s
+          const targetModel =
+            config.modelId.includes("sonnet") || config.modelId.includes("opus")
+              ? "claude-haiku-4.5"
+              : config.modelId;
+
           const systemPrompt = `You are ${persona.name} (${persona.zhName}), a ${persona.role}.
-YOUR PERSONALITY:
-- Warm, natural, curious, encouraging, and friendly.
-- This is a casual FREE-TALK session (Tự do trò chuyện, không thi cử, không gò bó chủ đề).
-- Target Learner Level: ${level}.
-- Language: Speak natural, authentic Mandarin Chinese (Simplified).
+Casual Free-Talk companion for Chinese learners.
+Learner Level: ${level}.
+Persona: Warm, conversational, friendly.
 
-RULES FOR EACH RESPONSE:
-1. "reply": Reply in natural, conversational Mandarin (1 to 3 short sentences). Always answer the learner's thought, show interest, and end with a gentle conversational question to keep the chat going.
-2. "pinyin": Provide accurate Pinyin with standard tone marks for your "reply".
-3. "translation": Provide natural, fluent Vietnamese (Tiếng Việt) translation of your "reply".
-4. "tip": If the user's Chinese had any small grammar mistake or could be phrased more naturally, provide a brief friendly tip in Vietnamese (e.g. "💡 Mẹo nhỏ: Bạn có thể nói '...' sẽ tự nhiên như người bản xứ hơn!"). If user spoke well, leave tip as null.
-5. "suggestions": Provide 2 to 3 quick suggested responses the user might want to say next in Chinese, with pinyin and Vietnamese translation.
+INSTRUCTIONS:
+1. "reply": Reply in natural, spoken Mandarin (1-2 concise sentences). Acknowledge user's idea and ask a friendly question to keep chatting.
+2. "translation": Brief, natural Vietnamese translation of "reply".
+3. "tip": If the user made a noticeable grammar mistake or used unnatural phrasing, provide a short 1-sentence tip in Vietnamese (e.g. "💡 Mẹo: Bạn có thể nói '...' sẽ tự nhiên hơn!"). Otherwise null.
+4. "suggestions": 2 quick possible responses the user could say next in Chinese with Vietnamese translation. DO NOT generate pinyin (system computes pinyin automatically).
 
-JSON FORMAT: Return strictly valid JSON:
+RETURN STRICT JSON ONLY:
 {
   "reply": "...",
-  "pinyin": "...",
   "translation": "...",
-  "tip": "...",
+  "tip": null,
   "suggestions": [
-    { "zh": "...", "pinyin": "...", "vi": "..." },
-    { "zh": "...", "pinyin": "...", "vi": "..." }
+    { "zh": "...", "vi": "..." },
+    { "zh": "...", "vi": "..." }
   ]
 }`;
 
           const chatMessages: ChatMessage[] = [
             { role: "system", content: systemPrompt },
-            ...messages.slice(-8).map((m) => ({
+            ...messages.slice(-6).map((m) => ({
               role: m.role as "user" | "assistant",
               content: m.content,
             })),
@@ -171,18 +173,31 @@ JSON FORMAT: Return strictly valid JSON:
 
           const rawJson = await AIClient.chatCompletion({
             messages: chatMessages,
-            temperature: 0.8,
+            model: targetModel,
+            temperature: 0.7,
+            max_tokens: 350,
             requireJson: true,
+            timeoutMs: 12000,
           });
 
-          const parsed = JSON.parse(rawJson);
-          if (parsed.reply) {
+          const parsed = AIClient.extractJson(rawJson);
+          if (parsed && parsed.reply) {
+            const replyText = parsed.reply.trim();
+            const replyPinyin = pinyin(replyText, { toneType: "symbol" });
+            const suggestions = Array.isArray(parsed.suggestions)
+              ? parsed.suggestions.slice(0, 3).map((s: any) => ({
+                  zh: s.zh || "",
+                  pinyin: pinyin(s.zh || "", { toneType: "symbol" }),
+                  vi: s.vi || "",
+                }))
+              : [];
+
             return {
-              reply: parsed.reply,
-              pinyin: parsed.pinyin || "",
+              reply: replyText,
+              pinyin: replyPinyin,
               translation: parsed.translation || "",
               tip: parsed.tip || undefined,
-              suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+              suggestions,
             };
           }
         }
@@ -303,6 +318,11 @@ JSON FORMAT: Return strictly valid JSON:
       if (!process.env.VITEST) {
         const config = await AIClient.getActiveConfig();
         if (config.apiKey && config.isEnabled) {
+          const targetModel =
+            config.modelId.includes("sonnet") || config.modelId.includes("opus")
+              ? "claude-haiku-4.5"
+              : config.modelId;
+
           const evalPrompt = `You are a certified Chinese Oral Proficiency Examiner (考官) and language coach.
 Analyze all spoken messages from this learner during a free-talk conversation with ${persona.name}.
 Target / Stated Level: ${level}
@@ -337,11 +357,14 @@ EVALUATE AND RETURN STRICT JSON:
               },
               { role: "user", content: evalPrompt },
             ],
+            model: targetModel,
             temperature: 0.3,
+            max_tokens: 700,
             requireJson: true,
+            timeoutMs: 15000,
           });
 
-          const parsed = JSON.parse(raw);
+          const parsed = AIClient.extractJson(raw);
           if (parsed && typeof parsed.overallScore === "number") {
             return {
               overallScore: Math.min(100, Math.max(0, Math.round(parsed.overallScore))),
