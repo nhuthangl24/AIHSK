@@ -29,6 +29,7 @@ import {
   RotateCcw,
   ShieldCheck,
   Mic,
+  Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -160,6 +161,7 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
   // Status & List states
   const [tickets, setTickets] = useState<StoredSupportTicket[]>(initialTickets || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [ticketFilter, setTicketFilter] = useState<"ALL" | "OPEN" | "RESOLVED">("ALL");
@@ -260,6 +262,27 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
       console.warn("Diagnostics note:", e);
     }
   }, [searchParams]);
+
+  const handleRefreshTickets = async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(`/api/support/ticket?_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
+      });
+      const data = await res.json();
+      if (data.tickets && Array.isArray(data.tickets)) {
+        setTickets(data.tickets);
+        try {
+          localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(data.tickets));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn("Failed to refresh tickets:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -686,55 +709,33 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
           </Card>
 
           {/* 2. SUBMITTED TICKETS HISTORY */}
-          <Card className="p-5 rounded-3xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <Card className="p-5 sm:p-6 rounded-3xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-rose-500 shrink-0" />
                   <span>Yêu Cầu Đã Gửi Của Bạn ({tickets.length})</span>
                 </h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-500 mt-0.5">
                   Lịch sử theo dõi tiến độ xử lý và phản hồi từ kỹ thuật viên
                 </p>
               </div>
 
-              {/* Filter tabs & Refresh button */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(`/api/support/ticket?_t=${Date.now()}`, {
-                        cache: "no-store",
-                        headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
-                      });
-                      const data = await res.json();
-                      if (data.tickets) {
-                        setTickets(data.tickets);
-                        try {
-                          localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(data.tickets));
-                        } catch {}
-                      }
-                    } catch {}
-                  }}
-                  title="Cập nhật trạng thái mới nhất"
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </button>
-
-                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[10px]">
+              {/* Filter tabs & Refresh button - cleanly aligned without awkward wrapping */}
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs">
                   <button
                     type="button"
                     onClick={() => setTicketFilter("ALL")}
                     className={cn(
-                      "px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-1",
+                      "px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 whitespace-nowrap text-xs",
                       ticketFilter === "ALL"
-                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
-                        : "text-slate-500 hover:text-slate-900"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     <span>Tất cả</span>
-                    <span className="text-[9px] px-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                       {tickets.length}
                     </span>
                   </button>
@@ -742,15 +743,15 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
                     type="button"
                     onClick={() => setTicketFilter("OPEN")}
                     className={cn(
-                      "px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-1",
+                      "px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 whitespace-nowrap text-xs",
                       ticketFilter === "OPEN"
-                        ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-2xs"
-                        : "text-slate-500 hover:text-slate-900"
+                        ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     <span>Chờ xử lý</span>
                     {openCount > 0 && (
-                      <span className="text-[9px] px-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                         {openCount}
                       </span>
                     )}
@@ -759,32 +760,49 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
                     type="button"
                     onClick={() => setTicketFilter("RESOLVED")}
                     className={cn(
-                      "px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-1",
+                      "px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 whitespace-nowrap text-xs",
                       ticketFilter === "RESOLVED"
-                        ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs"
-                        : "text-slate-500 hover:text-slate-900"
+                        ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     <span>Đã xử lý</span>
                     {resolvedCount > 0 && (
-                      <span className="text-[9px] px-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                         {resolvedCount}
                       </span>
                     )}
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleRefreshTickets}
+                  title="Cập nhật trạng thái mới nhất"
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                >
+                  <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin text-rose-500")} />
+                </button>
               </div>
             </div>
 
             {filteredTickets.length === 0 ? (
-              <div className="py-8 text-center space-y-2">
-                <CheckCircle2 className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto" />
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                  Hiện bạn chưa có yêu cầu nào {ticketFilter !== "ALL" && "theo bộ lọc này"}.
-                </p>
-                <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                  Khi bạn gửi phản hồi, mã yêu cầu và trạng thái xử lý sẽ hiển thị ở đây.
-                </p>
+              <div className="py-10 text-center space-y-2.5">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                  <Inbox className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {ticketFilter === "ALL"
+                      ? "Hiện bạn chưa có yêu cầu nào."
+                      : ticketFilter === "OPEN"
+                      ? "Không có yêu cầu nào đang chờ xử lý."
+                      : "Chưa có yêu cầu nào đã hoàn tất xử lý."}
+                  </p>
+                  <p className="text-[11px] text-slate-400 max-w-sm mx-auto leading-relaxed">
+                    Khi bạn gửi phản hồi hoặc báo lỗi qua biểu mẫu bên cạnh, mã yêu cầu và tiến độ xử lý từ kỹ thuật viên sẽ hiển thị tại đây.
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
