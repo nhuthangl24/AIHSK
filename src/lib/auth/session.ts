@@ -5,6 +5,26 @@ import { verifyClassniaToken } from "./classnia-token";
 
 export const COOKIE_NAME = "aihsk_token";
 export const CLASSNIA_COOKIE_NAME = "hsk_session_token";
+export const PROFILE_COOKIE_NAME = "aihsk_profile";
+
+export interface UserProfileCookieData {
+  name?: string;
+  targetLevel?: string;
+  nativeLanguage?: string;
+  studyHoursWeekly?: number;
+  learningGoal?: string;
+  updatedAt?: string;
+}
+
+export function getUserProfileCookie(cookieStore: any): UserProfileCookieData | null {
+  try {
+    const raw = cookieStore.get(PROFILE_COOKIE_NAME)?.value;
+    if (!raw) return null;
+    return JSON.parse(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
+}
 
 export const ADMIN_EMAILS = [
   "luunhuthang2402@gmail.com",
@@ -93,73 +113,52 @@ export async function getCurrentUserWithProfile() {
   const session = await getCurrentUser();
   if (!session) return null;
 
+  const cookieStore = await cookies();
+  const profileCookie = getUserProfileCookie(cookieStore);
+
   // 1. Try to enrich from Firebase Firestore (Primary DB)
+  let fbUser: any = null;
   try {
     const { FirebaseDb } = await import("@/lib/firebase-db");
-    const fbUser =
+    fbUser =
       (await FirebaseDb.findUserById(session.userId)) ||
       (await FirebaseDb.findUserByEmail(session.email));
-
-    if (fbUser) {
-      return {
-        id: fbUser.id,
-        email: fbUser.email,
-        name: fbUser.name,
-        role: fbUser.role || session.role,
-        avatarUrl: fbUser.avatar || null,
-        isActive: true,
-        emailVerified: true,
-        passwordHash: "",
-        suspendedAt: null as Date | null,
-        createdAt: new Date(fbUser.createdAt || Date.now()),
-        updatedAt: new Date(fbUser.updatedAt || Date.now()),
-        profile: {
-          id: `prof_${fbUser.id}`,
-          userId: fbUser.id,
-          targetLevel: fbUser.targetLevel || "HSK 3",
-          nativeLanguage: fbUser.nativeLanguage || "Tiếng Việt",
-          studyHoursWeekly: fbUser.studyHoursWeekly || 3,
-          learningGoal: fbUser.learningGoal || "",
-        },
-      };
-    }
   } catch {
     // Continue to store fallback
   }
 
   // 2. Fallback: construct from assessmentStore
   const { assessmentStore } = await import("@/lib/db/assessment-store");
-  const storedProfile = assessmentStore.getProfile(session.userId);
+  const storedProfile =
+    assessmentStore.getProfile(session.userId) ||
+    assessmentStore.getProfile(session.email);
+
+  const resolvedName = profileCookie?.name || storedProfile?.name || fbUser?.name || session.name;
+  const resolvedTargetLevel = profileCookie?.targetLevel || storedProfile?.targetLevel || fbUser?.targetLevel || "HSK 3";
+  const resolvedNativeLang = profileCookie?.nativeLanguage || storedProfile?.nativeLanguage || fbUser?.nativeLanguage || "Tiếng Việt";
+  const resolvedHours = profileCookie?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? fbUser?.studyHoursWeekly ?? 3;
+  const resolvedGoal = profileCookie?.learningGoal ?? storedProfile?.learningGoal ?? fbUser?.learningGoal ?? "";
 
   return {
-    id: session.userId,
+    id: fbUser?.id || session.userId,
     email: session.email,
-    name: session.name,
-    role: session.role,
-    avatarUrl: null as string | null,
+    name: resolvedName,
+    role: fbUser?.role || session.role,
+    avatarUrl: fbUser?.avatar || null,
     isActive: true,
     emailVerified: true,
     passwordHash: "",
     suspendedAt: null as Date | null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    profile: storedProfile
-      ? {
-          id: `prof_${session.userId}`,
-          userId: session.userId,
-          targetLevel: storedProfile.targetLevel,
-          nativeLanguage: storedProfile.nativeLanguage,
-          studyHoursWeekly: storedProfile.studyHoursWeekly,
-          learningGoal: storedProfile.learningGoal,
-        }
-      : {
-          id: `prof_${session.userId}`,
-          userId: session.userId,
-          targetLevel: "HSK 3",
-          nativeLanguage: "Tiếng Việt",
-          studyHoursWeekly: 3,
-          learningGoal: "",
-        },
+    createdAt: new Date(fbUser?.createdAt || Date.now()),
+    updatedAt: new Date(profileCookie?.updatedAt || storedProfile?.updatedAt || fbUser?.updatedAt || Date.now()),
+    profile: {
+      id: `prof_${session.userId}`,
+      userId: session.userId,
+      targetLevel: resolvedTargetLevel,
+      nativeLanguage: resolvedNativeLang,
+      studyHoursWeekly: resolvedHours,
+      learningGoal: resolvedGoal,
+    },
   };
 }
 

@@ -48,6 +48,24 @@ export default async function LearningProgressPage() {
       }
     })(),
     (async () => {
+      const cookieStore = await cookies();
+      const { getUserProfileCookie } = await import("@/lib/auth/session");
+      const profileCookie = getUserProfileCookie(cookieStore);
+      if (profileCookie) {
+        return {
+          targetLevel: profileCookie.targetLevel || "HSK 3",
+          name: profileCookie.name || user.name,
+          email: user.email,
+        };
+      }
+      const stored = assessmentStore.getProfile(user.userId) || assessmentStore.getProfile(user.email);
+      if (stored) {
+        return {
+          targetLevel: stored.targetLevel || "HSK 3",
+          name: stored.name || user.name,
+          email: user.email,
+        };
+      }
       try {
         const { FirebaseDb } = await import("@/lib/firebase-db");
         const fb =
@@ -63,7 +81,7 @@ export default async function LearningProgressPage() {
       } catch {
         // ignore
       }
-      return assessmentStore.getProfile(user.userId);
+      return null;
     })(),
   ]);
 

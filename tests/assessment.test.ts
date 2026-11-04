@@ -99,4 +99,26 @@ describe("Examiner 5-Stage Orchestration Unit Tests", () => {
     expect(restored?.id).toBe(coldSessionId);
     expect(restored?.template?.title).toBe("Du lịch, Đặt phòng & Hỏi đường");
   });
+
+  it("should match user sessions across Google MD5 hash, email, and userEmail fields", async () => {
+    const { AssessmentService } = await import("../src/services/assessment-service");
+    const { assessmentStore } = await import("../src/lib/db/assessment-store");
+    const crypto = await import("crypto");
+
+    const email = "learner.sync@test.com";
+    const googleHash = crypto.createHash("md5").update(email).digest("hex").slice(0, 16);
+    const googleUserId = `google_${googleHash}`;
+
+    // Start a session with Google ID and email
+    const session = await AssessmentService.startSession(googleUserId, "tpl-hsk3", undefined, email);
+    expect(session.userEmail).toBe(email);
+
+    // Query with classnia ID and email
+    const classniaId = `classnia_learner_sync_test_com`;
+    const userSessions = await AssessmentService.getUserSessions(classniaId, email);
+
+    const found = userSessions.find((s) => s.id === session.id);
+    expect(found).toBeDefined();
+    expect(found?.id).toBe(session.id);
+  });
 });

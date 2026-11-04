@@ -228,6 +228,15 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             const pollData = await pollRes.json();
             if (pollData?.session?.status === "COMPLETED") {
               if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+              try {
+                localStorage.setItem(`aihsk_active_session_${id}`, JSON.stringify(pollData.session));
+                const rawRecent = localStorage.getItem("aihsk_recent_sessions");
+                let recentList = rawRecent ? JSON.parse(rawRecent) : [];
+                if (!Array.isArray(recentList)) recentList = [];
+                const filtered = recentList.filter((s: any) => s.id !== id);
+                filtered.unshift(pollData.session);
+                localStorage.setItem("aihsk_recent_sessions", JSON.stringify(filtered.slice(0, 30)));
+              } catch {}
               router.push(`/dashboard/reports/${id}`);
             }
           } catch (e) {
@@ -486,6 +495,17 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             if (pollData?.session?.status === "COMPLETED" && pollData?.session?.result) {
               if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
               setIsReportReady(true);
+              try {
+                localStorage.setItem(`aihsk_active_session_${id}`, JSON.stringify(pollData.session));
+                const rawRecent = localStorage.getItem("aihsk_recent_sessions");
+                let recentList = rawRecent ? JSON.parse(rawRecent) : [];
+                if (!Array.isArray(recentList)) recentList = [];
+                const filtered = recentList.filter((s: any) => s.id !== id);
+                filtered.unshift(pollData.session);
+                localStorage.setItem("aihsk_recent_sessions", JSON.stringify(filtered.slice(0, 30)));
+              } catch (e) {
+                console.warn("Could not cache completed session:", e);
+              }
               setTimeout(() => {
                 router.push(`/dashboard/reports/${id}`);
               }, 500);

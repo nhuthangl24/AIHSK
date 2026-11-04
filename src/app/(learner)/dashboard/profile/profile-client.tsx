@@ -243,6 +243,23 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
         // Non-critical background sync
       }
 
+      // Persist in localStorage for instant offline/serverless resilience
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(
+            "aihsk_user_profile",
+            JSON.stringify({
+              name: name.trim(),
+              targetLevel,
+              nativeLanguage,
+              studyHoursWeekly: Number(studyHoursWeekly),
+              learningGoal: learningGoal.trim(),
+              updatedAt: new Date().toISOString(),
+            })
+          );
+        } catch {}
+      }
+
       setStatusMessage({
         type: "success",
         text: "Tuyệt vời! Đã cập nhật hồ sơ học viên & cấu hình mục tiêu HSK thành công.",

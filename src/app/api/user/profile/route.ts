@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { cookies } from "next/headers";
+import { getCurrentUser, getUserProfileCookie, getAuthCookieOptions, PROFILE_COOKIE_NAME } from "@/lib/auth/session";
+import { signToken } from "@/lib/auth/jwt";
 import { assessmentStore } from "@/lib/db/assessment-store";
 import { FirebaseDb } from "@/lib/firebase-db";
 
@@ -9,12 +11,17 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const cookieStore = await cookies();
+  const profileCookie = getUserProfileCookie(cookieStore);
   const normalizedEmail = user.email.toLowerCase().trim();
 
   // 1. Try Firebase Firestore
-  const fbUser =
-    (await FirebaseDb.findUserById(user.userId)) ||
-    (await FirebaseDb.findUserByEmail(normalizedEmail));
+  let fbUser: any = null;
+  try {
+    fbUser =
+      (await FirebaseDb.findUserById(user.userId)) ||
+      (await FirebaseDb.findUserByEmail(normalizedEmail));
+  } catch {}
 
   // 2. Try assessmentStore (check both userId and email)
   const storedProfile =
@@ -23,12 +30,12 @@ export async function GET() {
 
   return NextResponse.json({
     user: {
-      name: fbUser?.name || storedProfile?.name || user.name || "",
+      name: profileCookie?.name || storedProfile?.name || fbUser?.name || user.name || "",
       email: normalizedEmail,
-      targetLevel: fbUser?.targetLevel || storedProfile?.targetLevel || "HSK 3",
-      nativeLanguage: fbUser?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
-      studyHoursWeekly: fbUser?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
-      learningGoal: fbUser?.learningGoal ?? storedProfile?.learningGoal ?? "",
+      targetLevel: profileCookie?.targetLevel || storedProfile?.targetLevel || fbUser?.targetLevel || "HSK 3",
+      nativeLanguage: profileCookie?.nativeLanguage || storedProfile?.nativeLanguage || fbUser?.nativeLanguage || "Tiếng Việt",
+      studyHoursWeekly: profileCookie?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? fbUser?.studyHoursWeekly ?? 3,
+      learningGoal: profileCookie?.learningGoal ?? storedProfile?.learningGoal ?? fbUser?.learningGoal ?? "",
     },
   });
 }
@@ -62,10 +69,10 @@ export async function PUT(req: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    // 1. Persist to assessmentStore
+    // 1. Persist to assessmentStore (both in memory and individual disk file)
     assessmentStore.saveProfile(profileData);
 
-    // 2. Persist to Firebase Firestore
+    // 2. Try persisting to Firebase Firestore
     try {
       await FirebaseDb.updateUser(
         user.userId,
@@ -84,8 +91,10 @@ export async function PUT(req: NextRequest) {
       console.warn("Firestore profile update note:", fbErr);
     }
 
-    return NextResponse.json({
+    // 3. Create response and set bulletproof aihsk_profile cookie
+    const response = NextResponse.json({
       success: true,
+      message: "Cập nhật hồ sơ học tập và mục tiêu HSK thành công!",
       profile: {
         name: cleanName,
         targetLevel: cleanTargetLevel,
@@ -94,6 +103,41 @@ export async function PUT(req: NextRequest) {
         learningGoal: cleanGoal,
       },
     });
+
+    const isProd = process.env.NODE_ENV === "production";
+    const configuredDomain = process.env.COOKIE_DOMAIN;
+    let domain: string | undefined = configuredDomain;
+    if (!domain && isProd && process.env.NEXT_PUBLIC_APP_URL?.includes("classnia.id.vn")) {
+      domain = ".classnia.id.vn";
+    }
+
+    // Set cookie: survives serverless cold starts & multiple containers across entire browser session
+    response.cookies.set({
+      name: PROFILE_COOKIE_NAME,
+      value: encodeURIComponent(JSON.stringify(profileData)),
+      httpOnly: false, // Accessible to client-side JS for instant hydration & sync
+      secure: isProd && Boolean(process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://")),
+      sameSite: "lax",
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      ...(domain ? { domain } : {}),
+    });
+
+    // 4. Update session token cookie if name changed
+    try {
+      const newToken = await signToken({
+        userId: user.userId,
+        email: normalizedEmail,
+        role: user.role,
+        name: cleanName,
+      });
+      const cookieOpts = getAuthCookieOptions();
+      response.cookies.set(cookieOpts.name, newToken, cookieOpts);
+    } catch (tokenErr) {
+      console.warn("Cookie token refresh note:", tokenErr);
+    }
+
+    return response;
   } catch (err: any) {
     console.error("Profile update error:", err);
     return NextResponse.json({ error: err.message || "Failed to update profile" }, { status: 500 });

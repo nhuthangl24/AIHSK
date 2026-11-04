@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
       const session = await AssessmentService.startSession(
         user.userId,
         customTemplate.id,
-        assignmentId
+        assignmentId,
+        user.email
       );
 
       return NextResponse.json({ success: true, session });
@@ -62,7 +63,8 @@ export async function POST(req: NextRequest) {
     const session = await AssessmentService.startSession(
       user.userId,
       templateId,
-      assignmentId
+      assignmentId,
+      user.email
     );
 
     return NextResponse.json({ success: true, session });

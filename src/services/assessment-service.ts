@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { ExaminerService, STAGES_CONFIG } from "@/lib/ai/examiner-service";
 import { ScoringWorker } from "@/lib/queue/scoring-worker";
 import { ConversationTurnItem } from "@/lib/ai/types";
@@ -30,6 +31,8 @@ export class AssessmentService {
       candidateUserIds.add(normEmail);
       candidateUserIds.add(`firebase_${normEmail.replace(/[^a-z0-9]/g, "_")}`);
       candidateUserIds.add(`classnia_${normEmail.replace(/[^a-z0-9]/g, "_")}`);
+      const googleHash = crypto.createHash("md5").update(normEmail).digest("hex").slice(0, 16);
+      candidateUserIds.add(`google_${googleHash}`);
     }
 
     // If userId itself looks like an email
@@ -38,6 +41,8 @@ export class AssessmentService {
       candidateUserIds.add(norm);
       candidateUserIds.add(`firebase_${norm.replace(/[^a-z0-9]/g, "_")}`);
       candidateUserIds.add(`classnia_${norm.replace(/[^a-z0-9]/g, "_")}`);
+      const googleHash = crypto.createHash("md5").update(norm).digest("hex").slice(0, 16);
+      candidateUserIds.add(`google_${googleHash}`);
     }
 
     // Try resolving user from Firebase Firestore (find by UID or email)
@@ -56,6 +61,8 @@ export class AssessmentService {
           candidateUserIds.add(norm);
           candidateUserIds.add(`firebase_${norm.replace(/[^a-z0-9]/g, "_")}`);
           candidateUserIds.add(`classnia_${norm.replace(/[^a-z0-9]/g, "_")}`);
+          const googleHash = crypto.createHash("md5").update(norm).digest("hex").slice(0, 16);
+          candidateUserIds.add(`google_${googleHash}`);
         }
       }
     } catch {
@@ -73,7 +80,14 @@ export class AssessmentService {
             candidateUserIds.has(p.userId)
           ) {
             if (p.userId) candidateUserIds.add(p.userId);
-            if (p.email) candidateUserIds.add(p.email.toLowerCase().trim());
+            if (p.email) {
+              const norm = p.email.toLowerCase().trim();
+              candidateUserIds.add(norm);
+              candidateUserIds.add(`firebase_${norm.replace(/[^a-z0-9]/g, "_")}`);
+              candidateUserIds.add(`classnia_${norm.replace(/[^a-z0-9]/g, "_")}`);
+              const googleHash = crypto.createHash("md5").update(norm).digest("hex").slice(0, 16);
+              candidateUserIds.add(`google_${googleHash}`);
+            }
           }
         }
       }
@@ -82,12 +96,22 @@ export class AssessmentService {
     }
 
     // Retrieve sessions from assessmentStore
-    const storeSessions = assessmentStore.getAllSessions().filter((s) => {
+    const storeSessions = assessmentStore.getAllSessions().filter((s: any) => {
+      // 1. Check candidate IDs directly
       if (candidateUserIds.has(s.userId)) return true;
+      if (s.userEmail && candidateUserIds.has(s.userEmail.toLowerCase().trim())) return true;
+      if (s.user?.email && candidateUserIds.has(s.user.email.toLowerCase().trim())) return true;
+
+      // 2. Check resolved email / email match
       if (resolvedEmail || email) {
         const target = (resolvedEmail || email)!.toLowerCase().trim();
         const prefix = target.split("@")[0];
-        if (s.userId?.toLowerCase() === target || s.userId?.toLowerCase().includes(prefix)) {
+        if (
+          s.userEmail?.toLowerCase().trim() === target ||
+          s.user?.email?.toLowerCase().trim() === target ||
+          s.userId?.toLowerCase() === target ||
+          (prefix.length >= 3 && s.userId?.toLowerCase().includes(prefix))
+        ) {
           return true;
         }
       }
@@ -151,7 +175,12 @@ export class AssessmentService {
   /**
    * Starts a new assessment session and generates the examiner's initial greeting turn.
    */
-  static async startSession(userId: string, templateId: string, assignmentId?: string) {
+  static async startSession(
+    userId: string,
+    templateId: string,
+    assignmentId?: string,
+    userEmail?: string
+  ) {
     let template = assessmentStore.getTemplate(templateId);
 
     if (!template) {
@@ -188,6 +217,7 @@ export class AssessmentService {
       templateId: template.id,
       rubricId: template.rubricId || null,
       userId,
+      userEmail: userEmail || (userId?.includes("@") ? userId : null) || null,
       status: "IN_PROGRESS",
       currentStage: 1,
       currentTurn: 0,
@@ -210,7 +240,11 @@ export class AssessmentService {
   /**
    * Restores or syncs a session from a client-provided snapshot into the persistent store.
    */
-  static async restoreOrSyncSession(sessionSnapshot: any, userId?: string): Promise<StoredSession> {
+  static async restoreOrSyncSession(
+    sessionSnapshot: any,
+    userId?: string,
+    userEmail?: string
+  ): Promise<StoredSession> {
     if (!sessionSnapshot || !sessionSnapshot.id) {
       throw new Error("Invalid session snapshot");
     }
@@ -247,6 +281,12 @@ export class AssessmentService {
       templateId: sessionSnapshot.templateId || existing?.templateId || "tpl-hsk3",
       rubricId: sessionSnapshot.rubricId || existing?.rubricId || null,
       userId: sessionSnapshot.userId || existing?.userId || userId || "user_guest",
+      userEmail:
+        sessionSnapshot.userEmail ||
+        existing?.userEmail ||
+        userEmail ||
+        (userId?.includes("@") ? userId : null) ||
+        null,
       status: sessionSnapshot.status || existing?.status || "IN_PROGRESS",
       currentStage: Math.max(sessionSnapshot.currentStage || 1, existing?.currentStage || 1),
       currentTurn: Math.max(sessionSnapshot.currentTurn || 0, existing?.currentTurn || 0, mergedTurns.length),

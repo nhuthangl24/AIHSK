@@ -75,6 +75,12 @@ export function ReportRecovery({ sessionId }: { sessionId: string }) {
             if (data?.session) {
               try {
                 localStorage.setItem(`aihsk_active_session_${sessionId}`, JSON.stringify(data.session));
+                const rawRecent = localStorage.getItem("aihsk_recent_sessions");
+                let recentList = rawRecent ? JSON.parse(rawRecent) : [];
+                if (!Array.isArray(recentList)) recentList = [];
+                const filtered = recentList.filter((s: any) => s.id !== sessionId);
+                filtered.unshift(data.session);
+                localStorage.setItem("aihsk_recent_sessions", JSON.stringify(filtered.slice(0, 30)));
               } catch {}
             }
             sessionStorage.removeItem(recoveryKey);

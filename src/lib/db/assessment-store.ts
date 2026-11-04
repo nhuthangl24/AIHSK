@@ -89,6 +89,7 @@ export interface StoredSession {
   templateId: string;
   rubricId: string | null;
   userId: string;
+  userEmail?: string | null;
   status: "READY" | "IN_PROGRESS" | "PROCESSING" | "COMPLETED" | "FAILED";
   currentStage: number;
   currentTurn: number;
@@ -261,6 +262,7 @@ class AssessmentStore {
   private baseDir: string;
   private filePath: string;
   private sessionsDir: string;
+  private profilesDir: string;
 
   constructor() {
     // Choose writable directory for storage (works on local dev & serverless /tmp)
@@ -268,6 +270,7 @@ class AssessmentStore {
     this.baseDir = isServerless ? "/tmp" : path.join(process.cwd(), ".data");
     this.filePath = path.join(this.baseDir, "assessment_store.json");
     this.sessionsDir = path.join(this.baseDir, "sessions");
+    this.profilesDir = path.join(this.baseDir, "profiles");
     this.init();
   }
 
@@ -403,6 +406,27 @@ class AssessmentStore {
   getAllSessions(): StoredSession[] {
     this.init();
     this.reloadFromDisk();
+
+    // Also scan sessionsDir for any sessions written to individual json files
+    try {
+      if (fs.existsSync(this.sessionsDir)) {
+        const files = fs.readdirSync(this.sessionsDir);
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            const sessionId = file.replace(/\.json$/, "");
+            if (!this.data.sessions[sessionId]) {
+              const loaded = this.loadSessionFile(sessionId);
+              if (loaded && loaded.id) {
+                this.data.sessions[loaded.id] = loaded;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not scan sessionsDir:", e);
+    }
+
     return Object.values(this.data.sessions)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .map((s) => ({
@@ -541,12 +565,60 @@ class AssessmentStore {
     return Array.from(map.values());
   }
 
+  private getProfileFilePath(key: string): string {
+    const safeKey = key.toLowerCase().trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+    return path.join(this.profilesDir, `${safeKey}.json`);
+  }
+
+  private saveProfileFile(key: string, profile: StoredUserProfile) {
+    try {
+      if (!fs.existsSync(this.profilesDir)) {
+        fs.mkdirSync(this.profilesDir, { recursive: true });
+      }
+      fs.writeFileSync(this.getProfileFilePath(key), JSON.stringify(profile, null, 2), "utf-8");
+    } catch (e) {
+      console.warn("Could not write individual profile file:", e);
+    }
+  }
+
+  private loadProfileFile(key: string): StoredUserProfile | null {
+    try {
+      const p = this.getProfileFilePath(key);
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, "utf-8");
+        const profile = JSON.parse(raw) as StoredUserProfile;
+        if (profile) {
+          this.data.profiles[key] = profile;
+          if (profile.userId) this.data.profiles[profile.userId] = profile;
+          if (profile.email) this.data.profiles[profile.email.toLowerCase().trim()] = profile;
+          return profile;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not read individual profile file:", e);
+    }
+    return null;
+  }
+
   getProfile(userIdOrEmail: string): StoredUserProfile | null {
     this.init();
     if (!userIdOrEmail) return null;
-    if (this.data.profiles[userIdOrEmail]) return this.data.profiles[userIdOrEmail];
+    let profile = this.data.profiles[userIdOrEmail];
+    if (!profile) {
+      profile = this.loadProfileFile(userIdOrEmail) || null;
+    }
+    if (!profile) {
+      this.reloadFromDisk();
+      profile = this.data.profiles[userIdOrEmail];
+    }
+    if (profile) return profile;
 
     const normalized = userIdOrEmail.toLowerCase().trim();
+    if (normalized !== userIdOrEmail) {
+      profile = this.data.profiles[normalized] || this.loadProfileFile(normalized) || null;
+      if (profile) return profile;
+    }
+
     return (
       Object.values(this.data.profiles).find(
         (p) =>
@@ -563,8 +635,11 @@ class AssessmentStore {
       updatedAt: new Date().toISOString(),
     };
     this.data.profiles[profile.userId] = cleanProfile;
+    this.saveProfileFile(profile.userId, cleanProfile);
     if (profile.email) {
-      this.data.profiles[profile.email.toLowerCase().trim()] = cleanProfile;
+      const normEmail = profile.email.toLowerCase().trim();
+      this.data.profiles[normEmail] = cleanProfile;
+      this.saveProfileFile(normEmail, cleanProfile);
     }
     this.persist();
     return cleanProfile;
@@ -580,6 +655,5 @@ declare global {
 export const assessmentStore: AssessmentStore =
   globalThis.__aihsk_assessment_store || new AssessmentStore();
 
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__aihsk_assessment_store = assessmentStore;
-}
+// Always keep singleton attached to globalThis in both dev & serverless production
+globalThis.__aihsk_assessment_store = assessmentStore;

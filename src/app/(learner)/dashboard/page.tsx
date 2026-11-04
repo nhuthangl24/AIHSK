@@ -73,6 +73,47 @@ const LEVEL_RECOMMENDATIONS: Record<
   },
 };
 
+function getBrowserLocalSessions(): any[] {
+  if (typeof window === "undefined") return [];
+  const foundMap = new Map<string, any>();
+
+  // 1. Check aihsk_recent_sessions
+  try {
+    const raw = localStorage.getItem("aihsk_recent_sessions");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        for (const s of parsed) {
+          if (s && s.id) foundMap.set(s.id, s);
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Scan all aihsk_active_session_* keys in localStorage
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("aihsk_active_session_")) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const s = JSON.parse(raw);
+            if (s && s.id) {
+              const existing = foundMap.get(s.id);
+              if (!existing || (!existing.result && s.result)) {
+                foundMap.set(s.id, s);
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+
+  return Array.from(foundMap.values());
+}
+
 export default function LearnerDashboardPage() {
   const router = useRouter();
   const [userName, setUserName] = useState<string>("Học Viên");
@@ -103,11 +144,48 @@ export default function LearnerDashboardPage() {
           }
         }
 
+        let fetchedSessions: any[] = [];
         if (assessRes && assessRes.ok) {
           const assessData = await assessRes.json();
-          if (isMounted && Array.isArray(assessData?.sessions)) {
-            setSessions(assessData.sessions);
+          if (Array.isArray(assessData?.sessions)) {
+            fetchedSessions = assessData.sessions;
           }
+        }
+
+        // Merge fetched sessions with resilient browser local storage
+        const localSessions = getBrowserLocalSessions();
+        const mergedMap = new Map<string, any>();
+
+        for (const s of fetchedSessions) {
+          if (s && s.id) mergedMap.set(s.id, s);
+        }
+
+        for (const ls of localSessions) {
+          if (!ls || !ls.id) continue;
+          const serverS = mergedMap.get(ls.id);
+          if (!serverS) {
+            mergedMap.set(ls.id, ls);
+            fetch(`/api/assessments/${ls.id}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ session: ls }),
+            }).catch(() => null);
+          } else if (!serverS.result && ls.result) {
+            mergedMap.set(ls.id, { ...serverS, ...ls });
+            fetch(`/api/assessments/${ls.id}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ session: ls }),
+            }).catch(() => null);
+          }
+        }
+
+        const allSessions = Array.from(mergedMap.values()).sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+
+        if (isMounted) {
+          setSessions(allSessions);
         }
       } catch (e) {
         console.warn("Dashboard client fetch note:", e);

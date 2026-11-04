@@ -58,4 +58,32 @@ describe("Authentication & Security Unit Tests", () => {
     expect(verified?.name).toBe("Google Learner");
     expect(verified?.role).toBe(UserRole.USER);
   });
+
+  it("should parse and decode user profile cookie safely", async () => {
+    const { getUserProfileCookie, PROFILE_COOKIE_NAME } = await import("../src/lib/auth/session");
+
+    const sampleProfile = {
+      name: "Nguyễn Văn A",
+      targetLevel: "HSK 5",
+      studyHoursWeekly: 7,
+      learningGoal: "Thi đỗ HSK 5 trong 3 tháng",
+      nativeLanguage: "Tiếng Việt",
+      updatedAt: new Date().toISOString(),
+    };
+
+    const mockCookieStore = {
+      get: (name: string) => {
+        if (name === PROFILE_COOKIE_NAME) {
+          return { value: encodeURIComponent(JSON.stringify(sampleProfile)) };
+        }
+        return undefined;
+      },
+    };
+
+    const parsed = getUserProfileCookie(mockCookieStore);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.name).toBe("Nguyễn Văn A");
+    expect(parsed?.targetLevel).toBe("HSK 5");
+    expect(parsed?.studyHoursWeekly).toBe(7);
+  });
 });

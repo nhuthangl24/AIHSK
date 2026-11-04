@@ -50,7 +50,7 @@ export async function POST(
     const sessionData = body.session || body.sessionSnapshot || body;
     if (sessionData && (sessionData.id === id || !sessionData.id)) {
       sessionData.id = id;
-      await AssessmentService.restoreOrSyncSession(sessionData, user.userId);
+      await AssessmentService.restoreOrSyncSession(sessionData, user.userId, user.email);
       // Ensure scoring is completed and result is populated
       await ScoringWorker.ensureSessionScored(id);
       const session = await AssessmentService.getSessionWithReport(id, user.userId);
