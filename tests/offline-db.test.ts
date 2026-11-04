@@ -1,14 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { AssessmentService } from "../src/services/assessment-service";
 import { ScoringWorker } from "../src/lib/queue/scoring-worker";
 import { assessmentStore } from "../src/lib/db/assessment-store";
 
-describe("Offline / Firebase-only Mode (Zero-PostgreSQL) Resilience Tests", () => {
-  beforeEach(() => {
-    // Force canUsePrisma to return false to simulate production environment without PostgreSQL
-    vi.spyOn(AssessmentService, "canUsePrisma").mockResolvedValue(false);
-  });
-
+describe("Firebase & Local Store Mode (Zero-PostgreSQL) Resilience Tests", () => {
   const testUserId = `firebase_user_test_${Date.now()}`;
   let customTemplateId: string;
   let testSessionId: string;
@@ -86,14 +81,5 @@ describe("Offline / Firebase-only Mode (Zero-PostgreSQL) Resilience Tests", () =
 
     const templates = await AssessmentService.getTemplates();
     expect(templates.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("should detect localhost database URL and serverless environment safely", async () => {
-    const { isLocalhostDbUrl, isServerlessOrCloud } = await import("../src/lib/db/prisma");
-
-    expect(isLocalhostDbUrl("postgresql://nhuthang@localhost:5432/aihsk_saas")).toBe(true);
-    expect(isLocalhostDbUrl("postgresql://nhuthang@127.0.0.1:5432/aihsk_saas")).toBe(true);
-    expect(isLocalhostDbUrl("postgresql://user:pass@ep-neon-1234.us-east-2.aws.neon.tech/neondb")).toBe(false);
-    expect(isLocalhostDbUrl(undefined)).toBe(true);
   });
 });

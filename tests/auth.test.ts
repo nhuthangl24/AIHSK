@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { hashPassword, verifyPassword } from "../src/lib/auth/password";
 import { signToken, verifyToken } from "../src/lib/auth/jwt";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../src/types/database";
 
 describe("Authentication & Security Unit Tests", () => {
   it("should securely hash and verify passwords using bcrypt", async () => {

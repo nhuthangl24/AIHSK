@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Loader2, ArrowLeft, RefreshCw, FileQuestion } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,47 @@ export function ReportRecovery({ sessionId }: { sessionId: string }) {
   const [isRecovering, setIsRecovering] = useState(true);
   const [statusMessage, setStatusMessage] = useState("Đang kiểm tra và đồng bộ dữ liệu phiên thi...");
   const [failed, setFailed] = useState(false);
+  const attemptedRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
 
     async function attemptRecovery() {
-      if (typeof window === "undefined") return;
+      if (typeof window === "undefined" || attemptedRef.current) return;
+      attemptedRef.current = true;
+
+      // Prevent infinite loop if already reloaded twice for this session
+      const recoveryKey = `aihsk_recovery_count_${sessionId}`;
+      const count = parseInt(sessionStorage.getItem(recoveryKey) || "0", 10);
+      if (count >= 3) {
+        if (isMounted) {
+          setIsRecovering(false);
+          setFailed(true);
+        }
+        return;
+      }
+      sessionStorage.setItem(recoveryKey, String(count + 1));
 
       try {
         const cached = localStorage.getItem(`aihsk_active_session_${sessionId}`);
         if (!cached) {
+          // Poll server API a few times in case background worker is finalizing
+          for (let i = 0; i < 4; i++) {
+            if (!isMounted) return;
+            setStatusMessage(`Đang tải báo cáo đánh giá... (${i + 1}/4)`);
+            const checkRes = await fetch(`/api/assessments/${sessionId}`);
+            if (checkRes.ok) {
+              const checkData = await checkRes.json();
+              if (checkData?.session?.result) {
+                setStatusMessage("Báo cáo đã sẵn sàng! Đang hiển thị...");
+                sessionStorage.removeItem(recoveryKey);
+                window.location.reload();
+                return;
+              }
+            }
+            await new Promise((r) => setTimeout(r, 1200));
+          }
+
           if (isMounted) {
             setIsRecovering(false);
             setFailed(true);
@@ -38,11 +69,18 @@ export function ReportRecovery({ sessionId }: { sessionId: string }) {
         });
 
         if (res.ok) {
+          const data = await res.json();
           if (isMounted) {
             setStatusMessage("Đồng bộ thành công! Đang tải báo cáo đánh giá...");
+            if (data?.session) {
+              try {
+                localStorage.setItem(`aihsk_active_session_${sessionId}`, JSON.stringify(data.session));
+              } catch {}
+            }
+            sessionStorage.removeItem(recoveryKey);
             setTimeout(() => {
               window.location.reload();
-            }, 600);
+            }, 500);
           }
           return;
         }
@@ -91,7 +129,7 @@ export function ReportRecovery({ sessionId }: { sessionId: string }) {
           Không tìm thấy báo cáo bài thi
         </h3>
         <p className="text-xs text-slate-500 leading-relaxed">
-          Phiên thi <span className="font-mono text-slate-700 dark:text-slate-300">({sessionId})</span> không tồn tại hoặc dữ liệu đã được lưu trữ bảo mật.
+          Phiên thi <span className="font-mono text-slate-700 dark:text-slate-300">({sessionId})</span> chưa hoàn tất chấm điểm hoặc dữ liệu đang được đồng bộ.
         </p>
       </div>
 
@@ -99,16 +137,19 @@ export function ReportRecovery({ sessionId }: { sessionId: string }) {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            sessionStorage.removeItem(`aihsk_recovery_count_${sessionId}`);
+            window.location.reload();
+          }}
           className="rounded-xl text-xs gap-1.5"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>Thử tải lại</span>
         </Button>
         <Link href="/dashboard/assessments">
-          <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs gap-1.5 shadow-xs">
+          <Button variant="default" size="sm" className="rounded-xl text-xs gap-1.5 bg-rose-600 hover:bg-rose-700 text-white">
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Về phòng thi</span>
+            <span>Về danh sách bài thi</span>
           </Button>
         </Link>
       </div>

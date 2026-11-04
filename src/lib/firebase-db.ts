@@ -145,4 +145,48 @@ export class FirebaseDb {
       return false;
     }
   }
+
+  /**
+   * Save assessment session to Firestore collection 'assessment_sessions'
+   */
+  static async saveSession(session: any): Promise<boolean> {
+    try {
+      const db = getFirestoreDb();
+      if (!db || !session || !session.id) return false;
+
+      const docRef = doc(db, "assessment_sessions", session.id);
+      // Remove any undefined properties which Firestore rejects
+      const cleanData = JSON.parse(JSON.stringify(session));
+      await setDoc(
+        docRef,
+        {
+          ...cleanData,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+      return true;
+    } catch (e) {
+      console.warn("FirebaseDb saveSession note:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Get assessment session from Firestore by sessionId
+   */
+  static async getSession(sessionId: string): Promise<any | null> {
+    try {
+      const db = getFirestoreDb();
+      if (!db || !sessionId) return null;
+
+      const docRef = doc(db, "assessment_sessions", sessionId);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return null;
+      return snap.data();
+    } catch (e) {
+      console.warn("FirebaseDb getSession note:", e);
+      return null;
+    }
+  }
 }

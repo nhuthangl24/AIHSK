@@ -170,29 +170,35 @@ export class ScoringEngine {
       },
     ];
 
-    try {
-      const rawContent = await AIClient.chatCompletion({
-        messages,
-        model: config.modelId,
-        temperature: 0.1,
-        requireJson: true,
-      });
+    // Prefer fast, low-latency model (claude-haiku-4.5) for lightning-fast assessment turnaround
+    const fastModel =
+      config.modelId?.includes("sonnet") || config.modelId?.includes("opus")
+        ? "claude-haiku-4.5"
+        : config.modelId || "claude-haiku-4.5";
 
-      const rawParsed = AIClient.extractJson(rawContent);
-      return ScoringReportSchema.parse(rawParsed);
-    } catch (primaryErr) {
-      // If primary model times out or fails (e.g. slow reasoning models), attempt fast fallback with claude-haiku-4.5
-      console.warn(`Primary model ${config.modelId} scoring failed, attempting fast fallback model:`, primaryErr);
-      const fallbackContent = await AIClient.chatCompletion({
-        messages,
-        model: "claude-haiku-4.5",
-        temperature: 0.1,
-        requireJson: true,
-      });
+    // Race against 10-second timeout so candidate never waits long
+    const scoringPromise = (async () => {
+      try {
+        const rawContent = await AIClient.chatCompletion({
+          messages,
+          model: fastModel,
+          temperature: 0.1,
+          requireJson: true,
+        });
 
-      const fallbackParsed = AIClient.extractJson(fallbackContent);
-      return ScoringReportSchema.parse(fallbackParsed);
-    }
+        const rawParsed = AIClient.extractJson(rawContent);
+        return ScoringReportSchema.parse(rawParsed);
+      } catch (err) {
+        console.warn(`Fast model ${fastModel} scoring failed:`, err);
+        throw err;
+      }
+    })();
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Cloud LLM scoring timeout exceeded (10s threshold)")), 10000)
+    );
+
+    return await Promise.race([scoringPromise, timeoutPromise]);
   }
 
   /**

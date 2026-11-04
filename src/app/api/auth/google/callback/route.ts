@@ -59,36 +59,28 @@ export async function GET(req: NextRequest) {
     let role = isAdmin ? "ADMIN" : "USER";
 
     try {
-      const { default: prisma } = await import("@/lib/db/prisma");
-      let user = await prisma.user.findUnique({ where: { email } });
-
-      if (!user) {
-        const randomPassword = crypto.randomUUID();
-        const passwordHash = await hashPassword(randomPassword);
-
-        user = await prisma.user.create({
-          data: {
-            email,
-            name,
-            avatarUrl,
-            passwordHash,
-            emailVerified: true,
-            role: isAdmin ? "ADMIN" : "USER",
-            profile: {
-              create: {
-                targetLevel: "HSK 3",
-                nativeLanguage: "Tiếng Việt",
-                learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
-                studyHoursWeekly: 4,
-              },
-            },
-          },
-        });
+      const { FirebaseDb } = await import("@/lib/firebase-db");
+      const fbUser = await FirebaseDb.findUserByEmail(email);
+      if (!fbUser) {
+        await FirebaseDb.updateUser(userId, {
+          email,
+          name,
+          avatar: avatarUrl,
+          role,
+          targetLevel: "HSK 3",
+          targetHsk: 3,
+          nativeLanguage: "Tiếng Việt",
+          learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
+          studyHoursWeekly: 4,
+          streakDays: 1,
+          totalMastered: 0,
+        }, email);
+      } else {
+        userId = fbUser.id || userId;
+        role = (fbUser.role as any) || role;
       }
-      userId = user.id;
-      role = user.role;
-    } catch {
-      // DB offline, proceed with Google profile
+    } catch (fbErr) {
+      console.warn("Firestore sync during Google OAuth note:", fbErr);
     }
 
     const token = await signToken({

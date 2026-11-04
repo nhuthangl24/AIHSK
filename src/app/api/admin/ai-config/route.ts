@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
-import { UserRole } from "@prisma/client";
-import prisma from "@/lib/db/prisma";
+import { UserRole } from "@/types/database";
 import { AIClient, HHTECH_MODEL_CATALOG } from "@/lib/ai/ai-client";
 
 function maskApiKey(key: string): string {
@@ -87,21 +86,7 @@ export async function POST(req: NextRequest) {
       notes: `Configured by admin ${user.email} for HHTECH.API`,
     });
 
-    // Record audit log
-    await prisma.auditLog.create({
-      data: {
-        actorId: user.userId,
-        action: "AI_CONFIG_UPDATED",
-        entityType: "AIProviderConfiguration",
-        entityId: saved.id,
-        metadataJson: {
-          providerName: saved.providerName,
-          modelId: saved.modelId,
-          baseUrl,
-          hasKey: Boolean(apiKey),
-        },
-      },
-    });
+
 
     const updated = await AIClient.getActiveConfig();
 

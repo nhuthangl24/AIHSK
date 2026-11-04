@@ -1,20 +1,10 @@
-import prisma from "@/lib/db/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default async function AdminJobsPage() {
-  let jobs: any[] = [];
-  try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    jobs = await prisma.backgroundJob.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
-  } catch {
-    jobs = [];
-  }
+  const jobs: any[] = [];
 
   return (
     <div className="space-y-8">
@@ -61,6 +51,13 @@ export default async function AdminJobsPage() {
                   </td>
                 </tr>
               ))}
+              {jobs.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400">
+                    Không có tác vụ ngầm nào đang chờ xử lý.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

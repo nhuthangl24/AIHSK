@@ -1,19 +1,10 @@
-import prisma from "@/lib/db/prisma";
+import { assessmentStore } from "@/lib/db/assessment-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Layers, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 
 export default async function AdminTemplatesPage() {
-  let templates: any[] = [];
-  try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    templates = await prisma.assessmentTemplate.findMany({
-      include: { rubric: true },
-      orderBy: { createdAt: "asc" },
-    });
-  } catch {
-    templates = [];
-  }
+  const templates = assessmentStore.getTemplates();
 
   return (
     <div className="space-y-8">
@@ -45,7 +36,7 @@ export default async function AdminTemplatesPage() {
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-slate-500">
                 <span>Thang đo liên kết:</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {t.rubric?.name || "Chuẩn 7 Chiều Kích v1.0"}
+                  Chuẩn 7 Chiều Kích v1.0
                 </span>
               </div>
               <div className="flex justify-between text-slate-500">

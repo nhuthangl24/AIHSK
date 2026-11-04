@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth/session";
 import { AIClient } from "@/lib/ai/ai-client";
+import { assessmentStore } from "@/lib/db/assessment-store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,57 +16,20 @@ import {
 import { formatDate } from "@/lib/utils";
 
 export default async function PlatformAdminPage() {
-  let userCount = 0;
-  let assessmentCount = 0;
-  let completedCount = 0;
-  let failedCount = 0;
-  let recentJobs: any[] = [];
-  let auditLogs: any[] = [];
-  let templates: any[] = [];
-  let activeAI: any = { providerName: "hhtech", modelId: "claude-sonnet-4.6", isEnabled: true, apiKey: "configured" };
-
-  try {
-    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-    if (await isPrismaAvailable()) {
-      const [
-        uCount,
-        aCount,
-        cCount,
-        fCount,
-        rJobs,
-        aLogs,
-        tpls,
-        aAI,
-      ] = await Promise.all([
-        prisma.user.count().catch(() => 0),
-        prisma.assessmentSession.count().catch(() => 0),
-        prisma.assessmentSession.count({ where: { status: "COMPLETED" } }).catch(() => 0),
-        prisma.assessmentSession.count({ where: { status: "FAILED" } }).catch(() => 0),
-        prisma.backgroundJob.findMany({
-          orderBy: { createdAt: "desc" },
-          take: 5,
-        }).catch(() => []),
-        prisma.auditLog.findMany({
-          orderBy: { createdAt: "desc" },
-          take: 6,
-          include: { actor: true },
-        }).catch(() => []),
-        prisma.assessmentTemplate.findMany().catch(() => []),
-        AIClient.getActiveConfig().catch(() => ({ providerName: "hhtech", modelId: "claude-sonnet-4.6", isEnabled: true, apiKey: "configured" })),
-      ]);
-
-      userCount = uCount;
-      assessmentCount = aCount;
-      completedCount = cCount;
-      failedCount = fCount;
-      recentJobs = rJobs;
-      auditLogs = aLogs;
-      templates = tpls;
-      activeAI = aAI;
-    }
-  } catch {
-    // DB not connected, keep safe defaults
-  }
+  const allSessions = assessmentStore.getAllSessions();
+  const templates = assessmentStore.getTemplates();
+  const assessmentCount = allSessions.length;
+  const completedCount = allSessions.filter((s) => s.status === "COMPLETED").length;
+  const failedCount = allSessions.filter((s) => s.status === "FAILED").length;
+  const userCount = Math.max(1, new Set(allSessions.map((s) => s.userId)).size);
+  const recentJobs: any[] = [];
+  const auditLogs: any[] = [];
+  const activeAI = await AIClient.getActiveConfig().catch(() => ({
+    providerName: "hhtech",
+    modelId: "claude-sonnet-4.6",
+    isEnabled: true,
+    apiKey: "configured",
+  }));
 
   const activeLLMTitle = activeAI.apiKey && activeAI.isEnabled
     ? `${activeAI.providerName === "hhtech" ? "HHTECH.API" : activeAI.providerName.toUpperCase()} · ${activeAI.modelId}`

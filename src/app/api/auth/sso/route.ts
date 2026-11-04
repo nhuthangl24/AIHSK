@@ -26,33 +26,26 @@ export async function GET(req: NextRequest) {
   const name = normalizedEmail.split("@")[0];
 
   try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    let user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    if (!user) {
-      const passwordHash = await hashPassword(crypto.randomUUID() + "!PassA1");
-      user = await prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          name,
-          passwordHash,
-          role,
-          emailVerified: true,
-          profile: {
-            create: {
-              targetLevel: "HSK 3",
-              nativeLanguage: "Tiếng Việt",
-              studyHoursWeekly: 3,
-            },
-          },
-        },
-      });
+    const { FirebaseDb } = await import("@/lib/firebase-db");
+    const fbUser = await FirebaseDb.findUserByEmail(normalizedEmail);
+    if (!fbUser) {
+      await FirebaseDb.updateUser(userId, {
+        email: normalizedEmail,
+        name,
+        role,
+        targetLevel: "HSK 3",
+        targetHsk: 3,
+        nativeLanguage: "Tiếng Việt",
+        learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa",
+        studyHoursWeekly: 3,
+        streakDays: 1,
+        totalMastered: 0,
+      }, normalizedEmail);
+    } else {
+      userId = fbUser.id || userId;
     }
-    if (user) userId = user.id;
-  } catch (dbErr) {
-    console.warn("DB write during SSO skipped:", dbErr);
+  } catch (fbErr) {
+    console.warn("Firestore sync during SSO note:", fbErr);
   }
 
   const sessionToken = await signToken({

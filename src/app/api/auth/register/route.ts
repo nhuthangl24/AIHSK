@@ -13,63 +13,32 @@ export async function POST(req: NextRequest) {
     const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
     const role: UserRole = isAdmin ? "ADMIN" : "USER";
 
-    // 1. Cố gắng ghi vào PostgreSQL nếu có
+    // 1. Sync with Firebase Firestore
     let userId = `user_${crypto.randomUUID().slice(0, 12)}`;
     try {
-      const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
-      if (await isPrismaAvailable()) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: normalizedEmail },
-        });
-
-        if (existingUser) {
-          return NextResponse.json(
-            { error: "Tài khoản với email này đã tồn tại trong hệ thống." },
-            { status: 409 }
-          );
-        }
-
-        const passwordHash = await hashPassword(validated.password);
-        const user = await prisma.user.create({
-          data: {
-            email: normalizedEmail,
-            passwordHash,
-            name: validated.name,
-            role,
-            emailVerified: true,
-            profile: {
-              create: {
-                targetLevel: validated.targetLevel || "HSK 3",
-                nativeLanguage: validated.nativeLanguage || "Tiếng Việt",
-                learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
-              },
-            },
-          },
-        });
-        userId = user.id;
-
-        try {
-          const freePlan = await prisma.subscriptionPlan.findUnique({
-            where: { slug: "free" },
-          });
-          if (freePlan) {
-            await prisma.subscription.create({
-              data: {
-                userId: user.id,
-                planId: freePlan.id,
-                status: "ACTIVE",
-                currentPeriodStart: new Date(),
-                currentPeriodEnd: new Date(Date.now() + 30 * 24 * 3600 * 1000),
-              },
-            });
-          }
-        } catch {
-          /* plan optional */
-        }
+      const { FirebaseDb } = await import("@/lib/firebase-db");
+      const existingUser = await FirebaseDb.findUserByEmail(normalizedEmail);
+      if (existingUser) {
+        return NextResponse.json(
+          { error: "Tài khoản với email này đã tồn tại trong hệ thống." },
+          { status: 409 }
+        );
       }
-    } catch (dbErr: any) {
-      if (dbErr?.name === "ZodError") throw dbErr;
-      // DB write skipped, falling back to pure JWT token session
+
+      await FirebaseDb.updateUser(userId, {
+        email: normalizedEmail,
+        name: validated.name,
+        role,
+        targetLevel: validated.targetLevel || "HSK 3",
+        targetHsk: validated.targetLevel ? parseInt(validated.targetLevel.replace(/\D/g, "")) || 3 : 3,
+        nativeLanguage: validated.nativeLanguage || "Tiếng Việt",
+        learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
+        streakDays: 1,
+        totalMastered: 0,
+      }, normalizedEmail);
+    } catch (fbErr: any) {
+      if (fbErr?.name === "ZodError") throw fbErr;
+      console.warn("Firestore user creation note:", fbErr);
     }
 
     // 2. Ký JWT session token (hoạt động độc lập không cần DB)

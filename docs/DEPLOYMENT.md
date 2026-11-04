@@ -45,17 +45,11 @@ NODE_ENV="production"
 
 ---
 
-## 2. Managed PostgreSQL Setup
+## 2. Firebase Database & Auth Setup
 
-1. Provision a PostgreSQL 15+ database on **Supabase**, **Neon**, **AWS RDS**, or **Railway**.
-2. Run database schema sync:
-   ```bash
-   npx prisma db push
-   ```
-3. Run the initial data seed to populate standard plans, rubrics, and templates:
-   ```bash
-   node scripts/seed.mjs
-   ```
+1. Configure your Firebase project with **Firestore Database** and **Firebase Authentication**.
+2. Add your Firebase credentials (`NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, etc.) to your deployment environment variables.
+3. The platform automatically operates in pure Firebase mode without requiring any SQL databases.
 
 ---
 

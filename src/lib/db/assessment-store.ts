@@ -428,6 +428,11 @@ class AssessmentStore {
     this.data.sessions[session.id] = session;
     this.saveSessionFile(session);
     this.persist();
+    try {
+      import("@/lib/firebase-db").then(({ FirebaseDb }) => {
+        FirebaseDb.saveSession(session).catch(() => null);
+      }).catch(() => null);
+    } catch {}
     return session;
   }
 
@@ -515,11 +520,27 @@ class AssessmentStore {
       session.updatedAt = new Date().toISOString();
       this.saveSessionFile(session);
       this.persist();
+      try {
+        import("@/lib/firebase-db").then(({ FirebaseDb }) => {
+          FirebaseDb.saveSession(session).catch(() => null);
+        }).catch(() => null);
+      } catch {}
     }
     return result;
   }
 
   // --- USER PROFILES ---
+  getAllProfiles(): StoredUserProfile[] {
+    this.init();
+    const map = new Map<string, StoredUserProfile>();
+    for (const p of Object.values(this.data.profiles)) {
+      if (p && p.userId) {
+        map.set(p.userId, p);
+      }
+    }
+    return Array.from(map.values());
+  }
+
   getProfile(userIdOrEmail: string): StoredUserProfile | null {
     this.init();
     if (!userIdOrEmail) return null;

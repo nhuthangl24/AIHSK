@@ -1,20 +1,26 @@
-import prisma from "@/lib/db/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { assessmentStore } from "@/lib/db/assessment-store";
+import { ADMIN_EMAILS } from "@/lib/auth/session";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default async function AdminUsersPage() {
-  let users: any[] = [];
-  try {
-    const { default: prisma } = await import("@/lib/db/prisma");
-    users = await prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      include: { profile: true },
-    });
-  } catch {
-    users = [];
-  }
+  const profiles = assessmentStore.getAllProfiles();
+
+  const users = profiles.map((p) => {
+    const email = p.email || "";
+    const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase().trim());
+    return {
+      id: p.userId,
+      name: p.name || email.split("@")[0] || "Học Viên",
+      email,
+      role: isAdmin ? "ADMIN" : "USER",
+      targetLevel: p.targetLevel || "HSK 3",
+      isActive: true,
+      createdAt: p.updatedAt || new Date().toISOString(),
+    };
+  });
 
   return (
     <div className="space-y-8">
@@ -48,28 +54,35 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="py-3 px-4">
                     {u.role === "ADMIN" ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-                        Admin
-                      </span>
+                      <Badge variant="destructive" className="flex items-center gap-1 w-fit text-[10px]">
+                        <Shield className="h-2.5 w-2.5" /> Quản Trị Viên
+                      </Badge>
                     ) : (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                        User
-                      </span>
+                      <Badge variant="secondary" className="text-[10px]">
+                        Học Viên
+                      </Badge>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                    {u.profile?.targetLevel || "—"}
+                  <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
+                    {u.targetLevel}
                   </td>
                   <td className="py-3 px-4">
-                    <Badge variant={u.isActive ? "success" : "destructive"} className="text-[10px]">
-                      {u.isActive ? "Hoạt động" : "Tạm khóa"}
-                    </Badge>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                      Hoạt động
+                    </span>
                   </td>
-                  <td className="py-3 px-4 text-slate-500">
+                  <td className="py-3 px-4 text-slate-400">
                     {formatDate(u.createdAt)}
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400">
+                    Chưa có học viên nào tham gia.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

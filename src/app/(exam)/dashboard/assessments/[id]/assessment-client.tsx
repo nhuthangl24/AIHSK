@@ -114,6 +114,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(0.95);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isReportReady, setIsReportReady] = useState(false);
   const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceName, setSelectedVoiceName] = useState<string>("Google 國語（臺灣）");
@@ -482,14 +483,17 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             const pollRes = await fetch(`/api/assessments/${id}`);
             if (!pollRes.ok) return;
             const pollData = await pollRes.json();
-            if (pollData?.session?.status === "COMPLETED") {
+            if (pollData?.session?.status === "COMPLETED" && pollData?.session?.result) {
               if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-              router.push(`/dashboard/reports/${id}`);
+              setIsReportReady(true);
+              setTimeout(() => {
+                router.push(`/dashboard/reports/${id}`);
+              }, 500);
             }
           } catch (e) {
             console.error("Poll error:", e);
           }
-        }, 1500);
+        }, 1000);
       } else {
         await fetchSession();
       }
@@ -1375,18 +1379,40 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 <span>Trích xuất ngữ điệu & độ chuẩn phát âm Pinyin</span>
               </div>
               <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-rose-600" />
-                <span>Đang khởi tạo báo cáo chẩn đoán chi tiết...</span>
+                {isReportReady ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-rose-600" />
+                )}
+                <span>
+                  {isReportReady
+                    ? "Báo cáo chẩn đoán chi tiết đã sẵn sàng!"
+                    : "Đang khởi tạo báo cáo chẩn đoán chi tiết..."}
+                </span>
               </div>
             </div>
 
             <div className="pt-2">
               <Button
                 onClick={() => router.push(`/dashboard/reports/${id}`)}
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs h-10 rounded-xl font-semibold gap-2 shadow-sm"
+                disabled={!isReportReady}
+                className={`w-full text-white text-xs h-10 rounded-xl font-semibold gap-2 shadow-sm transition-all ${
+                  isReportReady
+                    ? "bg-emerald-600 hover:bg-emerald-700 animate-pulse"
+                    : "bg-rose-600/80 cursor-wait opacity-85"
+                }`}
               >
-                <span>Xem Báo Cáo Đánh Giá Ngay</span>
-                <ArrowRight className="h-4 w-4" />
+                {isReportReady ? (
+                  <>
+                    <span>Xem Báo Cáo Đánh Giá Ngay</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Đang tổng hợp điểm số (~3s)...</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

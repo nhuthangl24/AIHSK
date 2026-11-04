@@ -52,8 +52,8 @@ Evaluates complete transcripts against 7 weighted linguistic dimensions:
 - **Styling**: Tailwind CSS + Custom Design System (Chinese lacquer slate & imperial cinnabar aesthetic)
 - **UI Components**: shadcn/ui foundation with customized accessible primitives
 - **Icons**: Lucide Icons
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: Secure JWT sessions via `jose` and `bcryptjs` password hashing (HTTP-only cookies)
+- **Database**: Firebase Firestore & Persistent Assessment Store (Zero-PostgreSQL)
+- **Authentication**: Firebase Authentication & Classnia SSO (hsk_session_token) + Secure JWT sessions via `jose`
 - **Object Storage**: S3-compatible storage abstraction with fallback local filesystem storage
 - **Background Processing**: Asynchronous worker pipeline (`BackgroundJob` model)
 - **Testing**: Vitest unit and integration test suite
@@ -64,7 +64,7 @@ Evaluates complete transcripts against 7 weighted linguistic dimensions:
 
 ### 1. Prerequisites
 - Node.js >= 18
-- PostgreSQL running locally or remotely (configured on port 5432)
+- Firebase project configured (Firestore & Firebase Auth)
 
 ### 2. Installation
 ```bash

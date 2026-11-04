@@ -2,44 +2,25 @@ import { ExaminerService, STAGES_CONFIG } from "@/lib/ai/examiner-service";
 import { ScoringWorker } from "@/lib/queue/scoring-worker";
 import { ConversationTurnItem } from "@/lib/ai/types";
 import { assessmentStore, StoredSession, StoredTurn } from "@/lib/db/assessment-store";
+import { FirebaseDb } from "@/lib/firebase-db";
 
 export class AssessmentService {
-  private static prismaStatus: boolean | null = null;
-  private static lastCheck: number = 0;
-
   /**
-   * Quick non-blocking probe to verify if PostgreSQL/Prisma is operational.
+   * Compatibility probe - always returns false as PostgreSQL/Prisma is removed.
    */
   static async canUsePrisma(): Promise<boolean> {
-    try {
-      const { isPrismaAvailable } = await import("@/lib/db/prisma");
-      return await isPrismaAvailable();
-    } catch {
-      return false;
-    }
+    return false;
   }
 
   /**
-   * Retrieves all active assessment templates.
+   * Retrieves all active assessment templates from the store.
    */
   static async getTemplates() {
-    if (await this.canUsePrisma()) {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        const list = await prisma.assessmentTemplate.findMany({
-          where: { isActive: true, isPublic: true },
-          orderBy: { createdAt: "desc" },
-        });
-        if (list && list.length > 0) return list;
-      } catch (err) {
-        console.warn("Prisma getTemplates failed, falling back to assessment store:", err);
-      }
-    }
     return assessmentStore.getTemplates();
   }
 
   /**
-   * Retrieves assessment sessions for a specific user (merging Prisma & local store resiliently).
+   * Retrieves assessment sessions for a specific user (merging Firebase UID, email, and local store).
    */
   static async getUserSessions(userId: string, email?: string) {
     const candidateUserIds = new Set<string>();
@@ -62,7 +43,6 @@ export class AssessmentService {
     // Try resolving user from Firebase Firestore (find by UID or email)
     let resolvedEmail = email;
     try {
-      const { FirebaseDb } = await import("@/lib/firebase-db");
       const targetLookup = email || (userId && userId.includes("@") ? userId : null);
       const fbUser =
         (userId ? await FirebaseDb.findUserById(userId) : null) ||
@@ -79,7 +59,7 @@ export class AssessmentService {
         }
       }
     } catch {
-      // Firebase optional
+      // Firebase lookup optional
     }
 
     // Also check profiles in assessmentStore
@@ -101,54 +81,7 @@ export class AssessmentService {
       // ignore
     }
 
-    let prismaSessions: any[] = [];
-    if (await this.canUsePrisma()) {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        const lookupEmail = (resolvedEmail || email || (userId?.includes("@") ? userId : ""))
-          .toLowerCase()
-          .trim();
-
-        const userRecords = await prisma.user.findMany({
-          where: {
-            OR: [
-              ...(userId ? [{ id: userId }] : []),
-              ...(lookupEmail ? [{ email: lookupEmail }] : []),
-            ],
-          },
-          select: { id: true, email: true },
-        });
-
-        for (const u of userRecords) {
-          candidateUserIds.add(u.id);
-          if (u.email) {
-            const norm = u.email.toLowerCase().trim();
-            candidateUserIds.add(norm);
-            candidateUserIds.add(`firebase_${norm.replace(/[^a-z0-9]/g, "_")}`);
-            candidateUserIds.add(`classnia_${norm.replace(/[^a-z0-9]/g, "_")}`);
-          }
-        }
-
-        prismaSessions = await prisma.assessmentSession.findMany({
-          where: { userId: { in: Array.from(candidateUserIds) } },
-          include: {
-            template: true,
-            result: {
-              include: {
-                scoreDimensions: { orderBy: { weight: "desc" } },
-                recommendations: { orderBy: { priority: "asc" } },
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-          take: 50,
-        });
-      } catch (err) {
-        console.warn("Prisma getUserSessions failed, falling back to assessment store:", err);
-      }
-    }
-
-    // Also get from assessment store
+    // Retrieve sessions from assessmentStore
     const storeSessions = assessmentStore.getAllSessions().filter((s) => {
       if (candidateUserIds.has(s.userId)) return true;
       if (resolvedEmail || email) {
@@ -161,22 +94,10 @@ export class AssessmentService {
       return false;
     });
 
-    // Merge and deduplicate by id
-    const map = new Map<string, any>();
-    for (const s of prismaSessions) {
-      map.set(s.id, s);
-    }
-    for (const s of storeSessions) {
-      if (!map.has(s.id)) {
-        map.set(s.id, s);
-      }
-    }
-
-    const merged = Array.from(map.values());
-    merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    storeSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // Normalize each session
-    return merged.map((s) => ({
+    return storeSessions.map((s) => ({
       ...s,
       template: s.template || {
         title: "Bài khảo thí khẩu ngữ",
@@ -208,61 +129,30 @@ export class AssessmentService {
       id: templateId,
       title: topicName,
       slug,
-      description: `Bài khảo thí khẩu ngữ chủ đề tự do: ${topicName}`,
-      category: "GENERAL",
+      description: `Đề thi khảo thí tùy chỉnh tạo bởi học viên về chủ đề: "${topicName}" (${level}).`,
+      category: "CUSTOM",
       targetLevel: level,
       estimatedDurationMinutes: 15,
       maxTurns: 20,
-      stagesConfig: STAGES_CONFIG as any,
-      examinerPrompt: `Conduct a 5-stage adaptive oral examination focused on the custom topic: ${topicName}`,
-      rubricId: null,
+      stagesConfig: STAGES_CONFIG,
+      examinerPrompt: `You are an official HSK oral examiner conducting an interactive speaking exam on the custom candidate-chosen topic: "${topicName}". Target proficiency: ${level}.`,
+      rubricId: "rubric-standard-v1",
       isActive: true,
       isPublic: false,
       createdById: userId,
-    };
-
-    if (await this.canUsePrisma()) {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        return await prisma.assessmentTemplate.create({
-          data: {
-            ...templateData,
-            category: "GENERAL" as any,
-          },
-        });
-      } catch (err) {
-        console.warn("Prisma createCustomTemplate failed, using assessment store:", err);
-      }
-    }
-
-    return assessmentStore.saveTemplate({
-      ...templateData,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    assessmentStore.saveTemplate(templateData);
+    return templateData;
   }
 
   /**
-   * Starts a new assessment session for a user and template.
+   * Starts a new assessment session and generates the examiner's initial greeting turn.
    */
   static async startSession(userId: string, templateId: string, assignmentId?: string) {
-    let template: any = null;
-    const usePrisma = await this.canUsePrisma();
-
-    if (usePrisma) {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        template = await prisma.assessmentTemplate.findUnique({
-          where: { id: templateId },
-        });
-      } catch (err) {
-        console.warn("Prisma findUnique template failed, checking assessment store:", err);
-      }
-    }
-
-    if (!template) {
-      template = assessmentStore.getTemplate(templateId);
-    }
+    let template = assessmentStore.getTemplate(templateId);
 
     if (!template) {
       // Fallback to default HSK 3 template if requested ID does not exist
@@ -280,88 +170,6 @@ export class AssessmentService {
       template.title
     );
 
-    // Try creating session in Prisma if operational
-    if (usePrisma) {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        const { SessionStatus, SpeakerType } = await import("@prisma/client");
-
-        // Verify user exists to satisfy foreign key constraint
-        const existingUser = await prisma.user.findUnique({ where: { id: userId } });
-        let effectiveUserId = userId;
-        if (!existingUser) {
-          const placeholderUser = await prisma.user.upsert({
-            where: { id: userId },
-            update: {},
-            create: {
-              id: userId,
-              email: `${userId.replace(/[^a-zA-Z0-9]/g, "_")}@autogen.classnia.local`,
-              name: "Học viên",
-              passwordHash: "",
-              role: "USER" as any,
-              emailVerified: true,
-              profile: {
-                create: {
-                  targetLevel: template.targetLevel || "HSK 3",
-                  nativeLanguage: "Tiếng Việt",
-                },
-              },
-            },
-          });
-          effectiveUserId = placeholderUser.id;
-        }
-
-        // Ensure template exists in Prisma database
-        let dbTemplate = await prisma.assessmentTemplate.findUnique({ where: { id: template.id } });
-        if (!dbTemplate) {
-          dbTemplate = await prisma.assessmentTemplate.create({
-            data: {
-              id: template.id,
-              title: template.title,
-              slug: template.slug || `slug-${Date.now()}`,
-              description: template.description || "",
-              targetLevel: template.targetLevel || "HSK 3",
-              category: "GENERAL" as any,
-              stagesConfig: template.stagesConfig || STAGES_CONFIG,
-              examinerPrompt: template.examinerPrompt || "",
-              isActive: true,
-              isPublic: template.isPublic ?? true,
-            },
-          });
-        }
-
-        const session = await prisma.assessmentSession.create({
-          data: {
-            userId: effectiveUserId,
-            templateId: dbTemplate.id,
-            assignmentId: assignmentId || null,
-            rubricId: dbTemplate.rubricId || null,
-            status: SessionStatus.IN_PROGRESS,
-            currentStage: 1,
-            currentTurn: 0,
-            totalTurns: Math.max(template.maxTurns || 20, 20),
-            startedAt: new Date(),
-          },
-        });
-
-        await prisma.conversationTurn.create({
-          data: {
-            sessionId: session.id,
-            turnIndex: 0,
-            stage: initialTurn.stage,
-            speaker: SpeakerType.EXAMINER,
-            textContent: initialTurn.examinerResponse,
-            pinyinContent: initialTurn.pinyin,
-          },
-        });
-
-        return session;
-      } catch (prismaErr) {
-        console.warn("Prisma session start failed, falling back to assessment store:", prismaErr);
-      }
-    }
-
-    // Fallback: create and store session in assessment store
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const initialTurnItem: StoredTurn = {
       id: `turn_${Date.now()}_0`,
@@ -401,7 +209,6 @@ export class AssessmentService {
 
   /**
    * Restores or syncs a session from a client-provided snapshot into the persistent store.
-   * Provides rock-solid resiliency against serverless container recycling, cold starts, and multi-worker isolation.
    */
   static async restoreOrSyncSession(sessionSnapshot: any, userId?: string): Promise<StoredSession> {
     if (!sessionSnapshot || !sessionSnapshot.id) {
@@ -411,7 +218,6 @@ export class AssessmentService {
     const sessionId = sessionSnapshot.id;
     const existing = assessmentStore.getSession(sessionId);
 
-    // Merge turns so we never lose turns across client / server boundaries
     const existingTurns = existing?.turns || [];
     const snapshotTurns = Array.isArray(sessionSnapshot.turns) ? sessionSnapshot.turns : [];
 
@@ -488,146 +294,8 @@ export class AssessmentService {
     durationMs?: number,
     sessionSnapshot?: any
   ) {
-    const usePrisma = await this.canUsePrisma();
-
-    if (usePrisma) {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        const { SessionStatus, SpeakerType } = await import("@prisma/client");
-
-        const session = await prisma.assessmentSession.findUnique({
-          where: { id: sessionId },
-          include: {
-            turns: { orderBy: { turnIndex: "asc" } },
-            template: true,
-          },
-        });
-
-        if (session) {
-          if (session.userId !== userId) {
-            console.warn(`User mismatch: session userId ${session.userId} vs current ${userId}`);
-          }
-
-          if (session.status !== SessionStatus.IN_PROGRESS) {
-            if (session.status === SessionStatus.PROCESSING || session.status === SessionStatus.COMPLETED) {
-              if (session.status === SessionStatus.PROCESSING) {
-                ScoringWorker.ensureSessionScored(sessionId).catch((e) =>
-                  console.error("Duplicate submit scoring error:", e)
-                );
-              }
-              return {
-                learnerTurn: session.turns[session.turns.length - 1] || null,
-                examinerTurn: null,
-                isCompleted: true,
-                stage: 5,
-              };
-            }
-          }
-
-          const nextTurnIndex = session.turns.length;
-
-          const learnerTurn = await prisma.conversationTurn.create({
-            data: {
-              sessionId: session.id,
-              turnIndex: nextTurnIndex,
-              stage: session.currentStage,
-              speaker: SpeakerType.LEARNER,
-              textContent: learnerText,
-              audioUrl,
-              durationMs: durationMs || 0,
-            },
-          });
-
-          if (audioUrl) {
-            await prisma.audioRecording.create({
-              data: {
-                sessionId: session.id,
-                turnId: learnerTurn.id,
-                storageKey: audioUrl,
-                url: audioUrl,
-                durationMs: durationMs || 0,
-              },
-            }).catch(() => null);
-          }
-
-          const turnItems: ConversationTurnItem[] = [
-            ...session.turns.map((t) => ({
-              turnIndex: t.turnIndex,
-              stage: t.stage,
-              speaker: t.speaker as "EXAMINER" | "LEARNER",
-              textContent: t.textContent,
-              pinyinContent: t.pinyinContent || undefined,
-              audioUrl: t.audioUrl || undefined,
-            })),
-            {
-              turnIndex: nextTurnIndex,
-              stage: session.currentStage,
-              speaker: "LEARNER",
-              textContent: learnerText,
-            },
-          ];
-
-          const examinerReply = await ExaminerService.generateNextTurn(
-            turnItems,
-            session.template.targetLevel,
-            session.template.title
-          );
-
-          const examinerTurnIndex = nextTurnIndex + 1;
-
-          const examinerTurn = await prisma.conversationTurn.create({
-            data: {
-              sessionId: session.id,
-              turnIndex: examinerTurnIndex,
-              stage: examinerReply.stage,
-              speaker: SpeakerType.EXAMINER,
-              textContent: examinerReply.examinerResponse,
-              pinyinContent: examinerReply.pinyin,
-            },
-          });
-
-          const learnerTurnCount = turnItems.filter((t) => t.speaker === "LEARNER").length;
-          const isCompleted =
-            (examinerReply.isCompleted && learnerTurnCount >= 9) ||
-            (examinerTurnIndex >= session.totalTurns - 1 && examinerReply.stage >= 5 && learnerTurnCount >= 9);
-
-          if (isCompleted) {
-            await prisma.assessmentSession.update({
-              where: { id: sessionId },
-              data: {
-                status: SessionStatus.PROCESSING,
-                currentStage: 5,
-                currentTurn: examinerTurnIndex,
-              },
-            });
-            await ScoringWorker.enqueueScoringJob(sessionId);
-          } else {
-            await prisma.assessmentSession.update({
-              where: { id: sessionId },
-              data: {
-                currentStage: examinerReply.stage,
-                currentTurn: examinerTurnIndex,
-              },
-            });
-          }
-
-          return {
-            learnerTurn,
-            examinerTurn,
-            isCompleted,
-            stage: examinerReply.stage,
-          };
-        }
-      } catch (prismaErr) {
-        console.warn("Prisma turn submission failed, checking assessment store:", prismaErr);
-      }
-    }
-
-    // Fallback: manage turns via assessmentStore with automatic self-healing
     let storedSession = assessmentStore.getSession(sessionId);
 
-    // If session is missing in local process store (e.g., serverless lambda cold-start / new container),
-    // restore it immediately from the client's sessionSnapshot!
     if (!storedSession && sessionSnapshot) {
       try {
         storedSession = await this.restoreOrSyncSession(sessionSnapshot, userId);
@@ -637,7 +305,6 @@ export class AssessmentService {
     }
 
     if (!storedSession) {
-      // Last-ditch self-healing: construct active session container so the exam NEVER halts
       console.warn(`Session ${sessionId} not found, generating self-healing container`);
       storedSession = await this.restoreOrSyncSession(
         {
@@ -755,35 +422,18 @@ export class AssessmentService {
    * Fetches full assessment details including report, scores, recommendations, and turns.
    */
   static async getSessionWithReport(sessionId: string, userId?: string) {
-    let session: any = null;
+    let session: any = assessmentStore.getSession(sessionId);
 
-    if (await this.canUsePrisma()) {
-      try {
-        const { default: prisma } = await import("@/lib/db/prisma");
-        session = await prisma.assessmentSession.findUnique({
-          where: { id: sessionId },
-          include: {
-            template: true,
-            turns: {
-              orderBy: { turnIndex: "asc" },
-              include: { recording: true },
-            },
-            result: {
-              include: {
-                scoreDimensions: { orderBy: { weight: "desc" } },
-                recommendations: { orderBy: { priority: "asc" } },
-              },
-            },
-            user: { select: { name: true, email: true } },
-          },
-        });
-      } catch (err) {
-        console.warn("Prisma getSessionWithReport failed, falling back to assessment store:", err);
-      }
-    }
-
+    // If not found in local store, query Firestore!
     if (!session) {
-      session = assessmentStore.getSession(sessionId);
+      try {
+        session = await FirebaseDb.getSession(sessionId);
+        if (session) {
+          assessmentStore.saveSession(session);
+        }
+      } catch (e) {
+        console.warn("Firestore session fetch note:", e);
+      }
     }
 
     if (!session) return null;
@@ -807,13 +457,21 @@ export class AssessmentService {
 
     // Auto-fill user if missing
     if (!session.user) {
+      let userName = "Học viên";
+      if (session.userId) {
+        try {
+          const fbUser = await FirebaseDb.findUserById(session.userId);
+          if (fbUser?.name) userName = fbUser.name;
+        } catch {
+          // ignore
+        }
+      }
       session.user = {
-        name: "Học viên",
+        name: userName,
         email: session.userId || "",
       };
     }
 
-    // Ensure turns is an array
     session.turns = Array.isArray(session.turns) ? session.turns : [];
 
     // Normalize result if exists
@@ -832,94 +490,40 @@ export class AssessmentService {
         typeof res.confidenceLevel === "number" ? res.confidenceLevel : 0.95;
       const isAcousticAided = res.isAcousticAided ?? true;
 
-      // Normalize scoreDimensions
       const rawDimensions = Array.isArray(res.scoreDimensions) ? res.scoreDimensions : [];
       const scoreDimensions = rawDimensions.map((dim: any, idx: number) => {
         const maxScore = dim.maxScore || (dim.score <= 20 ? 20 : 100);
         const score = typeof dim.score === "number" ? dim.score : 0;
         const percent = Math.min(100, Math.max(0, Math.round((score / maxScore) * 100)));
-        const quotes = Array.isArray(dim.evidenceQuotesJson)
-          ? dim.evidenceQuotesJson
-          : Array.isArray(dim.evidenceQuotes)
-          ? dim.evidenceQuotes
-          : [];
-        const rationale = dim.rationale || dim.feedback || "Đạt chuẩn năng lực giao tiếp yêu cầu.";
-        const performanceLevel =
-          dim.performanceLevel ||
-          (percent >= 80 ? "Mastery" : percent >= 60 ? "Proficient" : "Developing");
 
         return {
-          ...dim,
           id: dim.id || `dim_${idx}`,
-          dimensionName: dim.dimensionName || dim.name || `Kỹ năng ${idx + 1}`,
+          dimensionKey: dim.dimensionKey || `dimension_${idx}`,
+          dimensionName: dim.dimensionName || "Thang đo khẩu ngữ",
           score,
           maxScore,
-          percent,
-          performanceLevel,
-          rationale,
-          quotes,
-          weight: typeof dim.weight === "number" ? dim.weight : 0.2,
+          weight: typeof dim.weight === "number" ? dim.weight : 0.15,
+          performanceLevel:
+            dim.performanceLevel || (percent >= 80 ? "Mastery" : percent >= 60 ? "Proficient" : "Developing"),
+          evidenceQuotesJson: Array.isArray(dim.evidenceQuotesJson) ? dim.evidenceQuotesJson : [],
+          rationale: dim.rationale || dim.feedback || "",
+          feedback: dim.feedback || dim.rationale || "",
+          suggestionsJson: Array.isArray(dim.suggestionsJson) ? dim.suggestionsJson : [],
         };
       });
 
-      // Normalize recommendations
       const rawRecs = Array.isArray(res.recommendations) ? res.recommendations : [];
-      const recommendations = rawRecs.map((r: any, idx: number) => {
-        const category = (r.category || "GENERAL").toUpperCase();
-        const originalPhrase =
-          r.originalPhrase ||
-          r.original ||
-          (r.recommendation?.includes('Thay vì nói "') ? r.recommendation.split('"')[1] : null) ||
-          "";
-        const correctedPhrase =
-          r.correctedPhrase ||
-          r.corrected ||
-          r.correction ||
-          (r.recommendation?.includes('bạn nên dùng: "')
-            ? r.recommendation.split('bạn nên dùng: "')[1]?.replace(/"$/, "")
-            : r.recommendation) ||
-          "";
-        const explanation =
-          r.explanation || r.actionableExercise || r.reason || "Gợi ý diễn đạt chuẩn bản xứ hơn.";
-        const exampleSentence = r.exampleSentence || r.example || null;
-
-        return {
-          ...r,
-          id: r.id || `rec_${idx}`,
-          category,
-          originalPhrase,
-          correctedPhrase,
-          explanation,
-          exampleSentence,
-        };
-      });
-
-      // Normalize strengths, weaknesses, priorityAreas, improvementPlan
-      const strengthsJson = Array.isArray(res.strengthsJson)
-        ? res.strengthsJson
-        : Array.isArray(res.strengths)
-        ? res.strengths
-        : res.scoringRationale
-        ? [res.scoringRationale]
-        : ["Phản xạ chủ động và tự tin khi giao tiếp."];
-
-      const weaknessesJson = Array.isArray(res.weaknessesJson)
-        ? res.weaknessesJson
-        : Array.isArray(res.weaknesses)
-        ? res.weaknesses
-        : Array.isArray(res.improvements)
-        ? res.improvements
-        : ["Cần chú ý luyện thêm ngữ điệu và mở rộng vốn từ vựng chuyên sâu."];
-
-      const priorityAreasJson = Array.isArray(res.priorityAreasJson)
-        ? res.priorityAreasJson
-        : Array.isArray(res.improvements)
-        ? res.improvements
-        : [];
-
-      const improvementPlanJson = Array.isArray(res.improvementPlanJson)
-        ? res.improvementPlanJson
-        : [];
+      const recommendations = rawRecs.map((rec: any, idx: number) => ({
+        id: rec.id || `rec_${idx}`,
+        category: rec.category || "GENERAL",
+        originalPhrase: rec.originalPhrase || null,
+        correctedPhrase: rec.correctedPhrase || rec.recommendation || "",
+        explanation: rec.explanation || "",
+        exampleSentence: rec.exampleSentence || null,
+        priority: typeof rec.priority === "number" ? rec.priority : 1,
+        recommendation: rec.recommendation || rec.correctedPhrase || "",
+        actionableExercise: rec.actionableExercise || "",
+      }));
 
       session.result = {
         ...res,
@@ -929,12 +533,12 @@ export class AssessmentService {
         performanceSummary,
         confidenceLevel,
         isAcousticAided,
+        strengthsJson: Array.isArray(res.strengthsJson) ? res.strengthsJson : [],
+        weaknessesJson: Array.isArray(res.weaknessesJson) ? res.weaknessesJson : [],
+        priorityAreasJson: Array.isArray(res.priorityAreasJson) ? res.priorityAreasJson : [],
+        improvementPlanJson: Array.isArray(res.improvementPlanJson) ? res.improvementPlanJson : [],
         scoreDimensions,
         recommendations,
-        strengthsJson,
-        weaknessesJson,
-        priorityAreasJson,
-        improvementPlanJson,
       };
     }
 
