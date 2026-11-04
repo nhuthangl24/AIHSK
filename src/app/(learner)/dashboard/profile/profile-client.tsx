@@ -219,6 +219,30 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
       initialData.studyHoursWeekly = Number(studyHoursWeekly);
       initialData.learningGoal = learningGoal.trim();
 
+      // Direct client Firestore sync (has active browser user auth token)
+      try {
+        const { getFirebaseServices } = await import("@/lib/firebase");
+        const { auth, db } = getFirebaseServices();
+        if (auth?.currentUser && db) {
+          const { doc, setDoc } = await import("firebase/firestore");
+          await setDoc(
+            doc(db, "users", auth.currentUser.uid),
+            {
+              name: name.trim(),
+              targetLevel,
+              targetHsk: parseInt(targetLevel.replace(/\D/g, ""), 10) || 3,
+              nativeLanguage,
+              studyHoursWeekly: Number(studyHoursWeekly),
+              learningGoal: learningGoal.trim(),
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true }
+          );
+        }
+      } catch (clientFbErr) {
+        // Non-critical background sync
+      }
+
       setStatusMessage({
         type: "success",
         text: "Tuyệt vời! Đã cập nhật hồ sơ học viên & cấu hình mục tiêu HSK thành công.",
