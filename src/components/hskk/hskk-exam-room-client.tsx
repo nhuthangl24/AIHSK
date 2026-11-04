@@ -15,6 +15,12 @@ import {
 } from "@/types/hskk";
 import { hskkAudio } from "@/lib/audio/hskk-audio";
 import {
+  getSystemAudioSettings,
+  saveSystemAudioSettings,
+  getAvailableChineseVoices,
+  SystemAudioSettings,
+} from "@/lib/audio/system-audio-settings";
+import {
   Mic,
   Volume2,
   CheckCircle2,
@@ -34,6 +40,9 @@ import {
   ChevronRight,
   Flame,
   HelpCircle,
+  Settings,
+  X,
+  Languages,
 } from "lucide-react";
 import { formatScore, formatDate } from "@/lib/utils";
 
@@ -61,6 +70,13 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
   const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(0);
   const [showPinyin, setShowPinyin] = useState(true);
 
+  // System Audio Settings (Synchronized globally with localStorage & events)
+  const [showAudioModal, setShowAudioModal] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState("");
+  const [playbackSpeed, setPlaybackSpeed] = useState(0.95);
+  const [recognitionLang, setRecognitionLang] = useState("zh-CN");
+
   // Audio & Mic Testing states
   const [isTestingAudio, setIsTestingAudio] = useState(false);
   const [isTestingMic, setIsTestingMic] = useState(false);
@@ -76,8 +92,33 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
   const micStreamRef = useRef<MediaStream | null>(null);
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
 
-  // 1. Fetch Session & Template Data on Mount
+  // 1. Fetch Session & Template Data on Mount + Init System Audio Settings
   useEffect(() => {
+    // A. Sync with System Audio Settings
+    const sys = getSystemAudioSettings();
+    setSelectedVoiceName(sys.voiceName || "");
+    setPlaybackSpeed(sys.playbackSpeed || 0.95);
+    setRecognitionLang(sys.recognitionLang || "zh-CN");
+    setShowPinyin(typeof sys.showPinyin === "boolean" ? sys.showPinyin : true);
+
+    const loadVoices = () => {
+      const vList = getAvailableChineseVoices();
+      setAvailableVoices(vList);
+    };
+    loadVoices();
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    const onSettingsChanged = (e: any) => {
+      const updated: SystemAudioSettings = e.detail || getSystemAudioSettings();
+      if (updated.voiceName) setSelectedVoiceName(updated.voiceName);
+      if (typeof updated.playbackSpeed === "number") setPlaybackSpeed(updated.playbackSpeed);
+      if (updated.recognitionLang) setRecognitionLang(updated.recognitionLang);
+      if (typeof updated.showPinyin === "boolean") setShowPinyin(updated.showPinyin);
+    };
+    window.addEventListener("aihsk_audio_settings_changed", onSettingsChanged);
+
     async function loadData() {
       try {
         setIsLoading(true);
@@ -106,6 +147,7 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
       if (timerRef.current) clearInterval(timerRef.current);
       hskkAudio.stopSpeaking();
       stopMicListening();
+      window.removeEventListener("aihsk_audio_settings_changed", onSettingsChanged);
     };
   }, [sessionId]);
 
@@ -224,6 +266,8 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
       : `第 ${q.questionIndex} 题。${q.audioPrompt}`;
 
     hskkAudio.speakChinese(promptToSpeak, {
+      rate: playbackSpeed,
+      voiceName: selectedVoiceName,
       onEnd: () => {
         // Step B: Preparation Time if applicable
         if (q.prepTimeSeconds > 0) {
@@ -284,7 +328,7 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = "zh-CN";
+      recognition.lang = recognitionLang || "zh-CN";
       recognition.continuous = true;
       recognition.interimResults = true;
 
@@ -499,6 +543,33 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
                   </div>
                 )}
               </div>
+            </Card>
+
+            {/* Audio Settings Integration Card */}
+            <Card className="sm:col-span-2 bg-slate-900 border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 text-rose-400 flex items-center justify-center shrink-0">
+                  <Settings className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-white block">
+                    3. Cài Đặt Âm Thanh &amp; Giọng Đọc Hệ Thống
+                  </span>
+                  <p className="text-[11px] text-slate-400">
+                    Giọng đọc: <span className="text-rose-400 font-semibold">{selectedVoiceName || "Google 國語 / Chuẩn HSK"}</span> &bull; Tốc độ: <span className="text-rose-400 font-semibold">{playbackSpeed}x</span> &bull; Micro STT: <span className="text-rose-400 font-semibold">{recognitionLang}</span>
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAudioModal(true)}
+                className="border-slate-700 hover:bg-slate-800 text-slate-200 text-xs h-9 px-4 rounded-xl shrink-0"
+              >
+                <Settings className="h-3.5 w-3.5 mr-1.5" />
+                <span>Tùy Chỉnh Âm Thanh</span>
+              </Button>
             </Card>
           </div>
 
@@ -866,6 +937,31 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
               style={{ width: `${progressPercent}%` }}
             />
           </div>
+
+          {/* Quick Audio Controls */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const nextSpeed = playbackSpeed === 0.95 ? 0.85 : playbackSpeed === 0.85 ? 1.05 : 0.95;
+                setPlaybackSpeed(nextSpeed);
+                saveSystemAudioSettings({ playbackSpeed: nextSpeed });
+              }}
+              className="h-7 px-2 text-[11px] font-bold text-slate-300 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-lg transition-colors"
+              title="Tốc độ phát âm câu hỏi"
+            >
+              {playbackSpeed}x
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowAudioModal(true)}
+              className="p-1.5 text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-lg transition-colors"
+              title="Cài đặt âm thanh hệ thống"
+            >
+              <Settings className="h-4 w-4 text-rose-500" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -989,13 +1085,27 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setShowPinyin(!showPinyin)}
+              onClick={() => {
+                const next = !showPinyin;
+                setShowPinyin(next);
+                saveSystemAudioSettings({ showPinyin: next });
+              }}
               className="text-xs text-slate-400 hover:text-white h-9 px-3 rounded-xl"
             >
               {showPinyin ? <EyeOff className="h-4 w-4 mr-1.5" /> : <Eye className="h-4 w-4 mr-1.5" />}
               <span>{showPinyin ? "Ẩn Pinyin" : "Hiện Pinyin"}</span>
             </Button>
           )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setShowAudioModal(true)}
+            className="text-xs text-slate-400 hover:text-white h-9 px-3 rounded-xl flex items-center gap-1.5"
+          >
+            <Settings className="h-3.5 w-3.5 text-rose-500" />
+            <span className="hidden sm:inline">Cài đặt âm thanh</span>
+          </Button>
         </div>
 
         {/* Action Button: Finish question early if candidate spoke already */}
@@ -1009,6 +1119,122 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
             <span>Nói Xong &bull; Nộp Câu Này</span>
           </Button>
         )}
+      </div>
+
+      {/* System Audio Settings Modal */}
+      {showAudioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-white space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <Settings className="h-5 w-5 text-rose-500" />
+                <h3 className="text-base font-bold">Cài Đặt Âm Thanh &amp; Giọng Đọc</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAudioModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="font-semibold text-slate-300 block mb-1.5">
+                  Giọng đọc Giám khảo HSK (TTS):
+                </label>
+                <select
+                  value={selectedVoiceName}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setSelectedVoiceName(name);
+                    saveSystemAudioSettings({ voiceName: name });
+                  }}
+                  className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:ring-2 focus:ring-rose-500"
+                >
+                  {availableVoices.length === 0 ? (
+                    <option value="">Giọng đọc mặc định của trình duyệt</option>
+                  ) : (
+                    availableVoices.map((v) => (
+                      <option key={v.name} value={v.name}>
+                        {v.name} ({v.lang})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-300 block mb-1.5">
+                  Ngôn ngữ nhận diện giọng nói Micro (STT):
+                </label>
+                <select
+                  value={recognitionLang}
+                  onChange={(e) => {
+                    const lang = e.target.value;
+                    setRecognitionLang(lang);
+                    saveSystemAudioSettings({ recognitionLang: lang });
+                  }}
+                  className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="zh-CN">Tiếng Trung Đại Lục (Phổ thông / zh-CN)</option>
+                  <option value="zh-TW">Tiếng Trung Chuẩn (Phổ thông / zh-TW)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-300 block mb-1.5">
+                  Tốc độ phát âm câu hỏi:
+                </label>
+                <div className="flex gap-2">
+                  {[0.85, 0.95, 1.05].map((speed) => (
+                    <button
+                      key={speed}
+                      type="button"
+                      onClick={() => {
+                        setPlaybackSpeed(speed);
+                        saveSystemAudioSettings({ playbackSpeed: speed });
+                      }}
+                      className={`flex-1 py-2 rounded-xl font-bold transition-all ${
+                        playbackSpeed === speed
+                          ? "bg-rose-600 text-white"
+                          : "bg-slate-800 text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {speed === 0.85 ? "0.85x (Chậm)" : speed === 0.95 ? "0.95x (Chuẩn)" : "1.05x (Nhanh)"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-slate-800">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    hskkAudio.speakChinese("欢迎参加汉语水平口语考试。发音与语速测试正常。", {
+                      rate: playbackSpeed,
+                      voiceName: selectedVoiceName,
+                    });
+                  }}
+                  className="border-slate-700 text-slate-300 hover:text-white text-xs h-9 rounded-xl"
+                >
+                  <Volume2 className="h-3.5 w-3.5 mr-1.5 text-rose-400" />
+                  <span>Thử nghe giọng đọc</span>
+                </Button>
+
+                <Button
+                  onClick={() => setShowAudioModal(false)}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-9 px-5 rounded-xl"
+                >
+                  Hoàn tất &amp; Lưu
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

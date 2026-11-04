@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  speakWithSystemSettings,
+  stopSystemSpeech,
+  getSystemAudioSettings,
+} from "@/lib/audio/system-audio-settings";
+
 /**
  * Web Audio API Beep Synthesizer for Authentic HSKK Examinations.
  * Reproduces the official 1000Hz CTI examination tone.
@@ -101,7 +107,7 @@ class HskkAudioEngine {
   }
 
   /**
-   * Text to Speech using Web Speech API with fallback
+   * Text to Speech using unified System Audio Settings
    */
   public speakChinese(
     text: string,
@@ -113,55 +119,18 @@ class HskkAudioEngine {
       onError?: () => void;
     }
   ): void {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      options?.onEnd?.();
-      return;
-    }
-
-    try {
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "zh-CN";
-      utterance.rate = options?.rate || 0.95;
-
-      const voices = window.speechSynthesis.getVoices();
-      const zhVoices = voices.filter(
-        (v) =>
-          v.lang.startsWith("zh") ||
-          v.name.includes("Chinese") ||
-          v.name.includes("Mandarin") ||
-          v.name.includes("普通话")
-      );
-
-      if (options?.voiceName) {
-        const found = zhVoices.find((v) => v.name === options.voiceName);
-        if (found) utterance.voice = found;
-      }
-
-      if (!utterance.voice && zhVoices.length > 0) {
-        utterance.voice =
-          zhVoices.find((v) => v.lang === "zh-CN") || zhVoices[0];
-      }
-
-      utterance.onstart = () => options?.onStart?.();
-      utterance.onend = () => options?.onEnd?.();
-      utterance.onerror = () => {
-        options?.onError?.();
-        options?.onEnd?.();
-      };
-
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.warn("SpeechSynthesis error:", e);
-      options?.onEnd?.();
-    }
+    const sysSettings = getSystemAudioSettings();
+    speakWithSystemSettings(text, {
+      speedOverride: options?.rate ?? sysSettings.playbackSpeed,
+      voiceNameOverride: options?.voiceName ?? sysSettings.voiceName,
+      onStart: options?.onStart,
+      onEnd: options?.onEnd,
+      onError: options?.onError,
+    });
   }
 
   public stopSpeaking(): void {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
+    stopSystemSpeech();
   }
 }
 
