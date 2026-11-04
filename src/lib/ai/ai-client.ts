@@ -249,6 +249,7 @@ export class AIClient {
       requestBody.response_format = { type: "json_object" };
     }
 
+    const timeoutMs = requireJson ? 60000 : 25000;
     let response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -256,7 +257,7 @@ export class AIClient {
         Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     // If 400 bad request due to response_format not supported by proxy model, retry without response_format
@@ -272,7 +273,7 @@ export class AIClient {
           Authorization: `Bearer ${config.apiKey}`,
         },
         body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     }
 
