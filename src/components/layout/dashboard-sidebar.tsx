@@ -20,11 +20,11 @@ import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/brand-logo";
 
 const NAV_ITEMS = [
-  { name: "Tổng Quan", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Bắt Đầu Thi Nói", href: "/dashboard/assessments", icon: PlayCircle },
-  { name: "Báo Cáo Đánh Giá", href: "/dashboard/reports", icon: FileText },
-  { name: "Tiến Độ Khẩu Ngữ", href: "/dashboard/progress", icon: TrendingUp },
-  { name: "Hồ Sơ & Mục Tiêu", href: "/dashboard/profile", icon: User },
+  { name: "Tổng Quan", shortName: "Tổng quan", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Bắt Đầu Thi Nói", shortName: "Thi nói", href: "/dashboard/assessments", icon: PlayCircle },
+  { name: "Báo Cáo Đánh Giá", shortName: "Báo cáo", href: "/dashboard/reports", icon: FileText },
+  { name: "Tiến Độ Khẩu Ngữ", shortName: "Tiến độ", href: "/dashboard/progress", icon: TrendingUp },
+  { name: "Hồ Sơ & Mục Tiêu", shortName: "Hồ sơ", href: "/dashboard/profile", icon: User },
 ];
 
 export function DashboardSidebar({
@@ -209,50 +209,38 @@ export function DashboardSidebar({
       {/* ==================================================================== */}
       {/* 3. MOBILE BOTTOM NAVIGATION DOCK (Ergonomic thumb access on phones)  */}
       {/* ==================================================================== */}
-      <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200/80 dark:border-slate-800/80 backdrop-blur-lg px-2 items-center justify-around shadow-lg">
+      <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200/80 dark:border-slate-800/80 backdrop-blur-lg px-1 items-center justify-around shadow-sm">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
               : pathname.startsWith(item.href);
           const Icon = item.icon;
-          const isExamButton = item.href === "/dashboard/assessments";
-
-          if (isExamButton) {
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex flex-col items-center justify-center -mt-4 group"
-              >
-                <div
-                  className={cn(
-                    "h-12 w-12 rounded-2xl flex items-center justify-center shadow-md transition-all",
-                    isActive
-                      ? "bg-rose-600 text-white shadow-rose-500/40 ring-4 ring-rose-100 dark:ring-rose-950"
-                      : "bg-rose-600 text-white shadow-rose-500/30 hover:scale-105"
-                  )}
-                >
-                  <Icon className="h-6 w-6" />
-                </div>
-                <span className="text-[10px] font-bold text-rose-600 mt-1">Thi Nói</span>
-              </Link>
-            );
-          }
 
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center py-1 px-2 min-w-[56px] transition-colors",
+                "flex-1 flex flex-col items-center justify-center py-1 transition-all",
                 isActive
                   ? "text-rose-600 dark:text-rose-400 font-bold"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium"
               )}
             >
-              <Icon className={cn("h-5 w-5 mb-0.5", isActive ? "stroke-[2.5]" : "stroke-[1.75]")} />
-              <span className="text-[10px] truncate max-w-[64px]">{item.name}</span>
+              <div
+                className={cn(
+                  "flex items-center justify-center w-10 h-7 rounded-full transition-all",
+                  isActive
+                    ? "bg-rose-100/80 text-rose-600 dark:bg-rose-950/80 dark:text-rose-400"
+                    : "text-slate-500 dark:text-slate-400"
+                )}
+              >
+                <Icon className={cn("h-5 w-5", isActive ? "stroke-[2.5]" : "stroke-[1.75]")} />
+              </div>
+              <span className="text-[11px] mt-0.5 tracking-tight">
+                {item.shortName}
+              </span>
             </Link>
           );
         })}
