@@ -25,7 +25,7 @@ export default async function AuthLayout({
       <a
         href={process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://classnia.id.vn"}
         className="flex items-center gap-2.5 mb-8 group hover:opacity-90 transition-opacity"
-        title="Về Classnia.id.vn"
+        title="Về HSK Interactive Sheet"
       >
         <BrandLogo size={42} />
         <div className="flex flex-col">

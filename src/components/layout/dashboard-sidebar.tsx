@@ -198,7 +198,7 @@ export function DashboardSidebar({
                 className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/60 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100/60 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 transition-colors"
               >
                 <Globe className="h-3.5 w-3.5 text-rose-600" />
-                <span>Về Classnia.id.vn</span>
+                <span>Về HSK Interactive Sheet</span>
               </a>
 
               <div className="flex items-center justify-center gap-2 pt-1 pb-0.5 text-[11px] text-slate-500">
@@ -351,7 +351,7 @@ export function DashboardSidebar({
             className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/60 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100/60 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 transition-colors shadow-2xs"
           >
             <Globe className="h-3.5 w-3.5 text-rose-600" />
-            <span>Về Classnia.id.vn</span>
+            <span>Về HSK Interactive Sheet</span>
           </a>
 
           <div className="flex items-center justify-center gap-2 pt-1 pb-0.5 text-[11px] text-slate-500">
