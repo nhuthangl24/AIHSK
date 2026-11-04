@@ -16,9 +16,12 @@ import {
   X,
   Sparkles,
   MessageCircle,
+  HelpCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { LegalModal } from "@/components/legal/legal-modal";
 
 const NAV_ITEMS = [
   { name: "Tổng Quan", shortName: "Tổng quan", href: "/dashboard", icon: LayoutDashboard },
@@ -27,6 +30,7 @@ const NAV_ITEMS = [
   { name: "Báo Cáo Đánh Giá", shortName: "Báo cáo", href: "/dashboard/reports", icon: FileText },
   { name: "Tiến Độ Khẩu Ngữ", shortName: "Tiến độ", href: "/dashboard/progress", icon: TrendingUp },
   { name: "Hồ Sơ & Mục Tiêu", shortName: "Hồ sơ", href: "/dashboard/profile", icon: User },
+  { name: "Yêu Cầu & Hỗ Trợ", shortName: "Hỗ trợ", href: "/dashboard/support", icon: HelpCircle },
 ];
 
 export function DashboardSidebar({
@@ -37,6 +41,7 @@ export function DashboardSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [legalModalType, setLegalModalType] = useState<"terms" | "privacy" | null>(null);
 
   // Auto-close mobile drawer on route change
   useEffect(() => {
@@ -196,6 +201,26 @@ export function DashboardSidebar({
                 <span>Về Classnia.id.vn</span>
               </a>
 
+              <div className="flex items-center justify-center gap-2 pt-1 pb-0.5 text-[11px] text-slate-500">
+                <button
+                  type="button"
+                  onClick={() => setLegalModalType("terms")}
+                  className="hover:text-rose-600 dark:hover:text-rose-400 hover:underline transition-colors flex items-center gap-1"
+                >
+                  <FileText className="h-3 w-3 text-slate-400" />
+                  <span>Điều khoản</span>
+                </button>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <button
+                  type="button"
+                  onClick={() => setLegalModalType("privacy")}
+                  className="hover:text-rose-600 dark:hover:text-rose-400 hover:underline transition-colors flex items-center gap-1"
+                >
+                  <ShieldCheck className="h-3 w-3 text-slate-400" />
+                  <span>Bảo mật & Dữ liệu</span>
+                </button>
+              </div>
+
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white dark:bg-slate-800 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
@@ -211,7 +236,7 @@ export function DashboardSidebar({
       {/* ==================================================================== */}
       {/* 3. MOBILE BOTTOM NAVIGATION DOCK (Ergonomic thumb access on phones)  */}
       {/* ==================================================================== */}
-      <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200/80 dark:border-slate-800/80 backdrop-blur-lg px-1 items-center justify-around shadow-sm">
+      <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200/80 dark:border-slate-800/80 backdrop-blur-lg px-0.5 items-center justify-around shadow-sm">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/dashboard"
@@ -224,7 +249,7 @@ export function DashboardSidebar({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 transition-all",
+                "flex-1 min-w-0 flex flex-col items-center justify-center py-1 transition-all",
                 isActive
                   ? "text-rose-600 dark:text-rose-400 font-bold"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium"
@@ -232,15 +257,15 @@ export function DashboardSidebar({
             >
               <div
                 className={cn(
-                  "flex items-center justify-center w-10 h-7 rounded-full transition-all",
+                  "flex items-center justify-center w-8 h-6 sm:w-10 sm:h-7 rounded-full transition-all",
                   isActive
                     ? "bg-rose-100/80 text-rose-600 dark:bg-rose-950/80 dark:text-rose-400"
                     : "text-slate-500 dark:text-slate-400"
                 )}
               >
-                <Icon className={cn("h-5 w-5", isActive ? "stroke-[2.5]" : "stroke-[1.75]")} />
+                <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", isActive ? "stroke-[2.5]" : "stroke-[1.75]")} />
               </div>
-              <span className="text-[11px] mt-0.5 tracking-tight">
+              <span className="text-[10px] sm:text-[11px] mt-0.5 tracking-tight truncate max-w-full px-0.5">
                 {item.shortName}
               </span>
             </Link>
@@ -329,6 +354,26 @@ export function DashboardSidebar({
             <span>Về Classnia.id.vn</span>
           </a>
 
+          <div className="flex items-center justify-center gap-2 pt-1 pb-0.5 text-[11px] text-slate-500">
+            <button
+              type="button"
+              onClick={() => setLegalModalType("terms")}
+              className="hover:text-rose-600 dark:hover:text-rose-400 hover:underline transition-colors flex items-center gap-1"
+            >
+              <FileText className="h-3 w-3 text-slate-400" />
+              <span>Điều khoản</span>
+            </button>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <button
+              type="button"
+              onClick={() => setLegalModalType("privacy")}
+              className="hover:text-rose-600 dark:hover:text-rose-400 hover:underline transition-colors flex items-center gap-1"
+            >
+              <ShieldCheck className="h-3 w-3 text-slate-400" />
+              <span>Bảo mật & Dữ liệu</span>
+            </button>
+          </div>
+
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white dark:bg-slate-800 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
@@ -338,6 +383,13 @@ export function DashboardSidebar({
           </button>
         </div>
       </aside>
+
+      {/* Embedded Terms & Privacy Policy Modal */}
+      <LegalModal
+        isOpen={legalModalType !== null}
+        type={legalModalType}
+        onClose={() => setLegalModalType(null)}
+      />
     </>
   );
 }

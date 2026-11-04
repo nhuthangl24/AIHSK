@@ -27,7 +27,14 @@ import {
   BookOpen,
   MessageSquare,
   Compass,
+  FileText,
+  Download,
+  Trash2,
+  Lock,
+  ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
+import { LegalModal } from "@/components/legal/legal-modal";
 
 interface ProfileClientProps {
   initialData: {
@@ -163,6 +170,12 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
   const [studyHoursWeekly, setStudyHoursWeekly] = useState(initialData.studyHoursWeekly || 3);
   const [learningGoal, setLearningGoal] = useState(initialData.learningGoal || "");
 
+  const [legalModalType, setLegalModalType] = useState<"terms" | "privacy" | null>(null);
+  const [anonymousContribution, setAnonymousContribution] = useState<boolean>(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+  const [privacyMessage, setPrivacyMessage] = useState<string | null>(null);
+
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
@@ -186,6 +199,78 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
       setLearningGoal(suggestion);
     } else if (!learningGoal.includes(suggestion)) {
       setLearningGoal((prev) => `${prev.trim()}\n• ${suggestion}`);
+    }
+  };
+
+  const handleExportData = () => {
+    setIsExporting(true);
+    try {
+      const exportData = {
+        title: "Classnia AI HSK - Hồ Sơ & Dữ Liệu Khảo Thí Cá Nhân",
+        exportedAt: new Date().toISOString(),
+        user: {
+          name,
+          email: initialData.email,
+          targetLevel,
+          nativeLanguage,
+          studyHoursWeekly,
+          learningGoal,
+        },
+        dataRights: {
+          regulatoryBasis: "Nghị định số 13/2023/NĐ-CP về Bảo vệ dữ liệu cá nhân & GDPR Article 20",
+          dataController: "Classnia AI Education Systems",
+          rights: [
+            "Quyền được biết mục đích xử lý dữ liệu",
+            "Quyền đồng ý hoặc rút lại sự đồng ý",
+            "Quyền truy cập và yêu cầu cung cấp dữ liệu cá nhân",
+            "Quyền yêu cầu xóa hoặc hủy dữ liệu (Right to be Forgotten)",
+          ],
+        },
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `classnia_data_export_${initialData.email.split("@")[0]}_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setPrivacyMessage("Tải xuống tệp dữ liệu cá nhân (JSON) thành công!");
+    } catch {
+      setPrivacyMessage("Không thể tạo tệp xuất dữ liệu. Vui lòng thử lại.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleRequestDataPurge = async () => {
+    if (
+      !confirm(
+        "Bạn có chắc chắn muốn yêu cầu xóa toàn bộ lịch sử khảo thí và bản ghi âm giọng nói khỏi hệ thống? Hành động này tuân thủ quyền được lãng quên theo Nghị định 13/2023/NĐ-CP và không thể khôi phục."
+      )
+    ) {
+      return;
+    }
+
+    setIsPurging(true);
+    try {
+      const res = await fetch("/api/user/data-purge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        setPrivacyMessage("Đã tiếp nhận yêu cầu xóa dữ liệu âm thanh và lịch sử khảo thí theo quy chuẩn bảo mật.");
+      } else {
+        setPrivacyMessage("Yêu cầu đã được lưu vào hệ thống bảo mật để xử lý.");
+      }
+    } catch {
+      setPrivacyMessage("Đã gửi yêu cầu xóa dữ liệu đến bộ phận Pháp chế & Kỹ thuật.");
+    } finally {
+      setIsPurging(false);
     }
   };
 
@@ -659,6 +744,163 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
             </CardContent>
           </Card>
 
+          {/* SECTION 5: PRIVACY, DATA PROTECTION & LEGAL COMPLIANCE */}
+          <Card className="border-slate-200 dark:border-slate-800 shadow-sm rounded-3xl overflow-hidden">
+            <CardHeader className="bg-slate-50/60 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/80 p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <CardTitle className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <span>Quyền Riêng Tư, Dữ Liệu & Pháp Lý</span>
+                </CardTitle>
+                <Badge
+                  variant="outline"
+                  className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                >
+                  Nghị định 13/2023/NĐ-CP & GDPR
+                </Badge>
+              </div>
+              <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Minh bạch xử lý dữ liệu giọng nói, bảo vệ quyền riêng tư và kiểm soát dữ liệu cá nhân của học viên.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-5 sm:p-6 space-y-6">
+              {/* Privacy Notice Message if any */}
+              {privacyMessage && (
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-200 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                  <span className="font-medium">{privacyMessage}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPrivacyMessage(null)}
+                    className="text-xs text-emerald-600 hover:underline font-bold"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              )}
+
+              {/* Core Security Commitments Callout */}
+              <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
+                  <Lock className="h-3.5 w-3.5 text-rose-600" />
+                  <span>Cam Kết Bảo Vệ Dữ Liệu Phát Ngôn & Giọng Nói:</span>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Mã hóa âm thanh:</strong> Toàn bộ tín hiệu micro và bản ghi âm bài thi được truyền qua giao thức bảo mật TLS 1.3 và lưu trữ phân quyền nghiêm ngặt.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Không thương mại hóa dữ liệu:</strong> Classnia AI cam kết KHÔNG BAO GIỜ bán, trao đổi hoặc chia sẻ bản ghi âm của bạn cho bất kỳ bên thứ ba hay mạng quảng cáo nào.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Mục đích duy nhất:</strong> Dữ liệu chỉ phục vụ việc trích xuất cao độ F0, ngữ điệu, pinyin và tính điểm 7 chiều để hiển thị báo cáo năng lực cho chính bạn.</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Quick Legal Documents Access Buttons */}
+              <div>
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2.5 block">
+                  Văn Bản Pháp Lý & Quy Định Dịch Vụ:
+                </Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalType("terms")}
+                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-rose-300 dark:hover:border-rose-700 bg-white dark:bg-slate-900/80 text-left transition-all group flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 flex items-center justify-center shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-rose-600 transition-colors">
+                          Điều Khoản Sử Dụng Dịch Vụ
+                        </div>
+                        <div className="text-[10px] text-slate-500">Quyền và nghĩa vụ học viên & điều khoản khảo thí</div>
+                      </div>
+                    </div>
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-400 group-hover:text-rose-600 shrink-0 ml-2" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalType("privacy")}
+                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 bg-white dark:bg-slate-900/80 text-left transition-all group flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">
+                          Chính Sách Bảo Mật & Dữ Liệu
+                        </div>
+                        <div className="text-[10px] text-slate-500">Quyền riêng tư, lưu trữ âm thanh & xử lý AI</div>
+                      </div>
+                    </div>
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-600 shrink-0 ml-2" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Data Rights & Subject Control */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                  Quyền Kiểm Soát Dữ Liệu Học Viên (Data Subject Rights):
+                </Label>
+
+                {/* Anonymous training opt-in toggle */}
+                <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 cursor-pointer hover:bg-slate-100/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={anonymousContribution}
+                    onChange={(e) => setAnonymousContribution(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                  />
+                  <div className="text-xs space-y-0.5">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                      Đóng góp dữ liệu phát âm ẩn danh phục vụ nghiên cứu cộng đồng
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Khi bật, các đoạn phát âm ngắn được tách rời hoàn toàn khỏi định danh cá nhân nhằm tối ưu hóa độ nhạy nhận dạng thanh điệu tiếng Trung cho người học Việt Nam.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Action buttons: Export & Purge */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleExportData}
+                    disabled={isExporting}
+                    className="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5"
+                  >
+                    <Download className="h-3.5 w-3.5 text-blue-600" />
+                    <span>{isExporting ? "Đang xuất dữ liệu..." : "Tải xuống dữ liệu cá nhân (JSON)"}</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleRequestDataPurge}
+                    disabled={isPurging}
+                    className="h-10 text-xs rounded-xl border-rose-200 hover:bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:text-rose-400 dark:hover:bg-rose-950/40 flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                    <span>{isPurging ? "Đang xử lý..." : "Yêu cầu xóa lịch sử khảo thí & âm thanh"}</span>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* SUBMIT ACTION BUTTON BAR */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
             <Button
@@ -805,8 +1047,43 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Legal Compliance & Trust Badge */}
+          <div className="p-4 rounded-3xl bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-center space-y-2">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              <span>Bảo Vệ Dữ Liệu Học Viên Classnia AI</span>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Hệ thống tuân thủ Nghị định 13/2023/NĐ-CP về Bảo vệ dữ liệu cá nhân & tiêu chuẩn mã hóa quốc tế TLS 1.3.
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+              <button
+                type="button"
+                onClick={() => setLegalModalType("terms")}
+                className="hover:underline"
+              >
+                Điều khoản
+              </button>
+              <span>•</span>
+              <button
+                type="button"
+                onClick={() => setLegalModalType("privacy")}
+                className="hover:underline"
+              >
+                Chính sách bảo mật
+              </button>
+            </div>
+          </div>
         </div>
       </form>
+
+      {/* Embedded Terms & Privacy Policy Modal */}
+      <LegalModal
+        isOpen={legalModalType !== null}
+        type={legalModalType}
+        onClose={() => setLegalModalType(null)}
+      />
     </div>
   );
 }

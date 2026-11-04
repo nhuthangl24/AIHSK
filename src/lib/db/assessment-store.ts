@@ -117,10 +117,28 @@ export interface StoredUserProfile {
   updatedAt: string;
 }
 
+export interface StoredSupportTicket {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  category: "BUG" | "AI_FEEDBACK" | "FEATURE" | "ACCOUNT" | "OTHER";
+  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  title: string;
+  description: string;
+  relatedSessionId?: string | null;
+  deviceInfo?: string | null;
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+  adminResponse?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface StoreData {
   templates: Record<string, StoredTemplate>;
   sessions: Record<string, StoredSession>;
   profiles: Record<string, StoredUserProfile>;
+  tickets: Record<string, StoredSupportTicket>;
 }
 
 const DEFAULT_TEMPLATES: StoredTemplate[] = [
@@ -257,12 +275,14 @@ class AssessmentStore {
     templates: {},
     sessions: {},
     profiles: {},
+    tickets: {},
   };
   private initialized = false;
   private baseDir: string;
   private filePath: string;
   private sessionsDir: string;
   private profilesDir: string;
+  private ticketsDir: string;
 
   constructor() {
     // Choose writable directory for storage (works on local dev & serverless /tmp)
@@ -271,6 +291,7 @@ class AssessmentStore {
     this.filePath = path.join(this.baseDir, "assessment_store.json");
     this.sessionsDir = path.join(this.baseDir, "sessions");
     this.profilesDir = path.join(this.baseDir, "profiles");
+    this.ticketsDir = path.join(this.baseDir, "tickets");
     this.init();
   }
 
@@ -297,6 +318,7 @@ class AssessmentStore {
         if (parsed.templates) Object.assign(this.data.templates, parsed.templates);
         if (parsed.sessions) Object.assign(this.data.sessions, parsed.sessions);
         if (parsed.profiles) Object.assign(this.data.profiles, parsed.profiles);
+        if (parsed.tickets) Object.assign(this.data.tickets, parsed.tickets);
       }
     } catch (e) {
       console.warn("Could not load assessment store from disk:", e);
@@ -386,7 +408,7 @@ class AssessmentStore {
   // --- SESSIONS ---
   getSession(id: string): StoredSession | null {
     this.init();
-    let session = this.data.sessions[id];
+    let session: StoredSession | null | undefined = this.data.sessions[id];
     if (!session) {
       session = this.loadSessionFile(id) || null;
     }
@@ -465,7 +487,7 @@ class AssessmentStore {
     updates: Partial<Omit<StoredSession, "id" | "template" | "turns" | "result">>
   ): StoredSession | null {
     this.init();
-    let existing = this.data.sessions[id];
+    let existing: StoredSession | null | undefined = this.data.sessions[id];
     if (!existing) {
       existing = this.loadSessionFile(id) || null;
     }
@@ -483,7 +505,7 @@ class AssessmentStore {
 
   addTurn(sessionId: string, turn: StoredTurn): StoredTurn {
     this.init();
-    let session = this.data.sessions[sessionId];
+    let session: StoredSession | null | undefined = this.data.sessions[sessionId];
     if (!session) {
       session = this.loadSessionFile(sessionId) || null;
     }
@@ -529,7 +551,7 @@ class AssessmentStore {
 
   saveResult(sessionId: string, result: StoredResult): StoredResult {
     this.init();
-    let session = this.data.sessions[sessionId];
+    let session: StoredSession | null | undefined = this.data.sessions[sessionId];
     if (!session) {
       session = this.loadSessionFile(sessionId) || null;
     }
@@ -603,7 +625,7 @@ class AssessmentStore {
   getProfile(userIdOrEmail: string): StoredUserProfile | null {
     this.init();
     if (!userIdOrEmail) return null;
-    let profile = this.data.profiles[userIdOrEmail];
+    let profile: StoredUserProfile | null | undefined = this.data.profiles[userIdOrEmail];
     if (!profile) {
       profile = this.loadProfileFile(userIdOrEmail) || null;
     }
@@ -643,6 +665,48 @@ class AssessmentStore {
     }
     this.persist();
     return cleanProfile;
+  }
+
+  // --- SUPPORT TICKETS ---
+  private getTicketFilePath(ticketId: string): string {
+    const safeId = ticketId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    return path.join(this.ticketsDir, `${safeId}.json`);
+  }
+
+  private saveTicketFile(ticket: StoredSupportTicket) {
+    try {
+      if (!fs.existsSync(this.ticketsDir)) {
+        fs.mkdirSync(this.ticketsDir, { recursive: true });
+      }
+      fs.writeFileSync(this.getTicketFilePath(ticket.id), JSON.stringify(ticket, null, 2), "utf-8");
+    } catch (e) {
+      console.warn("Could not write individual ticket file:", e);
+    }
+  }
+
+  saveSupportTicket(ticket: StoredSupportTicket): StoredSupportTicket {
+    this.init();
+    this.data.tickets[ticket.id] = ticket;
+    this.saveTicketFile(ticket);
+    this.persist();
+    return ticket;
+  }
+
+  getSupportTicketsByUser(userId: string, email?: string): StoredSupportTicket[] {
+    this.init();
+    this.reloadFromDisk();
+    const normEmail = email?.toLowerCase().trim();
+
+    return Object.values(this.data.tickets || {})
+      .filter((t) => t.userId === userId || (normEmail && t.userEmail?.toLowerCase().trim() === normEmail))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  getAllSupportTickets(): StoredSupportTicket[] {
+    this.init();
+    this.reloadFromDisk();
+    return Object.values(this.data.tickets || {})
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 }
 

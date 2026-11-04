@@ -25,6 +25,7 @@ import {
   Send,
   X,
   Check,
+  ShieldCheck,
 } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 import {
@@ -32,6 +33,7 @@ import {
   saveSystemAudioSettings,
   getBestChineseVoice,
 } from "@/lib/audio/system-audio-settings";
+import { LegalModal } from "@/components/legal/legal-modal";
 
 interface Turn {
   id?: string;
@@ -45,6 +47,10 @@ interface Turn {
 
 interface SessionData {
   id: string;
+  assignmentId?: string | null;
+  templateId?: string;
+  userId?: string;
+  startedAt?: string | null;
   status: string;
   currentStage: number;
   currentTurn: number;
@@ -134,6 +140,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const [showAudioModal, setShowAudioModal] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showRubricDrawer, setShowRubricDrawer] = useState(false);
+  const [legalModalType, setLegalModalType] = useState<"terms" | "privacy" | null>(null);
 
   // Audio References
   const recognitionRef = useRef<any>(null);
@@ -1196,6 +1203,19 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
               </div>
             </div>
           )}
+
+          {/* Privacy & Recording Protection Assurance */}
+          <div className="flex items-center justify-center gap-1.5 pt-1 text-[10px] text-slate-400">
+            <ShieldCheck className="h-3 w-3 text-emerald-500" />
+            <span>Bản ghi âm bài thi được mã hóa bảo mật theo</span>
+            <button
+              type="button"
+              onClick={() => setLegalModalType("privacy")}
+              className="text-rose-600 dark:text-rose-400 hover:underline font-medium"
+            >
+              Chính sách bảo mật
+            </button>
+          </div>
         </div>
       </footer>
 
@@ -1490,6 +1510,13 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
           </div>
         </div>
       )}
+
+      {/* Embedded Privacy & Terms Policy Modal */}
+      <LegalModal
+        isOpen={legalModalType !== null}
+        type={legalModalType}
+        onClose={() => setLegalModalType(null)}
+      />
     </div>
   );
 }

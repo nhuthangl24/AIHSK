@@ -21,7 +21,10 @@ import {
   ChevronDown,
   BarChart3,
   FileText,
+  MessageSquare,
+  ShieldCheck,
 } from "lucide-react";
+import { LegalModal } from "@/components/legal/legal-modal";
 import {
   FREE_TALK_PERSONAS,
   FreeTalkMessage,
@@ -76,6 +79,7 @@ export default function FreeTalkClient() {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(0.95);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showIntroBanner, setShowIntroBanner] = useState(true);
+  const [legalModalType, setLegalModalType] = useState<"terms" | "privacy" | null>(null);
 
   // Evaluation state
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -792,6 +796,19 @@ export default function FreeTalkClient() {
               </div>
             </div>
           )}
+
+          {/* Privacy & Compliance Assurance Hint */}
+          <div className="flex items-center justify-center gap-1.5 pt-1 text-[10px] text-slate-400">
+            <ShieldCheck className="h-3 w-3 text-emerald-500" />
+            <span>Âm thanh được mã hóa an toàn theo</span>
+            <button
+              type="button"
+              onClick={() => setLegalModalType("privacy")}
+              className="text-rose-600 dark:text-rose-400 hover:underline font-medium"
+            >
+              Chính sách bảo mật
+            </button>
+          </div>
         </div>
       </footer>
 
@@ -972,7 +989,7 @@ export default function FreeTalkClient() {
                             <span>Bộ Câu Hỏi Luyện Tập Mở Rộng Sau Báo Cáo</span>
                           </h4>
                           <p className="text-[11px] text-slate-500">
-                            5 câu hỏi tiếp nối thiết kế riêng theo phong cách của {activePersona.name}:
+                            5 câu hỏi tiếp nối thiết kế riêng theo phong cách của {currentPersona.name}:
                           </p>
                         </div>
                       </div>
@@ -1003,7 +1020,8 @@ export default function FreeTalkClient() {
                                   type="button"
                                   size="sm"
                                   onClick={() => {
-                                    setInputValue(q.zh);
+                                    setLearnerInput(q.zh);
+                                    setInputMode("text");
                                     setShowSummaryModal(false);
                                   }}
                                   className="h-6 px-2.5 text-[10px] bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 rounded-lg font-semibold gap-1"
@@ -1065,6 +1083,13 @@ export default function FreeTalkClient() {
           </div>
         </div>
       )}
+
+      {/* Embedded Terms & Privacy Policy Modal */}
+      <LegalModal
+        isOpen={legalModalType !== null}
+        type={legalModalType}
+        onClose={() => setLegalModalType(null)}
+      />
     </div>
   );
 }

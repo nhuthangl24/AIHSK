@@ -99,7 +99,7 @@ describe("Examiner 5-Stage Orchestration Unit Tests", () => {
 
     expect(result).toBeDefined();
     expect(result.examinerTurn).toBeDefined();
-    expect(result.examinerTurn.textContent).toBeTruthy();
+    expect(result.examinerTurn?.textContent).toBeTruthy();
 
     const restored = assessmentStore.getSession(coldSessionId);
     expect(restored).not.toBeNull();
