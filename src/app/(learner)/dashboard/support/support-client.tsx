@@ -298,28 +298,12 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge
-                variant="outline"
-                className="bg-rose-500/20 text-rose-300 border-rose-500/40 text-xs font-bold uppercase tracking-wider py-1 px-2.5"
-              >
-                Hệ Thống Thử Nghiệm Beta
-              </Badge>
-              <Badge
-                variant="outline"
-                className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-xs font-semibold py-1 px-2.5 flex items-center gap-1.5"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Hỗ Trợ Kỹ Thuật 24/7
-              </Badge>
-            </div>
-            
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Trung Tâm Yêu Cầu & Báo Lỗi
+              Trung Tâm Hỗ Trợ & Báo Lỗi
             </h1>
             
             <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-              Trong giai đoạn thử nghiệm (Beta Test), nếu bạn gặp bất kỳ vấn đề nào về âm thanh, micro, đường truyền phòng thi hoặc muốn góp ý chất lượng đàm thoại của Giám khảo AI, hãy gửi báo cáo tại đây. Đội ngũ kỹ thuật Classnia luôn sẵn sàng đồng hành!
+              Nếu bạn gặp sự cố về micro, âm thanh phòng thi hoặc cần hỗ trợ tài khoản, hãy gửi yêu cầu tại đây để đội ngũ kỹ thuật xử lý nhanh chóng.
             </p>
           </div>
 
