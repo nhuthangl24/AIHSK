@@ -536,6 +536,9 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
 
   const currentStageInfo = STAGES.find((s) => s.num === session.currentStage) || STAGES[0];
   const stagePercent = Math.round((session.currentStage / 5) * 100);
+  const currentStageTurns = session.turns.filter((t) => t.stage === session.currentStage);
+  const currentStageExaminerTurns = currentStageTurns.filter((t) => t.speaker === "EXAMINER").length;
+  const currentTurnInStage = Math.min(Math.max(currentStageExaminerTurns, 1), 2);
 
   return (
     <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-40 flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-none m-0 p-0">
@@ -562,13 +565,13 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             {session.template.targetLevel}
           </span>
 
-          <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate max-w-[140px] sm:max-w-xs md:max-w-md">
+          <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:white truncate max-w-[140px] sm:max-w-xs md:max-w-md">
             {session.template.title}
           </h1>
 
           <span className="hidden lg:inline-flex items-center gap-1.5 text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-full border border-rose-200/80 dark:border-rose-900/50 shrink-0">
             <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
-            Đang thi trực tiếp
+            Đang thi trực tiếp &bull; Chặng {session.currentStage}/5 ({currentStageInfo.name})
           </span>
         </div>
 
@@ -633,7 +636,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
               <span className="text-slate-400 font-normal">({currentStageInfo.zh})</span>
             </div>
             <span className="text-[10px] font-semibold text-slate-500 shrink-0 ml-2">
-              Chặng {session.currentStage}/5 &bull; {stagePercent}%
+              Chặng {session.currentStage}/5 &bull; {session.currentStage === 5 ? "Tổng kết" : `Câu ${currentTurnInStage}/2`}
             </span>
           </div>
           {/* Visual progress bar line */}
@@ -646,7 +649,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         </div>
 
         {/* Desktop View: Elegant 5-Stage Stepper Deck */}
-        <div className="hidden md:flex items-center justify-between gap-2 max-w-4xl mx-auto px-4 py-2">
+        <div className="hidden md:flex items-center justify-between gap-2 max-w-5xl mx-auto px-4 py-2">
           {STAGES.map((st) => {
             const isCurrent = session.currentStage === st.num;
             const isPassed = session.currentStage > st.num;
@@ -654,7 +657,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
             return (
               <div
                 key={st.num}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-xl text-xs font-medium transition-all ${
+                className={`flex-1 flex items-center gap-2 py-1.5 px-2.5 rounded-xl text-xs font-medium transition-all ${
                   isCurrent
                     ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-900/60 shadow-2xs"
                     : isPassed
@@ -663,7 +666,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                 }`}
               >
                 <span
-                  className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${
+                  className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${
                     isPassed
                       ? "bg-emerald-600 text-white"
                       : isCurrent
@@ -671,9 +674,23 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                       : "bg-slate-200 dark:bg-slate-800 text-slate-500"
                   }`}
                 >
-                  {isPassed ? <Check className="h-2.5 w-2.5" /> : st.num}
+                  {isPassed ? <Check className="h-3 w-3" /> : st.num}
                 </span>
-                <span className="truncate">{st.name}</span>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="truncate font-bold">{st.name}</span>
+                    <span className="text-[10px] opacity-75 hidden xl:inline">({st.zh})</span>
+                  </div>
+                  {isCurrent && (
+                    <span className="text-[9px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                      {session.currentStage === 5 ? "Tự đánh giá & Tổng kết" : `Câu ${currentTurnInStage}/2`}
+                    </span>
+                  )}
+                  {isPassed && (
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400">Đã hoàn thành</span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -760,8 +777,11 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                         <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
                           Giám khảo Lý
                         </span>
+                        <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200/80 dark:border-rose-900/60 shrink-0">
+                          Chặng {turn.stage} &bull; Câu {session.turns.slice(0, i + 1).filter((t) => t.stage === turn.stage && t.speaker === "EXAMINER").length}/2
+                        </span>
                         {isLatest && (
-                          <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/50 shrink-0">
+                          <span className="text-[10px] font-semibold text-rose-600 bg-rose-100/70 dark:bg-rose-900/40 px-2 py-0.5 rounded-full shrink-0 animate-pulse">
                             Câu hỏi hiện tại
                           </span>
                         )}
@@ -879,8 +899,8 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
               ) : (
                 /* Learner Turn Bubble (Right Aligned) */
                 <div className="flex flex-col items-end space-y-1 ml-auto max-w-[94%] sm:max-w-[85%]">
-                  <span className="text-[10px] font-semibold text-slate-400 px-1">
-                    Thí sinh (Bạn)
+                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 px-1">
+                    Thí sinh (Bạn) &bull; Chặng {turn.stage} (Trả lời {session.turns.slice(0, i + 1).filter((t) => t.stage === turn.stage && t.speaker === "LEARNER").length}/2)
                   </span>
                   <div className="rounded-2xl rounded-tr-xs p-3.5 sm:p-4 bg-rose-600 text-white shadow-xs">
                     <p className="font-medium text-sm sm:text-base leading-relaxed tracking-wide">
@@ -965,7 +985,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
                   <Button
                     onClick={handleSubmitTurn}
                     disabled={isSubmittingTurn || isFinalizing}
-                    className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700 font-bold text-xs sm:text-sm h-11 sm:h-12 px-5 sm:px-6 rounded-2xl flex items-center justify-center gap-2 shadow-sm shrink-0 transition-all"
+                    className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white dark:bg-rose-600 dark:hover:bg-rose-700 font-bold text-xs sm:text-sm h-11 sm:h-12 px-5 sm:px-6 rounded-2xl flex items-center justify-center gap-2 shadow-sm shrink-0 transition-all"
                   >
                     {isSubmittingTurn ? (
                       <>

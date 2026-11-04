@@ -17,6 +17,8 @@ import {
   BookOpen,
   Wand2,
   ChevronRight,
+  Flame,
+  Search,
 } from "lucide-react";
 
 interface AssessmentTemplate {
@@ -30,53 +32,80 @@ interface AssessmentTemplate {
   maxTurns: number;
 }
 
+const QUICK_CHIPS = [
+  { label: "🍜 Gọi món nhà hàng", topic: "Gọi món ăn tại nhà hàng Tứ Xuyên và miêu tả khẩu vị", level: "HSK 2" },
+  { label: "✈️ Du lịch & Hỏi đường", topic: "Hỏi đường đến ga tàu cao tốc và làm thủ tục khách sạn", level: "HSK 3" },
+  { label: "💼 Phỏng vấn xin việc", topic: "Phỏng vấn xin việc vị trí kinh doanh và giới thiệu thế mạnh", level: "HSK 4" },
+  { label: "🛍️ Mua sắm & Mặc cả", topic: "Mua sắm quần áo và thương lượng giá cả tại chợ Bắc Kinh", level: "HSK 3" },
+  { label: "🤝 Đàm phán thương mại", topic: "Đàm phán hợp đồng cung ứng và phương thức thanh toán quốc tế", level: "HSK 5" },
+  { label: "🎬 Phim ảnh & Sở thích", topic: "Chia sẻ sở thích xem phim tiếng Trung và nghe nhạc", level: "HSK 2" },
+  { label: "🤖 AI & Công nghệ mới", topic: "Quan điểm về trí tuệ nhân tạo và ứng dụng học ngoại ngữ", level: "HSK 4" },
+  { label: "🎓 Du học sinh & Học bổng", topic: "Phỏng vấn xin học bổng chính phủ Trung Quốc CSC", level: "HSK 4" },
+];
+
 const PRESET_TOPICS = [
   {
+    icon: "🍜",
     title: "Ẩm thực & Gọi món nhà hàng",
     zh: "点餐与中国美食",
     level: "HSK 2",
+    category: "Đời sống",
     desc: "Thực hành gọi món, hỏi giá tiền, miêu tả khẩu vị chua cay mặn ngọt tại quán ăn Trung Quốc.",
   },
   {
+    icon: "✈️",
     title: "Du lịch, Đặt phòng & Hỏi đường",
     zh: "旅游、订房与问路",
     level: "HSK 3",
+    category: "Du lịch",
     desc: "Tình huống hỏi đường đến danh lam thắng cảnh, bắt taxi, nhận phòng khách sạn và hỏi lịch trình.",
   },
   {
-    title: "Phỏng vấn xin việc & Giới thiệu kinh nghiệm",
+    icon: "💼",
+    title: "Phỏng vấn xin việc & Kinh nghiệm",
     zh: "求职面试与工作经历",
     level: "HSK 4",
+    category: "Nghề nghiệp",
     desc: "Trả lời câu hỏi tuyển dụng, giới thiệu thế mạnh bản thân, kinh nghiệm làm việc và định hướng nghề nghiệp.",
   },
   {
+    icon: "🛍️",
     title: "Mua sắm, Mặc cả & Đổi trả hàng",
     zh: "购物、讨价还价与退换货",
     level: "HSK 3",
+    category: "Mua sắm",
     desc: "Giao tiếp mua sắm quần áo, điện tử, hỏi giảm giá, thương lượng giá cả và thủ tục hoàn đổi hàng.",
   },
   {
-    title: "Đời sống du học sinh & Cuộc sống đại học",
+    icon: "🎓",
+    title: "Đời sống du học sinh & Đại học",
     zh: "大学生活与留学生涯",
     level: "HSK 3",
+    category: "Học tập",
     desc: "Trò chuyện về môi trường học tập, giao lưu bạn bè quốc tế, ký túc xá và trải nghiệm văn hóa.",
   },
   {
-    title: "Đàm phán kinh doanh & Hợp tác thương mại",
+    icon: "🤝",
+    title: "Đàm phán kinh doanh & Hợp tác",
     zh: "商务谈判与商业合作",
     level: "HSK 5",
+    category: "Thương mại",
     desc: "Thảo luận điều khoản hợp đồng, thanh toán, tiến độ giao hàng và xây dựng mối quan hệ đối tác.",
   },
   {
-    title: "Công nghệ, AI & Mạng xã hội trong đời sống",
+    icon: "🤖",
+    title: "Công nghệ, AI & Mạng xã hội",
     zh: "人工智能与社交媒体",
     level: "HSK 4",
+    category: "Khoa học",
     desc: "Bày tỏ quan điểm về ảnh hưởng của trí tuệ nhân tạo, ứng dụng học tiếng Trung và mạng xã hội.",
   },
   {
-    title: "Giao lưu sở thích, Âm nhạc & Phim ảnh",
+    icon: "🎵",
+    title: "Giao lưu sở thích & Âm nhạc",
     zh: "兴趣爱好与影视娱乐",
     level: "HSK 2",
+    category: "Giải trí",
     desc: "Chia sẻ bộ phim, bài hát tiếng Trung yêu thích, thói quen thể thao và giải trí cuối tuần.",
   },
 ];
@@ -103,6 +132,7 @@ export default function AssessmentSelectionPage() {
   const [customTopicInput, setCustomTopicInput] = useState("");
   const [customLevel, setCustomLevel] = useState("HSK 3");
   const [isStartingCustom, setIsStartingCustom] = useState(false);
+  const [activePresetLoading, setActivePresetLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/assessments")
@@ -139,9 +169,10 @@ export default function AssessmentSelectionPage() {
       router.push(`/dashboard/assessments/${data.session.id}`);
     } catch (err: any) {
       console.error("Start exam error:", err);
-      const friendlyMsg = err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
-        ? "Máy chủ đang khởi động hoặc gián đoạn kết nối. Vui lòng bấm thử lại."
-        : (err?.message || "Khởi động phòng thi thất bại.");
+      const friendlyMsg =
+        err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
+          ? "Máy chủ đang khởi động hoặc gián đoạn kết nối. Vui lòng bấm thử lại."
+          : err?.message || "Khởi động phòng thi thất bại.";
       alert(friendlyMsg);
       setStartingId(null);
     }
@@ -157,7 +188,12 @@ export default function AssessmentSelectionPage() {
       return;
     }
 
-    setIsStartingCustom(true);
+    if (topicToUse) {
+      setActivePresetLoading(topicToUse);
+    } else {
+      setIsStartingCustom(true);
+    }
+
     try {
       const res = await fetch("/api/assessments", {
         method: "POST",
@@ -181,70 +217,78 @@ export default function AssessmentSelectionPage() {
       router.push(`/dashboard/assessments/${data.session.id}`);
     } catch (err: any) {
       console.error("Start custom exam error:", err);
-      const friendlyMsg = err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
-        ? "Máy chủ đang khởi động hoặc gián đoạn kết nối. Vui lòng bấm thử lại."
-        : (err?.message || "Khởi tạo phòng thi tự do thất bại.");
+      const friendlyMsg =
+        err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
+          ? "Máy chủ đang khởi động hoặc gián đoạn kết nối. Vui lòng bấm thử lại."
+          : err?.message || "Khởi tạo phòng thi tự do thất bại.";
       alert(friendlyMsg);
       setIsStartingCustom(false);
+      setActivePresetLoading(null);
     }
   };
 
+  const handleSelectQuickChip = (chip: (typeof QUICK_CHIPS)[0]) => {
+    setCustomTopicInput(chip.topic);
+    setCustomLevel(chip.level);
+  };
+
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-12">
-      {/* Page Header */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Badge variant="cinnabar" className="text-xs">
+    <div className="space-y-6 sm:space-y-8 max-w-6xl mx-auto pb-16 animate-in fade-in duration-200">
+      {/* 1. PAGE HEADER */}
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="cinnabar" className="text-xs font-bold">
             Khảo Thí Khẩu Ngữ AI
           </Badge>
           <span className="text-xs text-slate-500 font-medium">
             Giám khảo AI Lý Lão Sư (考官李老师)
           </span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           Lựa Chọn Hoặc Tự Do Tạo Chủ Đề Khảo Thí
         </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
-          Bạn có thể <strong>tự do nhập bất kỳ chủ đề nào</strong> bạn muốn luyện tập, hoặc chọn các đề thi chuẩn hoá theo cấp độ HSK. Giám khảo AI sẽ trực tiếp thực hiện cuộc phỏng vấn 5 giai đoạn thích ứng theo đúng chủ đề bạn đã chọn.
+
+        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
+          Tự do nhập bất kỳ chủ đề, ngữ cảnh nào bạn muốn luyện phản xạ, hoặc chọn các đề thi chuẩn hoá theo khung khảo thí HSK quốc tế. Giám khảo AI sẽ trực tiếp trò chuyện và phản biện 5 giai đoạn theo đúng chủ đề bạn đã chọn.
         </p>
       </div>
 
-      {/* Mode Switcher Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+      {/* 2. MODE SWITCHER TABS (Responsive Segmented Control) */}
+      <div className="bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl flex max-w-md w-full">
         <button
+          type="button"
           onClick={() => setActiveTab("custom")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === "custom"
-              ? "bg-rose-600 text-white shadow-sm"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+              ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-white shadow-xs"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
-          <Wand2 className="h-4 w-4" />
-          <span>Tự Chọn Chủ Đề (Khảo Thí Tự Do)</span>
-          <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-normal">
-            Linh hoạt
-          </span>
+          <Wand2 className="h-4 w-4 text-rose-600" />
+          <span>Chủ Đề Tự Do</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab("standard")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === "standard"
-              ? "bg-rose-600 text-white shadow-sm"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+              ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-white shadow-xs"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
-          <BookOpen className="h-4 w-4" />
-          <span>Đề Thi Chuẩn Hoá HSK ({templates.length})</span>
+          <BookOpen className="h-4 w-4 text-rose-600" />
+          <span>Đề Thi Chuẩn HSK ({templates.length})</span>
         </button>
       </div>
 
       {/* VIEW 1: CUSTOM / FREE TOPIC */}
       {activeTab === "custom" && (
-        <div className="space-y-8 animate-in fade-in duration-200">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
           {/* Custom Topic Input Deck */}
-          <Card className="border-rose-200/80 dark:border-rose-900/60 bg-gradient-to-br from-rose-50/40 via-white to-white dark:from-rose-950/20 dark:via-slate-900 dark:to-slate-900 shadow-sm rounded-3xl p-6 sm:p-8">
-            <div className="max-w-3xl space-y-5">
+          <Card className="border-rose-200/90 dark:border-rose-900/60 bg-gradient-to-br from-rose-50/50 via-white to-white dark:from-rose-950/20 dark:via-slate-900 dark:to-slate-900 shadow-sm rounded-3xl p-5 sm:p-8">
+            <div className="space-y-5">
               <div>
                 <div className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1">
                   <Sparkles className="h-4 w-4" />
@@ -254,19 +298,43 @@ export default function AssessmentSelectionPage() {
                   Bạn muốn phỏng vấn về chủ đề hoặc tình huống nào?
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Nhập bất kỳ tình huống nào bạn muốn rèn luyện phản xạ (ví dụ: đàm phán xuất nhập khẩu, đi khám bệnh, phỏng vấn xin học bổng, nói về sở thích...).
+                  Nhập bất kỳ tình huống nào bạn muốn rèn luyện (VD: đàm phán xuất nhập khẩu, đi khám bệnh, phỏng vấn xin học bổng, nói về sở thích...).
                 </p>
               </div>
 
-              {/* Form Input */}
-              <div className="flex flex-col sm:flex-row gap-3">
+              {/* Quick Suggestion Chips (1-tap autofill for speed & ergonomics on mobile) */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-semibold text-slate-500 block">
+                  Gợi ý chọn nhanh (chạm để điền):
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {QUICK_CHIPS.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectQuickChip(chip)}
+                      className={`text-xs px-3 py-1.5 rounded-xl border transition-all text-left flex items-center gap-1.5 ${
+                        customTopicInput === chip.topic
+                          ? "bg-rose-600 text-white border-rose-600 shadow-2xs font-bold"
+                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-rose-300"
+                      }`}
+                    >
+                      <span>{chip.label}</span>
+                      <span className="text-[10px] opacity-75">({chip.level})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Form Input + Level selector + Start Button (Responsive Stacking) */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <div className="flex-1 relative">
                   <input
                     type="text"
                     value={customTopicInput}
                     onChange={(e) => setCustomTopicInput(e.target.value)}
-                    placeholder="Nhập chủ đề bất kỳ (VD: Thuê nhà tại Bắc Kinh, Phỏng vấn học bổng, Nói về ẩm thực Tứ Xuyên...)"
-                    className="w-full h-12 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    placeholder="Nhập chủ đề bất kỳ (VD: Thuê nhà tại Bắc Kinh, Phỏng vấn học bổng...)"
+                    className="w-full h-12 px-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleStartCustomExam();
                     }}
@@ -277,7 +345,7 @@ export default function AssessmentSelectionPage() {
                 <select
                   value={customLevel}
                   onChange={(e) => setCustomLevel(e.target.value)}
-                  className="h-12 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 sm:w-48"
+                  className="h-12 px-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 sm:w-52 shrink-0"
                 >
                   {HSK_LEVELS.map((lvl) => (
                     <option key={lvl.level} value={lvl.level}>
@@ -290,7 +358,7 @@ export default function AssessmentSelectionPage() {
                 <Button
                   onClick={() => handleStartCustomExam()}
                   disabled={isStartingCustom || !customTopicInput.trim()}
-                  className="h-12 px-6 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 shrink-0 transition-all"
+                  className="h-12 px-6 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 shrink-0 transition-all w-full sm:w-auto"
                 >
                   {isStartingCustom ? (
                     <>
@@ -299,6 +367,7 @@ export default function AssessmentSelectionPage() {
                     </>
                   ) : (
                     <>
+                      <Mic className="h-4 w-4" />
                       <span>Bắt Đầu Khảo Thí</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
@@ -310,53 +379,76 @@ export default function AssessmentSelectionPage() {
 
           {/* Preset Topics Suggestions */}
           <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Compass className="h-4 w-4 text-rose-600" />
-                <span>Hoặc chọn nhanh từ các chủ đề gợi ý phổ biến:</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                Nhấn trực tiếp vào chủ đề để vào phòng thi với Giám khảo AI ngay lập tức.
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Compass className="h-5 w-5 text-rose-600" />
+                  <span>Hoặc chọn nhanh từ các chủ đề gợi ý phổ biến:</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Chạm trực tiếp vào chủ đề để vào phòng thi với Giám khảo AI ngay lập tức.
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {PRESET_TOPICS.map((preset, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => handleStartCustomExam(preset.title, preset.level)}
-                  className="group relative rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-rose-400 dark:hover:border-rose-700 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
-                        {preset.level}
-                      </span>
-                      <span className="text-[10px] text-slate-400 group-hover:text-rose-600 transition-colors">
-                        5 giai đoạn
-                      </span>
-                    </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {PRESET_TOPICS.map((preset, idx) => {
+                const isThisLoading = activePresetLoading === preset.title;
 
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-rose-600 transition-colors">
-                        {preset.title}
-                      </h4>
-                      <p className="text-xs font-medium text-slate-500 font-sans mt-0.5">
-                        {preset.zh}
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      if (!activePresetLoading) {
+                        handleStartCustomExam(preset.title, preset.level);
+                      }
+                    }}
+                    className={`group relative rounded-3xl border bg-white dark:bg-slate-900 p-5 hover:border-rose-400 dark:hover:border-rose-700 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between ${
+                      isThisLoading
+                        ? "border-rose-500 ring-2 ring-rose-500/20"
+                        : "border-slate-200 dark:border-slate-800"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl">{preset.icon}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
+                            {preset.level}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-rose-600 transition-colors">
+                          {preset.title}
+                        </h4>
+                        <p className="text-xs font-semibold text-slate-400 font-sans mt-0.5">
+                          {preset.zh}
+                        </p>
+                      </div>
+
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {preset.desc}
                       </p>
                     </div>
 
-                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                      {preset.desc}
-                    </p>
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 mt-4 flex items-center justify-between text-xs font-bold text-rose-600 group-hover:translate-x-0.5 transition-transform">
+                      {isThisLoading ? (
+                        <span className="flex items-center gap-1.5">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Đang vào phòng thi...</span>
+                        </span>
+                      ) : (
+                        <>
+                          <span>Chọn chủ đề này</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </div>
                   </div>
-
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 mt-4 flex items-center justify-between text-xs font-semibold text-rose-600 group-hover:translate-x-0.5 transition-transform">
-                    <span>Chọn chủ đề này</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -366,11 +458,11 @@ export default function AssessmentSelectionPage() {
       {activeTab === "standard" && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
               Đề Thi Khẩu Ngữ Chuẩn Hoá Theo Cấp Độ HSK
             </h3>
             <p className="text-xs text-slate-500">
-              Các bài thi được thiết kế chuẩn mực theo khung khảo thí HSK và HSKK quốc tế.
+              Các bài thi được thiết kế chuẩn mực theo khung khảo thí HSK và HSKK quốc tế 5 giai đoạn.
             </p>
           </div>
 
@@ -379,7 +471,7 @@ export default function AssessmentSelectionPage() {
               <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {templates.map((tpl) => (
                 <Card
                   key={tpl.id}
@@ -387,10 +479,10 @@ export default function AssessmentSelectionPage() {
                 >
                   <CardHeader className="space-y-3 pb-4">
                     <div className="flex items-center justify-between">
-                      <Badge variant="cinnabar" className="text-[10px]">
+                      <Badge variant="cinnabar" className="text-[10px] font-bold">
                         {tpl.targetLevel}
                       </Badge>
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
                         <Clock className="h-3.5 w-3.5" />
                         <span>~{tpl.estimatedDurationMinutes} phút</span>
                       </span>
@@ -422,7 +514,7 @@ export default function AssessmentSelectionPage() {
                     <Button
                       onClick={() => handleStartExam(tpl.id)}
                       disabled={Boolean(startingId)}
-                      className="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs h-10 rounded-xl flex items-center justify-center gap-2 shadow-sm"
+                      className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-11 rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all"
                     >
                       {startingId === tpl.id ? (
                         <>

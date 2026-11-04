@@ -83,15 +83,24 @@ export class ExaminerService {
   ): Promise<NextTurnResult> {
     const learnerTurnCount = turns.filter((t) => t.speaker === "LEARNER").length;
 
+    const dialogueMessages: ChatMessage[] = turns.map((t) => ({
+      role: (t.speaker === "EXAMINER" ? "assistant" : "user") as "assistant" | "user",
+      content: t.textContent,
+    }));
+
+    if (dialogueMessages.length === 0) {
+      dialogueMessages.push({
+        role: "user",
+        content: `请开启考试：我是准备参加 ${targetLevel} 口语考核的考生，今天选择的主题是“${topic}”。请向我致问候、确认设备声音并请我开始做自我介绍。`,
+      });
+    }
+
     const messages: ChatMessage[] = [
       {
         role: "system",
-        content: `${CHINESE_EXAMINER_SYSTEM_PROMPT}\nTarget Level: ${targetLevel}. Topic: ${topic}\nCurrent candidate turn count: ${learnerTurnCount}. Pacing rule: 2 turns each for Stage 1, Stage 2, Stage 3, Stage 4; and 1-2 turns for Stage 5. Never complete before 8 candidate turns.\nIMPORTANT: Reply ONLY with a strict JSON object according to the schema.`,
+        content: `${CHINESE_EXAMINER_SYSTEM_PROMPT}\nTarget Level: ${targetLevel}. Topic: ${topic}\nCurrent candidate turn count: ${learnerTurnCount}. Pacing rule: 2 turns each for Stage 1, Stage 2, Stage 3, Stage 4; and 1-2 turns for Stage 5. Never complete before 9 candidate turns.\nIMPORTANT: Reply ONLY with a strict JSON object according to the schema.`,
       },
-      ...turns.map((t) => ({
-        role: (t.speaker === "EXAMINER" ? "assistant" : "user") as "assistant" | "user",
-        content: t.textContent,
-      })),
+      ...dialogueMessages,
     ];
 
     const rawContent = await AIClient.chatCompletion({
@@ -117,7 +126,8 @@ export class ExaminerService {
     else if (learnerTurnCount <= 7) computedStage = 4;
     else computedStage = 5;
 
-    const isCompleted = Boolean(parsed.isCompleted && learnerTurnCount >= 8 && computedStage === 5);
+    // Only mark completed when candidate has answered through Stage 5 Turn 1 (learnerTurnCount >= 9)
+    const isCompleted = Boolean(parsed.isCompleted && learnerTurnCount >= 9 && computedStage === 5);
 
     return {
       stage: computedStage,
@@ -179,25 +189,6 @@ export class ExaminerService {
     const lowerTopic = (topic || "").toLowerCase();
     const isFood = lowerTopic.includes("ẩm thực") || lowerTopic.includes("gọi món") || lowerTopic.includes("món ăn") || lowerTopic.includes("nhà hàng") || lowerTopic.includes("ăn uống") || lowerTopic.includes("food");
     const isSports = lowerTopic.includes("bóng") || lowerTopic.includes("thể thao") || lowerTopic.includes("sport") || lowerTopic.includes("football");
-
-    // Check if Stage 4 is already finished or candidate reached maximum turns -> Conclude Stage 5
-    const stage4LearnerTurns = turns.filter((t) => t.stage === 4 && t.speaker === "LEARNER").length;
-    const isStage4Done =
-      (lastLearnerTurn?.stage === 4 && stage4LearnerTurns >= 2) ||
-      (lastLearnerTurn?.stage !== undefined && lastLearnerTurn.stage >= 5) ||
-      learnerTurns >= 8;
-
-    if (isStage4Done) {
-      return {
-        stage: 5,
-        examinerResponse:
-          "非常感谢你的真诚分享！今天的华语口语考核到这里就全部结束了。系统目前正在对你全程对话记录进行全面的7维度语言学智能评估，稍后你可以在系统中查阅详细的诊断报告。祝你在中文学习的道路上取得更大的进步，再见！",
-        pinyin:
-          "Fēicháng gǎnxiè nǐ de zhēnchéng fēnxiǎng! Jīntiān de Huáyǔ kǒuyǔ kǎohé dào zhèlǐ jiù quánbù jiéshù le. Xìtǒng mùqián zhèngzài duì nǐ quánchéng duìhuà jìlù jìnxíng quánmiàn de qī wéidù yǔyánxué zhìnéng pínggū, shāohòu nǐ kěyǐ zài xìtǒng zhōng cháyuè xiángxì de zhěnduàn bàogào. Zhù nǐ zài zhōngwén xuéxí de dàolù shàng qǔdé gèng dà de jìnbù, zàijiàn!",
-        isCompleted: true,
-        pedagogicalObservation: "Stage 5: Examination formally concluded, scoring pipeline enqueued.",
-      };
-    }
 
     // Turn 0: Candidate hasn't spoken yet (First greeting)
     if (learnerTurns === 0) {

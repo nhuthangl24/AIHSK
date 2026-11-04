@@ -88,7 +88,7 @@ export class AssessmentService {
       category: "GENERAL",
       targetLevel: level,
       estimatedDurationMinutes: 15,
-      maxTurns: 18,
+      maxTurns: 20,
       stagesConfig: STAGES_CONFIG as any,
       examinerPrompt: `Conduct a 5-stage adaptive oral examination focused on the custom topic: ${topicName}`,
       rubricId: null,
@@ -215,7 +215,7 @@ export class AssessmentService {
             status: SessionStatus.IN_PROGRESS,
             currentStage: 1,
             currentTurn: 0,
-            totalTurns: template.maxTurns || 18,
+            totalTurns: Math.max(template.maxTurns || 20, 20),
             startedAt: new Date(),
           },
         });
@@ -259,7 +259,7 @@ export class AssessmentService {
       status: "IN_PROGRESS",
       currentStage: 1,
       currentTurn: 0,
-      totalTurns: template.maxTurns || 18,
+      totalTurns: Math.max(template.maxTurns || 20, 20),
       totalDurationSeconds: 0,
       startedAt: new Date().toISOString(),
       completedAt: null,
@@ -383,9 +383,10 @@ export class AssessmentService {
             },
           });
 
+          const learnerTurnCount = turnItems.filter((t) => t.speaker === "LEARNER").length;
           const isCompleted =
-            examinerReply.isCompleted ||
-            (examinerTurnIndex >= session.totalTurns - 1 && examinerReply.stage >= 5);
+            (examinerReply.isCompleted && learnerTurnCount >= 9) ||
+            (examinerTurnIndex >= session.totalTurns - 1 && examinerReply.stage >= 5 && learnerTurnCount >= 9);
 
           if (isCompleted) {
             await prisma.assessmentSession.update({
@@ -494,9 +495,10 @@ export class AssessmentService {
     };
     assessmentStore.addTurn(sessionId, examinerTurn);
 
+    const storedLearnerCount = (storedSession.turns || []).filter((t) => t.speaker === "LEARNER").length + 1;
     const isCompleted =
-      examinerReply.isCompleted ||
-      (examinerTurnIndex >= storedSession.totalTurns - 1 && examinerReply.stage >= 5);
+      (examinerReply.isCompleted && storedLearnerCount >= 9) ||
+      (examinerTurnIndex >= storedSession.totalTurns - 1 && examinerReply.stage >= 5 && storedLearnerCount >= 9);
 
     if (isCompleted) {
       assessmentStore.updateSession(sessionId, {

@@ -39,10 +39,11 @@ describe("Offline / Firebase-only Mode (Zero-PostgreSQL) Resilience Tests", () =
     expect(session.id).toBeDefined();
     expect(session.status).toBe("IN_PROGRESS");
     expect(session.currentStage).toBe(1);
-    expect(session.turns).toBeDefined();
-    expect(session.turns.length).toBe(1);
-    expect(session.turns[0].speaker).toBe("EXAMINER");
-    expect(session.turns[0].textContent).toBeDefined();
+    const anySession = session as any;
+    expect(anySession.turns).toBeDefined();
+    expect(anySession.turns.length).toBe(1);
+    expect(anySession.turns[0].speaker).toBe("EXAMINER");
+    expect(anySession.turns[0].textContent).toBeDefined();
 
     testSessionId = session.id;
   });
