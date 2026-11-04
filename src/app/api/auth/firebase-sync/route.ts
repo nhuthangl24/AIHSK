@@ -48,14 +48,19 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Resolve or sync with Prisma User table if PostgreSQL is active
+    let prismaProfile: any = null;
     try {
       const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
       if (await isPrismaAvailable()) {
-        const pUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+        const pUser = await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          include: { profile: true },
+        });
         if (pUser) {
           userId = pUser.id;
           if (pUser.name) name = pUser.name;
           if (pUser.role) role = pUser.role;
+          if (pUser.profile) prismaProfile = pUser.profile;
         } else {
           try {
             await prisma.user.create({
@@ -76,15 +81,44 @@ export async function POST(req: NextRequest) {
       // Prisma offline, proceed cleanly
     }
 
-    // Save profile to assessmentStore as well
+    // 3. Preserve existing profile settings instead of overwriting with defaults
+    const existingStored =
+      assessmentStore.getProfile(userId) ||
+      assessmentStore.getProfile(normalizedEmail);
+
+    const resolvedTargetLevel =
+      prismaProfile?.targetLevel ||
+      targetLevel ||
+      existingStored?.targetLevel ||
+      fbUser?.targetLevel ||
+      "HSK 3";
+
+    const resolvedHours =
+      prismaProfile?.studyHoursWeekly ??
+      existingStored?.studyHoursWeekly ??
+      fbUser?.studyHoursWeekly ??
+      3;
+
+    const resolvedGoal =
+      prismaProfile?.learningGoal ??
+      existingStored?.learningGoal ??
+      fbUser?.learningGoal ??
+      "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.";
+
+    const resolvedNativeLang =
+      prismaProfile?.nativeLanguage ||
+      existingStored?.nativeLanguage ||
+      fbUser?.nativeLanguage ||
+      "Tiếng Việt";
+
     assessmentStore.saveProfile({
       userId,
       name,
       email: normalizedEmail,
-      targetLevel,
-      nativeLanguage: "Tiếng Việt",
-      studyHoursWeekly: 3,
-      learningGoal: "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
+      targetLevel: resolvedTargetLevel,
+      nativeLanguage: resolvedNativeLang,
+      studyHoursWeekly: resolvedHours,
+      learningGoal: resolvedGoal,
       updatedAt: new Date().toISOString(),
     });
 

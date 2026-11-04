@@ -48,23 +48,65 @@ export class AssessmentService {
       const normEmail = email.toLowerCase().trim();
       candidateUserIds.add(normEmail);
       candidateUserIds.add(`firebase_${normEmail.replace(/[^a-z0-9]/g, "_")}`);
+      candidateUserIds.add(`classnia_${normEmail.replace(/[^a-z0-9]/g, "_")}`);
+    }
+
+    // If userId itself looks like an email
+    if (userId && userId.includes("@")) {
+      const norm = userId.toLowerCase().trim();
+      candidateUserIds.add(norm);
+      candidateUserIds.add(`firebase_${norm.replace(/[^a-z0-9]/g, "_")}`);
+      candidateUserIds.add(`classnia_${norm.replace(/[^a-z0-9]/g, "_")}`);
+    }
+
+    // Try resolving user from Firebase Firestore (find by UID or email)
+    let resolvedEmail = email;
+    try {
+      const { FirebaseDb } = await import("@/lib/firebase-db");
+      const targetLookup = email || (userId && userId.includes("@") ? userId : null);
+      const fbUser =
+        (userId ? await FirebaseDb.findUserById(userId) : null) ||
+        (targetLookup ? await FirebaseDb.findUserByEmail(targetLookup) : null);
+
+      if (fbUser) {
+        if (fbUser.id) candidateUserIds.add(fbUser.id);
+        if (fbUser.email) {
+          resolvedEmail = resolvedEmail || fbUser.email;
+          const norm = fbUser.email.toLowerCase().trim();
+          candidateUserIds.add(norm);
+          candidateUserIds.add(`firebase_${norm.replace(/[^a-z0-9]/g, "_")}`);
+          candidateUserIds.add(`classnia_${norm.replace(/[^a-z0-9]/g, "_")}`);
+        }
+      }
+    } catch {
+      // Firebase optional
     }
 
     let prismaSessions: any[] = [];
     if (await this.canUsePrisma()) {
       try {
         const { default: prisma } = await import("@/lib/db/prisma");
-        if (email) {
-          const userRecord = await prisma.user.findFirst({
-            where: {
-              OR: [
-                { email: email.toLowerCase().trim() },
-                ...(userId ? [{ id: userId }] : []),
-              ],
-            },
-          });
-          if (userRecord) {
-            candidateUserIds.add(userRecord.id);
+        const lookupEmail = (resolvedEmail || email || (userId?.includes("@") ? userId : ""))
+          .toLowerCase()
+          .trim();
+
+        const userRecords = await prisma.user.findMany({
+          where: {
+            OR: [
+              ...(userId ? [{ id: userId }] : []),
+              ...(lookupEmail ? [{ email: lookupEmail }] : []),
+            ],
+          },
+          select: { id: true, email: true },
+        });
+
+        for (const u of userRecords) {
+          candidateUserIds.add(u.id);
+          if (u.email) {
+            const norm = u.email.toLowerCase().trim();
+            candidateUserIds.add(norm);
+            candidateUserIds.add(`firebase_${norm.replace(/[^a-z0-9]/g, "_")}`);
+            candidateUserIds.add(`classnia_${norm.replace(/[^a-z0-9]/g, "_")}`);
           }
         }
 
@@ -85,7 +127,13 @@ export class AssessmentService {
     // Also get from assessment store
     const storeSessions = assessmentStore.getAllSessions().filter((s) => {
       if (candidateUserIds.has(s.userId)) return true;
-      if (email && (s.userId?.includes(email.split("@")[0]) || s.userId === email)) return true;
+      if (resolvedEmail || email) {
+        const target = (resolvedEmail || email)!.toLowerCase().trim();
+        const prefix = target.split("@")[0];
+        if (s.userId?.toLowerCase() === target || s.userId?.toLowerCase().includes(prefix)) {
+          return true;
+        }
+      }
       return false;
     });
 
@@ -326,6 +374,84 @@ export class AssessmentService {
   }
 
   /**
+   * Restores or syncs a session from a client-provided snapshot into the persistent store.
+   * Provides rock-solid resiliency against serverless container recycling, cold starts, and multi-worker isolation.
+   */
+  static async restoreOrSyncSession(sessionSnapshot: any, userId?: string): Promise<StoredSession> {
+    if (!sessionSnapshot || !sessionSnapshot.id) {
+      throw new Error("Invalid session snapshot");
+    }
+
+    const sessionId = sessionSnapshot.id;
+    const existing = assessmentStore.getSession(sessionId);
+
+    // Merge turns so we never lose turns across client / server boundaries
+    const existingTurns = existing?.turns || [];
+    const snapshotTurns = Array.isArray(sessionSnapshot.turns) ? sessionSnapshot.turns : [];
+
+    const turnsMap = new Map<number, StoredTurn>();
+    for (const t of existingTurns) {
+      turnsMap.set(t.turnIndex, t);
+    }
+    for (const t of snapshotTurns) {
+      turnsMap.set(t.turnIndex, {
+        id: t.id || `turn_${Date.now()}_${t.turnIndex}`,
+        sessionId,
+        turnIndex: t.turnIndex,
+        stage: t.stage || 1,
+        speaker: t.speaker || "LEARNER",
+        textContent: t.textContent || "",
+        pinyinContent: t.pinyinContent || null,
+        audioUrl: t.audioUrl || null,
+        durationMs: t.durationMs || 0,
+        createdAt: t.createdAt || new Date().toISOString(),
+      });
+    }
+    const mergedTurns = Array.from(turnsMap.values()).sort((a, b) => a.turnIndex - b.turnIndex);
+
+    const mergedSession: StoredSession = {
+      id: sessionId,
+      assignmentId: sessionSnapshot.assignmentId || existing?.assignmentId || null,
+      templateId: sessionSnapshot.templateId || existing?.templateId || "tpl-hsk3",
+      rubricId: sessionSnapshot.rubricId || existing?.rubricId || null,
+      userId: sessionSnapshot.userId || existing?.userId || userId || "user_guest",
+      status: sessionSnapshot.status || existing?.status || "IN_PROGRESS",
+      currentStage: Math.max(sessionSnapshot.currentStage || 1, existing?.currentStage || 1),
+      currentTurn: Math.max(sessionSnapshot.currentTurn || 0, existing?.currentTurn || 0, mergedTurns.length),
+      totalTurns: Math.max(sessionSnapshot.totalTurns || 20, existing?.totalTurns || 20, 20),
+      totalDurationSeconds: Math.max(sessionSnapshot.totalDurationSeconds || 0, existing?.totalDurationSeconds || 0),
+      startedAt: sessionSnapshot.startedAt || existing?.startedAt || new Date().toISOString(),
+      completedAt: sessionSnapshot.completedAt || existing?.completedAt || null,
+      failureReason: sessionSnapshot.failureReason || existing?.failureReason || null,
+      createdAt: sessionSnapshot.createdAt || existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      template: sessionSnapshot.template || existing?.template || {
+        id: sessionSnapshot.templateId || "tpl-hsk3",
+        title: sessionSnapshot.template?.title || "Khảo thí khẩu ngữ HSK",
+        slug: sessionSnapshot.template?.slug || "hsk-speaking",
+        description: sessionSnapshot.template?.description || "Bài khảo thí khẩu ngữ",
+        category: "GENERAL",
+        targetLevel: sessionSnapshot.template?.targetLevel || "HSK 3",
+        estimatedDurationMinutes: 15,
+        maxTurns: 20,
+        stagesConfig: STAGES_CONFIG,
+        examinerPrompt: "",
+        rubricId: null,
+        isActive: true,
+        isPublic: true,
+        createdById: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      turns: mergedTurns,
+      result: sessionSnapshot.result || existing?.result || null,
+    };
+
+    assessmentStore.saveSession(mergedSession);
+    return mergedSession;
+  }
+
+  /**
    * Submits a learner's spoken turn and gets the examiner's next response.
    */
   static async submitLearnerTurn(
@@ -333,7 +459,8 @@ export class AssessmentService {
     userId: string,
     learnerText: string,
     audioUrl?: string,
-    durationMs?: number
+    durationMs?: number,
+    sessionSnapshot?: any
   ) {
     const usePrisma = await this.canUsePrisma();
 
@@ -470,10 +597,36 @@ export class AssessmentService {
       }
     }
 
-    // Fallback: manage turns via assessmentStore
-    const storedSession = assessmentStore.getSession(sessionId);
+    // Fallback: manage turns via assessmentStore with automatic self-healing
+    let storedSession = assessmentStore.getSession(sessionId);
+
+    // If session is missing in local process store (e.g., serverless lambda cold-start / new container),
+    // restore it immediately from the client's sessionSnapshot!
+    if (!storedSession && sessionSnapshot) {
+      try {
+        storedSession = await this.restoreOrSyncSession(sessionSnapshot, userId);
+      } catch (recoverErr) {
+        console.warn("Failed to recover session from client snapshot:", recoverErr);
+      }
+    }
+
     if (!storedSession) {
-      throw new Error(`Session ${sessionId} not found`);
+      // Last-ditch self-healing: construct active session container so the exam NEVER halts
+      console.warn(`Session ${sessionId} not found, generating self-healing container`);
+      storedSession = await this.restoreOrSyncSession(
+        {
+          id: sessionId,
+          userId,
+          currentStage: 3,
+          turns: [],
+          template: {
+            id: "tpl-hsk3",
+            title: "Khảo thí khẩu ngữ HSK",
+            targetLevel: "HSK 3",
+          },
+        },
+        userId
+      );
     }
 
     if (storedSession.status !== "IN_PROGRESS") {

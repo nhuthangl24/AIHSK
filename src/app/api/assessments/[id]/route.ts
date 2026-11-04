@@ -34,3 +34,29 @@ export async function GET(
 
   return NextResponse.json({ session });
 }
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  try {
+    const body = await req.json();
+    const sessionData = body.session || body.sessionSnapshot || body;
+    if (sessionData && (sessionData.id === id || !sessionData.id)) {
+      sessionData.id = id;
+      await AssessmentService.restoreOrSyncSession(sessionData, user.userId);
+      const session = await AssessmentService.getSessionWithReport(id, user.userId);
+      return NextResponse.json({ success: true, session });
+    }
+    return NextResponse.json({ error: "Invalid session sync payload" }, { status: 400 });
+  } catch (err: any) {
+    console.error("Session sync error:", err);
+    return NextResponse.json({ error: err.message || "Failed to sync session" }, { status: 500 });
+  }
+}

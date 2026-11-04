@@ -258,13 +258,16 @@ class AssessmentStore {
     profiles: {},
   };
   private initialized = false;
+  private baseDir: string;
   private filePath: string;
+  private sessionsDir: string;
 
   constructor() {
     // Choose writable directory for storage (works on local dev & serverless /tmp)
     const isServerless = Boolean(process.env.NETLIFY || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-    const baseDir = isServerless ? "/tmp" : path.join(process.cwd(), ".data");
-    this.filePath = path.join(baseDir, "assessment_store.json");
+    this.baseDir = isServerless ? "/tmp" : path.join(process.cwd(), ".data");
+    this.filePath = path.join(this.baseDir, "assessment_store.json");
+    this.sessionsDir = path.join(this.baseDir, "sessions");
     this.init();
   }
 
@@ -273,17 +276,7 @@ class AssessmentStore {
     this.initialized = true;
 
     // Load from disk if available
-    try {
-      if (fs.existsSync(this.filePath)) {
-        const raw = fs.readFileSync(this.filePath, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (parsed.templates) this.data.templates = parsed.templates;
-        if (parsed.sessions) this.data.sessions = parsed.sessions;
-        if (parsed.profiles) this.data.profiles = parsed.profiles;
-      }
-    } catch (e) {
-      console.warn("Could not load assessment store from disk:", e);
-    }
+    this.reloadFromDisk();
 
     // Seed default templates if missing
     for (const tpl of DEFAULT_TEMPLATES) {
@@ -293,13 +286,76 @@ class AssessmentStore {
     }
   }
 
+  private reloadFromDisk() {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        const raw = fs.readFileSync(this.filePath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed.templates) Object.assign(this.data.templates, parsed.templates);
+        if (parsed.sessions) Object.assign(this.data.sessions, parsed.sessions);
+        if (parsed.profiles) Object.assign(this.data.profiles, parsed.profiles);
+      }
+    } catch (e) {
+      console.warn("Could not load assessment store from disk:", e);
+    }
+  }
+
+  private getSessionFilePath(sessionId: string): string {
+    const safeId = sessionId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    return path.join(this.sessionsDir, `${safeId}.json`);
+  }
+
+  private saveSessionFile(session: StoredSession) {
+    try {
+      if (!fs.existsSync(this.sessionsDir)) {
+        fs.mkdirSync(this.sessionsDir, { recursive: true });
+      }
+      fs.writeFileSync(this.getSessionFilePath(session.id), JSON.stringify(session, null, 2), "utf-8");
+    } catch (e) {
+      console.warn("Could not write individual session file:", e);
+    }
+  }
+
+  private loadSessionFile(sessionId: string): StoredSession | null {
+    try {
+      const p = this.getSessionFilePath(sessionId);
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, "utf-8");
+        const session = JSON.parse(raw) as StoredSession;
+        if (session && session.id) {
+          this.data.sessions[session.id] = session;
+          return session;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not read individual session file:", e);
+    }
+    return null;
+  }
+
   private persist() {
     try {
       const dir = path.dirname(this.filePath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), "utf-8");
+      // If file exists on disk, read and merge any sessions from disk that might have been saved by other processes
+      if (fs.existsSync(this.filePath)) {
+        try {
+          const raw = fs.readFileSync(this.filePath, "utf-8");
+          const diskData = JSON.parse(raw);
+          if (diskData.sessions) {
+            for (const [sId, sVal] of Object.entries(diskData.sessions)) {
+              if (!this.data.sessions[sId]) {
+                this.data.sessions[sId] = sVal as any;
+              }
+            }
+          }
+        } catch {}
+      }
+      const tmpPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
+      fs.writeFileSync(tmpPath, JSON.stringify(this.data, null, 2), "utf-8");
+      fs.renameSync(tmpPath, this.filePath);
     } catch (e) {
       // Non-fatal if filesystem is read-only; memory cache still works
       console.warn("Warning: Could not persist assessment store to disk:", e);
@@ -327,7 +383,14 @@ class AssessmentStore {
   // --- SESSIONS ---
   getSession(id: string): StoredSession | null {
     this.init();
-    const session = this.data.sessions[id];
+    let session = this.data.sessions[id];
+    if (!session) {
+      session = this.loadSessionFile(id) || null;
+    }
+    if (!session) {
+      this.reloadFromDisk();
+      session = this.data.sessions[id];
+    }
     if (!session) return null;
 
     // Attach template if available
@@ -339,6 +402,7 @@ class AssessmentStore {
 
   getAllSessions(): StoredSession[] {
     this.init();
+    this.reloadFromDisk();
     return Object.values(this.data.sessions)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .map((s) => ({
@@ -349,6 +413,7 @@ class AssessmentStore {
 
   getSessionsByUserId(userId: string): StoredSession[] {
     this.init();
+    this.reloadFromDisk();
     return Object.values(this.data.sessions)
       .filter((s) => s.userId === userId || s.userId?.includes(userId))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -361,6 +426,7 @@ class AssessmentStore {
   saveSession(session: StoredSession): StoredSession {
     this.init();
     this.data.sessions[session.id] = session;
+    this.saveSessionFile(session);
     this.persist();
     return session;
   }
@@ -370,55 +436,117 @@ class AssessmentStore {
     updates: Partial<Omit<StoredSession, "id" | "template" | "turns" | "result">>
   ): StoredSession | null {
     this.init();
-    const existing = this.data.sessions[id];
+    let existing = this.data.sessions[id];
+    if (!existing) {
+      existing = this.loadSessionFile(id) || null;
+    }
+    if (!existing) {
+      this.reloadFromDisk();
+      existing = this.data.sessions[id];
+    }
     if (!existing) return null;
 
     Object.assign(existing, updates, { updatedAt: new Date().toISOString() });
+    this.saveSessionFile(existing);
     this.persist();
     return existing;
   }
 
   addTurn(sessionId: string, turn: StoredTurn): StoredTurn {
     this.init();
-    const session = this.data.sessions[sessionId];
+    let session = this.data.sessions[sessionId];
     if (!session) {
-      throw new Error(`Cannot add turn: session ${sessionId} not found`);
+      session = this.loadSessionFile(sessionId) || null;
+    }
+    if (!session) {
+      this.reloadFromDisk();
+      session = this.data.sessions[sessionId];
+    }
+    if (!session) {
+      // Create resilient in-flight session container
+      session = {
+        id: sessionId,
+        assignmentId: null,
+        templateId: "tpl-hsk3",
+        rubricId: null,
+        userId: "anonymous",
+        status: "IN_PROGRESS",
+        currentStage: turn.stage || 1,
+        currentTurn: turn.turnIndex || 0,
+        totalTurns: 20,
+        totalDurationSeconds: 0,
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+        failureReason: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        turns: [turn],
+        result: null,
+      };
+      this.data.sessions[sessionId] = session;
+      this.saveSessionFile(session);
+      this.persist();
+      return turn;
     }
 
     if (!session.turns) session.turns = [];
     session.turns.push(turn);
+    session.currentTurn = Math.max(session.currentTurn, turn.turnIndex);
     session.updatedAt = new Date().toISOString();
+    this.saveSessionFile(session);
     this.persist();
     return turn;
   }
 
   saveResult(sessionId: string, result: StoredResult): StoredResult {
     this.init();
-    const session = this.data.sessions[sessionId];
+    let session = this.data.sessions[sessionId];
+    if (!session) {
+      session = this.loadSessionFile(sessionId) || null;
+    }
+    if (!session) {
+      this.reloadFromDisk();
+      session = this.data.sessions[sessionId];
+    }
     if (session) {
       session.result = result;
       session.status = "COMPLETED";
       session.completedAt = new Date().toISOString();
       session.updatedAt = new Date().toISOString();
+      this.saveSessionFile(session);
       this.persist();
     }
     return result;
   }
 
   // --- USER PROFILES ---
-  getProfile(userId: string): StoredUserProfile | null {
+  getProfile(userIdOrEmail: string): StoredUserProfile | null {
     this.init();
-    return this.data.profiles[userId] || null;
+    if (!userIdOrEmail) return null;
+    if (this.data.profiles[userIdOrEmail]) return this.data.profiles[userIdOrEmail];
+
+    const normalized = userIdOrEmail.toLowerCase().trim();
+    return (
+      Object.values(this.data.profiles).find(
+        (p) =>
+          p.userId === userIdOrEmail ||
+          p.email?.toLowerCase().trim() === normalized
+      ) || null
+    );
   }
 
   saveProfile(profile: StoredUserProfile): StoredUserProfile {
     this.init();
-    this.data.profiles[profile.userId] = {
+    const cleanProfile: StoredUserProfile = {
       ...profile,
       updatedAt: new Date().toISOString(),
     };
+    this.data.profiles[profile.userId] = cleanProfile;
+    if (profile.email) {
+      this.data.profiles[profile.email.toLowerCase().trim()] = cleanProfile;
+    }
     this.persist();
-    return this.data.profiles[profile.userId];
+    return cleanProfile;
   }
 }
 

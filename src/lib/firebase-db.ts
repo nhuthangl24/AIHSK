@@ -108,14 +108,29 @@ export class FirebaseDb {
   }
 
   /**
-   * Update user in Firestore by UID/id
+   * Update user in Firestore by UID/id or email
    */
-  static async updateUser(userId: string, data: Partial<FirebaseUserDoc>): Promise<boolean> {
+  static async updateUser(
+    userId: string,
+    data: Partial<FirebaseUserDoc>,
+    email?: string
+  ): Promise<boolean> {
     try {
       const db = getFirestoreDb();
       if (!db) return false;
 
-      const userDocRef = doc(db, "users", userId);
+      const targetEmail = (email || data.email || "").toLowerCase().trim();
+      let targetDocId = userId;
+
+      // If userId seems synthetic (e.g. starts with classnia_) and targetEmail exists, resolve real doc ID
+      if (targetEmail && (userId.startsWith("classnia_") || !userId)) {
+        const found = await this.findUserByEmail(targetEmail);
+        if (found?.id) {
+          targetDocId = found.id;
+        }
+      }
+
+      const userDocRef = doc(db, "users", targetDocId);
       await setDoc(
         userDocRef,
         {

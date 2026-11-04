@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { formatDate, formatScore, getScoreBadgeColor } from "@/lib/utils";
 import { PrintButton } from "@/components/reports/print-button";
+import { ReportRecovery } from "@/components/reports/report-recovery";
 
 function formatPerformanceLevel(level?: string): string {
   switch (level) {
@@ -90,7 +91,7 @@ export default async function AssessmentReportPage({
   }
 
   if (!session) {
-    notFound();
+    return <ReportRecovery sessionId={id} />;
   }
 
   if (!session.result) {

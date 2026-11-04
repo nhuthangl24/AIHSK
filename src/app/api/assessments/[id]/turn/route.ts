@@ -14,7 +14,7 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const { text, audioUrl, durationMs } = await req.json();
+    const { text, audioUrl, durationMs, sessionSnapshot } = await req.json();
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
       return NextResponse.json(
@@ -28,7 +28,8 @@ export async function POST(
       user.userId,
       text.trim(),
       audioUrl,
-      durationMs
+      durationMs,
+      sessionSnapshot
     );
 
     return NextResponse.json(result);

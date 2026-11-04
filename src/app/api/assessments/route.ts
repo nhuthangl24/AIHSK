@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AssessmentService } from "@/services/assessment-service";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
@@ -11,7 +13,7 @@ export async function GET() {
   try {
     const [templates, sessions] = await Promise.all([
       AssessmentService.getTemplates(),
-      AssessmentService.getUserSessions(user.userId),
+      AssessmentService.getUserSessions(user.userId, user.email),
     ]);
 
     return NextResponse.json({ templates, sessions });

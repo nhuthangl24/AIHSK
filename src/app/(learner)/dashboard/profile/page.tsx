@@ -12,21 +12,45 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
+  const normalizedEmail = user.email.toLowerCase().trim();
+
+  // 1. Try Prisma first (primary relational database)
+  let prismaProfile: any = null;
+  let prismaUser: any = null;
+  try {
+    const { isPrismaAvailable, default: prisma } = await import("@/lib/db/prisma");
+    if (await isPrismaAvailable()) {
+      prismaUser = await prisma.user.findFirst({
+        where: {
+          OR: [{ email: normalizedEmail }, { id: user.userId }],
+        },
+        include: { profile: true },
+      });
+      prismaProfile = prismaUser?.profile;
+    }
+  } catch (e) {
+    console.warn("Prisma profile page load note:", e);
+  }
+
+  // 2. Try Firebase Firestore
   const fbUser =
     (await FirebaseDb.findUserById(user.userId)) ||
-    (await FirebaseDb.findUserByEmail(user.email));
+    (await FirebaseDb.findUserByEmail(normalizedEmail));
 
-  const storedProfile = assessmentStore.getProfile(user.userId);
+  // 3. Try assessmentStore (check by userId and email)
+  const storedProfile =
+    assessmentStore.getProfile(user.userId) ||
+    assessmentStore.getProfile(normalizedEmail);
 
   const initialData = {
-    name: fbUser?.name || storedProfile?.name || user.name || "",
-    email: fbUser?.email || storedProfile?.email || user.email || "",
+    name: prismaUser?.name || fbUser?.name || storedProfile?.name || user.name || "",
+    email: normalizedEmail,
     avatar: fbUser?.avatar || null,
-    role: fbUser?.role || user.role || "Học Viên",
-    targetLevel: fbUser?.targetLevel || storedProfile?.targetLevel || "HSK 3",
-    nativeLanguage: fbUser?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
-    studyHoursWeekly: fbUser?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
-    learningGoal: fbUser?.learningGoal || storedProfile?.learningGoal || "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa",
+    role: prismaUser?.role || fbUser?.role || user.role || "Học Viên",
+    targetLevel: prismaProfile?.targetLevel || fbUser?.targetLevel || storedProfile?.targetLevel || "HSK 3",
+    nativeLanguage: prismaProfile?.nativeLanguage || fbUser?.nativeLanguage || storedProfile?.nativeLanguage || "Tiếng Việt",
+    studyHoursWeekly: prismaProfile?.studyHoursWeekly ?? fbUser?.studyHoursWeekly ?? storedProfile?.studyHoursWeekly ?? 3,
+    learningGoal: prismaProfile?.learningGoal ?? fbUser?.learningGoal ?? storedProfile?.learningGoal ?? "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa cùng Giám khảo AI.",
     streakDays: fbUser?.streakDays ?? 1,
     totalMastered: fbUser?.totalMastered ?? 0,
   };

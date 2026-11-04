@@ -59,4 +59,44 @@ describe("Examiner 5-Stage Orchestration Unit Tests", () => {
     expect(nextTurn.isCompleted).toBe(true);
     expect(nextTurn.examinerResponse).toContain("结束");
   });
+
+  it("should self-heal and process turn with sessionSnapshot when session was not in store (serverless cold-start simulation)", async () => {
+    const { AssessmentService } = await import("../src/services/assessment-service");
+    const { assessmentStore } = await import("../src/lib/db/assessment-store");
+
+    const coldSessionId = `session_cold_${Date.now()}_abc123`;
+    expect(assessmentStore.getSession(coldSessionId)).toBeNull();
+
+    const result = await AssessmentService.submitLearnerTurn(
+      coldSessionId,
+      "test_user",
+      "老师，我想去日本桥旅游。",
+      undefined,
+      5000,
+      {
+        id: coldSessionId,
+        templateId: "tpl-hsk3",
+        currentStage: 3,
+        currentTurn: 4,
+        turns: [
+          { turnIndex: 0, stage: 1, speaker: "EXAMINER", textContent: "你好！" },
+          { turnIndex: 1, stage: 1, speaker: "LEARNER", textContent: "你好老师！" },
+        ],
+        template: {
+          id: "tpl-hsk3",
+          title: "Du lịch, Đặt phòng & Hỏi đường",
+          targetLevel: "HSK 3",
+        },
+      }
+    );
+
+    expect(result).toBeDefined();
+    expect(result.examinerTurn).toBeDefined();
+    expect(result.examinerTurn.textContent).toBeTruthy();
+
+    const restored = assessmentStore.getSession(coldSessionId);
+    expect(restored).not.toBeNull();
+    expect(restored?.id).toBe(coldSessionId);
+    expect(restored?.template?.title).toBe("Du lịch, Đặt phòng & Hỏi đường");
+  });
 });

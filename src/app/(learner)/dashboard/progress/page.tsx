@@ -41,7 +41,7 @@ export default async function LearningProgressPage() {
   const [sessions, profile] = await Promise.all([
     (async () => {
       try {
-        const list = await AssessmentService.getUserSessions(user.userId);
+        const list = await AssessmentService.getUserSessions(user.userId, user.email);
         return (list || []).filter((s: any) => s.status === "COMPLETED" && s.result);
       } catch {
         return [];

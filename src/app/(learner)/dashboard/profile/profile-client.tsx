@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,6 +156,7 @@ function cleanHsk(level: string): string {
 }
 
 export default function ProfileClient({ initialData }: ProfileClientProps) {
+  const router = useRouter();
   const [name, setName] = useState(initialData.name);
   const [targetLevel, setTargetLevel] = useState(cleanHsk(initialData.targetLevel));
   const [nativeLanguage, setNativeLanguage] = useState(initialData.nativeLanguage || "Tiếng Việt");
@@ -210,10 +212,20 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
         throw new Error(data.error || "Không thể lưu thông tin hồ sơ");
       }
 
+      // Update in-place so subsequent reset or navigation uses the saved values
+      initialData.name = name.trim();
+      initialData.targetLevel = targetLevel;
+      initialData.nativeLanguage = nativeLanguage;
+      initialData.studyHoursWeekly = Number(studyHoursWeekly);
+      initialData.learningGoal = learningGoal.trim();
+
       setStatusMessage({
         type: "success",
         text: "Tuyệt vời! Đã cập nhật hồ sơ học viên & cấu hình mục tiêu HSK thành công.",
       });
+
+      // Refresh Next.js server components cache across the app
+      router.refresh();
 
       setTimeout(() => {
         setStatusMessage(null);

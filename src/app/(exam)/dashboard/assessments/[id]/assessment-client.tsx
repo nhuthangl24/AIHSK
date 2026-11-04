@@ -171,12 +171,42 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     };
   }, []);
 
+  // Persist session to localStorage for resilience against serverless container resets
+  useEffect(() => {
+    if (session && session.id && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`aihsk_active_session_${session.id}`, JSON.stringify(session));
+      } catch (e) {
+        console.warn("Could not cache active session to localStorage:", e);
+      }
+    }
+  }, [session]);
+
   // Fetch Session Data
   const fetchSession = async () => {
     if (!id) return;
     try {
       const res = await fetch(`/api/assessments/${id}`);
       if (!res.ok) {
+        // Resilient fallback: Try recover from browser localStorage
+        if (typeof window !== "undefined") {
+          const cached = localStorage.getItem(`aihsk_active_session_${id}`);
+          if (cached) {
+            try {
+              const cachedSession = JSON.parse(cached);
+              if (cachedSession && cachedSession.id === id) {
+                setSession(cachedSession);
+                // Background sync to server so the serverless container re-hydrates
+                fetch(`/api/assessments/${id}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ session: cachedSession }),
+                }).catch(() => null);
+                return;
+              }
+            } catch {}
+          }
+        }
         throw new Error("Không thể tải thông tin phòng thi.");
       }
       const data = await res.json();
@@ -416,6 +446,20 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
         body: JSON.stringify({
           text: textToSubmit,
           durationMs: actualDurationMs,
+          sessionSnapshot: session
+            ? {
+                id: session.id,
+                assignmentId: session.assignmentId,
+                templateId: session.templateId,
+                template: session.template,
+                currentStage: session.currentStage,
+                currentTurn: session.currentTurn,
+                totalTurns: session.totalTurns,
+                turns: session.turns,
+                userId: session.userId,
+                startedAt: session.startedAt,
+              }
+            : undefined,
         }),
       });
 
@@ -457,6 +501,8 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       const friendlyMsg =
         err?.message?.includes("<!DOCTYPE") || err?.message?.includes("JSON")
           ? "Máy chủ đang xử lý hoặc kết nối bị gián đoạn. Đã giữ lại câu trả lời để bạn gửi lại."
+          : err?.message?.includes("not found")
+          ? "Phiên kết nối vừa được đồng bộ tự động. Vui lòng bấm 'Gửi' lại lần nữa để tiếp tục."
           : (err?.message || "Không thể gửi câu trả lời. Đã giữ lại câu trả lời để bạn gửi lại.");
       alert(friendlyMsg);
     } finally {
