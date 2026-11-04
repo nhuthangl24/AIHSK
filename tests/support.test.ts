@@ -71,6 +71,12 @@ describe("Support Ticket System Unit Tests", () => {
     const userTickets = assessmentStore.getSupportTicketsByUser(testUserId);
     expect(userTickets[0].status).toBe("RESOLVED");
     expect(userTickets[0].adminResponse).toContain("Cảm ơn bạn!");
+
+    // Test individual ticket lookup by ID
+    const singleLookup = assessmentStore.getSupportTicket(sampleTicket.id);
+    expect(singleLookup).not.toBeNull();
+    expect(singleLookup?.id).toBe(sampleTicket.id);
+    expect(singleLookup?.status).toBe("RESOLVED");
   });
 
   it("should process user data purge request conforming to Decree 13 and GDPR Right to be Forgotten", async () => {

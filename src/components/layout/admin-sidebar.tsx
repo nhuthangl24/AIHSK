@@ -13,6 +13,9 @@ import {
   PlayCircle,
   Menu,
   X,
+  HelpCircle,
+  Award,
+  LifeBuoy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/brand-logo";
@@ -20,7 +23,9 @@ import { BrandLogo } from "@/components/ui/brand-logo";
 const NAV_ITEMS = [
   { name: "Tổng Quan Quản Trị", href: "/admin", icon: ShieldAlert },
   { name: "Quản Lý Người Dùng", href: "/admin/users", icon: Users },
+  { name: "Phiên Thi & Kết Quả", href: "/admin/sessions", icon: Award },
   { name: "Mẫu Đề Khảo Thí", href: "/admin/templates", icon: Settings2 },
+  { name: "Yêu Cầu & Báo Lỗi", href: "/admin/support", icon: LifeBuoy },
   { name: "Cấu Hình Mô Hình AI", href: "/admin/ai-config", icon: Cpu },
   { name: "Hàng Đợi & Hệ Thống", href: "/admin/jobs", icon: Activity },
 ];

@@ -393,6 +393,11 @@ class AssessmentStore {
     return Object.values(this.data.templates).filter((t) => t.isActive && t.isPublic);
   }
 
+  getAllTemplates(): StoredTemplate[] {
+    this.init();
+    return Object.values(this.data.templates);
+  }
+
   getTemplate(id: string): StoredTemplate | null {
     this.init();
     return this.data.templates[id] || Object.values(this.data.templates).find((t) => t.slug === id) || null;
@@ -403,6 +408,16 @@ class AssessmentStore {
     this.data.templates[template.id] = template;
     this.persist();
     return template;
+  }
+
+  deleteTemplate(id: string): boolean {
+    this.init();
+    if (this.data.templates[id]) {
+      delete this.data.templates[id];
+      this.persist();
+      return true;
+    }
+    return false;
   }
 
   // --- SESSIONS ---
@@ -575,6 +590,26 @@ class AssessmentStore {
     return result;
   }
 
+  deleteSession(sessionId: string): boolean {
+    this.init();
+    let deleted = false;
+    if (this.data.sessions[sessionId]) {
+      delete this.data.sessions[sessionId];
+      deleted = true;
+    }
+    try {
+      const file = this.getSessionFilePath(sessionId);
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+        deleted = true;
+      }
+    } catch {}
+    if (deleted) {
+      this.persist();
+    }
+    return deleted;
+  }
+
   // --- USER PROFILES ---
   getAllProfiles(): StoredUserProfile[] {
     this.init();
@@ -684,6 +719,25 @@ class AssessmentStore {
     }
   }
 
+  getSupportTicket(id: string): StoredSupportTicket | null {
+    this.init();
+    let ticket = this.data.tickets?.[id];
+    if (!ticket) {
+      try {
+        const filePath = this.getTicketFilePath(id);
+        if (fs.existsSync(filePath)) {
+          ticket = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+          if (ticket) {
+            this.data.tickets[ticket.id] = ticket;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not read individual ticket file:", e);
+      }
+    }
+    return ticket || null;
+  }
+
   saveSupportTicket(ticket: StoredSupportTicket): StoredSupportTicket {
     this.init();
     this.data.tickets[ticket.id] = ticket;
@@ -707,6 +761,58 @@ class AssessmentStore {
     this.reloadFromDisk();
     return Object.values(this.data.tickets || {})
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  updateSupportTicket(
+    id: string,
+    updates: Partial<StoredSupportTicket>
+  ): StoredSupportTicket | null {
+    this.init();
+    this.reloadFromDisk();
+    const existing = this.getSupportTicket(id);
+    if (!existing) return null;
+
+    const updated: StoredSupportTicket = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    this.data.tickets[id] = updated;
+    this.saveTicketFile(updated);
+    this.persist();
+    return updated;
+  }
+
+  deleteSupportTicket(id: string): boolean {
+    this.init();
+    let deleted = false;
+    if (this.data.tickets[id]) {
+      delete this.data.tickets[id];
+      deleted = true;
+    }
+    try {
+      const file = this.getTicketFilePath(id);
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+        deleted = true;
+      }
+    } catch {}
+    if (deleted) {
+      this.persist();
+    }
+    return deleted;
+  }
+
+  getDiskStorageStats() {
+    this.init();
+    this.reloadFromDisk();
+    return {
+      sessionsCount: Object.keys(this.data.sessions || {}).length,
+      templatesCount: Object.keys(this.data.templates || {}).length,
+      profilesCount: Object.keys(this.data.profiles || {}).length,
+      ticketsCount: Object.keys(this.data.tickets || {}).length,
+      storagePath: this.storageFile,
+    };
   }
 }
 
