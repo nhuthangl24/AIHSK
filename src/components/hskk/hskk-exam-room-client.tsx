@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SoundWave } from "@/components/ui/sound-wave";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import {
   HskkExamTemplate,
   HskkSession,
@@ -456,11 +457,16 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4 max-w-4xl mx-auto w-full">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center font-black text-white text-lg">
-              HSKK
-            </div>
+            <BrandLogo size={42} className="rounded-xl shadow-md" />
             <div>
-              <h1 className="text-base sm:text-lg font-extrabold tracking-tight">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-200">Classnia</span>
+                <span className="text-[10px] font-extrabold bg-rose-600 text-white px-1.5 py-0.2 rounded">
+                  AI
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">&bull; Khảo Thí HSKK</span>
+              </div>
+              <h1 className="text-base sm:text-lg font-extrabold tracking-tight mt-0.5">
                 {template.titleZh}
               </h1>
               <p className="text-xs text-slate-400">{template.title}</p>
@@ -643,10 +649,17 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
   if (phase === "SUBMITTING") {
     return (
       <div className="h-full w-full bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center space-y-5">
-        <div className="w-16 h-16 rounded-2xl bg-rose-600 flex items-center justify-center mx-auto animate-bounce">
-          <Sparkles className="h-8 w-8 text-white" />
+        <div className="relative">
+          <BrandLogo size={64} className="rounded-2xl shadow-2xl mx-auto" />
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-rose-600 flex items-center justify-center animate-spin">
+            <Sparkles className="h-3.5 w-3.5 text-white" />
+          </div>
         </div>
         <div className="space-y-2 max-w-md">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400">
+            <span>Classnia AI</span>
+            <span className="text-slate-400">&bull; Giám Khảo Khảo Thí CTI</span>
+          </div>
           <h2 className="text-2xl font-black">Giám Khảo AI Đang Chấm Thi</h2>
           <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
             Hệ thống đang đối chiếu băng ghi âm với barem CTI: Phân tích phổ ngữ âm F0, độ chuẩn thanh điệu, ngữ pháp câu và tính mạch lạc...
@@ -677,8 +690,15 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
           >
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-slate-800 text-slate-300 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <BrandLogo size={36} className="rounded-xl shadow-sm" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold text-white">Classnia</span>
+                    <span className="text-[10px] font-extrabold bg-rose-600 text-white px-1.5 py-0.2 rounded">
+                      AI
+                    </span>
+                  </div>
+                  <Badge className="bg-slate-800 text-slate-300 text-xs ml-1">
                     Chứng Nhận Khảo Thí HSKK 3.0
                   </Badge>
                   <span className="text-xs font-mono text-slate-400">
@@ -904,11 +924,18 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
       {/* Top Exam Header */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
         <div className="flex items-center gap-3">
-          <Badge className="bg-rose-600 text-white font-black text-xs px-2.5 py-0.5">
-            HSKK
-          </Badge>
+          <BrandLogo size={32} className="rounded-lg shadow-xs" />
           <div>
-            <h1 className="text-sm font-bold text-white flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-200">Classnia</span>
+              <span className="text-[10px] font-extrabold bg-rose-600 text-white px-1.5 py-0.2 rounded">
+                AI
+              </span>
+              <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.2 rounded font-semibold">
+                HSKK
+              </span>
+            </div>
+            <h1 className="text-sm font-bold text-white flex items-center gap-2 mt-0.5">
               <span>{template.titleZh}</span>
               <span className="text-xs text-slate-400 font-normal hidden sm:inline">
                 &bull; {currentPart?.nameZh} ({currentPart?.nameVi})

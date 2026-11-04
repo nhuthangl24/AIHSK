@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { HskkExamTemplate, HskkLevel } from "@/types/hskk";
 import { formatScore, formatDate } from "@/lib/utils";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import {
   getSystemAudioSettings,
   saveSystemAudioSettings,
@@ -128,19 +129,22 @@ export default function HskkPortalPage() {
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200 max-w-5xl mx-auto pb-16">
       {/* Page Title & Hero */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold text-xs">
-              Chuẩn CTI &bull; Hanban 2024
-            </Badge>
-            <span className="text-xs text-slate-400">Khung Đánh Giá HSK 3.0</span>
+        <div className="flex items-start gap-3.5">
+          <BrandLogo size={48} className="rounded-2xl shadow-md mt-1 shrink-0 hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold text-xs">
+                Chuẩn CTI &bull; Hanban 2024
+              </Badge>
+              <span className="text-xs text-slate-400">Khung Đánh Giá HSK 3.0</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Phòng Thi Thử HSKK Ảo Chuẩn Quốc Tế
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
+              Mô phỏng trung thực 100% kỳ thi Khẩu ngữ Tiếng Trung trên máy tính (机考). Băng ghi âm câu hỏi chuẩn giọng Bắc Kinh, tín hiệu bíp '嘀' chính thức và Giám khảo AI chấm điểm 7 chiều.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Phòng Thi Thử HSKK Ảo Chuẩn Quốc Tế
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
-            Mô phỏng trung thực 100% kỳ thi Khẩu ngữ Tiếng Trung trên máy tính (机考). Băng ghi âm câu hỏi chuẩn giọng Bắc Kinh, tín hiệu bíp '嘀' chính thức và Giám khảo AI chấm điểm 7 chiều.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -271,13 +275,16 @@ export default function HskkPortalPage() {
         <Card className="rounded-3xl border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
           <CardHeader className="p-5 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <span className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wider block">
-                  Cấu Hình Phòng Khảo Thí Ảo
-                </span>
-                <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
-                  {activeTemplate.title} ({activeTemplate.titleZh})
-                </CardTitle>
+              <div className="flex items-center gap-3">
+                <BrandLogo size={36} className="rounded-xl shadow-xs shrink-0" />
+                <div>
+                  <span className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wider block">
+                    Cấu Hình Phòng Khảo Thí Ảo &bull; Classnia AI
+                  </span>
+                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
+                    {activeTemplate.title} ({activeTemplate.titleZh})
+                  </CardTitle>
+                </div>
               </div>
 
               {/* Exam Mode Toggle */}

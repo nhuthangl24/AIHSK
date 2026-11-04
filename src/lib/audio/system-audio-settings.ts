@@ -10,8 +10,11 @@ export interface SystemAudioSettings {
 const STORAGE_KEY = "aihsk_system_audio_settings";
 const SETTINGS_EVENT = "aihsk_audio_settings_changed";
 
+export const FIXED_VOICE_NAME = "Google 國語（臺灣）";
+export const FIXED_VOICE_LABEL = "✓ Google 國語（臺灣） (zh-TW) ⭐ [Khuyên dùng]";
+
 const DEFAULT_SETTINGS: SystemAudioSettings = {
-  voiceName: "Google 國語（臺灣）",
+  voiceName: FIXED_VOICE_NAME,
   playbackSpeed: 0.95,
   recognitionLang: "zh-TW",
   showPinyin: true,
@@ -52,43 +55,46 @@ export function saveSystemAudioSettings(updates: Partial<SystemAudioSettings>): 
 export function getAvailableChineseVoices(): SpeechSynthesisVoice[] {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return [];
   const voices = window.speechSynthesis.getVoices();
-  return voices.filter(
+  const match = voices.find(
     (v) =>
-      v.lang.startsWith("zh") ||
-      v.lang.includes("cmn") ||
-      v.lang.includes("Chinese") ||
-      v.name.includes("Chinese") ||
-      v.name.includes("Taiwan") ||
-      v.name.includes("Mandarin") ||
-      v.name.includes("國語") ||
-      v.name.includes("普通话")
+      v.name === FIXED_VOICE_NAME ||
+      (v.name.includes("Google") && (v.name.includes("國語") || v.name.includes("Taiwan") || v.lang === "zh-TW"))
   );
+  if (match) return [match];
+
+  // If Google 國語（臺灣） is not installed (e.g. Safari), return the single closest Chinese voice
+  const fallback = getBestChineseVoice(voices);
+  return fallback ? [fallback] : [];
 }
 
 export function getBestChineseVoice(
   voices: SpeechSynthesisVoice[],
-  preferredVoiceName?: string
+  _preferredVoiceName?: string
 ): SpeechSynthesisVoice | null {
   if (!voices || voices.length === 0) return null;
 
-  if (preferredVoiceName) {
-    const exact = voices.find((v) => v.name === preferredVoiceName);
-    if (exact) return exact;
-    const partial = voices.find((v) => v.name.toLowerCase().includes(preferredVoiceName.toLowerCase()));
-    if (partial) return partial;
-  }
+  // Strictly prioritize Google 國語（臺灣）
+  const googleTw = voices.find(
+    (v) =>
+      v.name === FIXED_VOICE_NAME ||
+      (v.name.includes("Google") && (v.name.includes("國語") || v.name.includes("Taiwan") || v.lang === "zh-TW"))
+  );
+  if (googleTw) return googleTw;
 
-  // Priority order for natural standard voices
-  const preferred =
-    voices.find((v) => v.name.includes("Google") && v.name.includes("國語")) ||
-    voices.find((v) => v.name.includes("Google") && v.name.includes("普通话")) ||
-    voices.find((v) => v.name.includes("Microsoft") && (v.name.includes("Xiaoxiao") || v.name.includes("Yunxi"))) ||
-    voices.find((v) => v.name.includes("Ting-Ting") || v.name.includes("Mei-Jia") || v.name.includes("Sin-ji")) ||
-    voices.find((v) => v.lang === "zh-TW") ||
-    voices.find((v) => v.lang === "zh-CN") ||
-    voices[0];
+  // Fallbacks for non-Chromium browsers (e.g. Safari on iOS/macOS)
+  const zhTw = voices.find((v) => v.lang === "zh-TW" || v.lang === "zh_TW");
+  if (zhTw) return zhTw;
 
-  return preferred || null;
+  const anyZh = voices.find(
+    (v) =>
+      v.lang.startsWith("zh") ||
+      v.lang.includes("cmn") ||
+      v.name.includes("Chinese") ||
+      v.name.includes("Taiwan") ||
+      v.name.includes("國語")
+  );
+
+  return anyZh || voices[0] || null;
 }
 
 export function cleanSpeechText(text: string): string {
@@ -122,12 +128,12 @@ export function speakWithSystemSettings(
   const settings = getSystemAudioSettings();
   const utterance = new SpeechSynthesisUtterance(clean);
 
-  utterance.lang = settings.recognitionLang || "zh-CN";
+  utterance.lang = settings.recognitionLang || "zh-TW";
   utterance.rate = options?.speedOverride || settings.playbackSpeed || 0.95;
   utterance.pitch = 1.0;
 
-  const voices = getAvailableChineseVoices();
-  const targetVoice = getBestChineseVoice(voices, options?.voiceNameOverride || settings.voiceName);
+  const allVoices = typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis.getVoices() : [];
+  const targetVoice = getBestChineseVoice(allVoices, FIXED_VOICE_NAME);
   if (targetVoice) {
     utterance.voice = targetVoice;
   }
