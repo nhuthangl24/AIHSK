@@ -35,6 +35,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { LegalModal } from "@/components/legal/legal-modal";
+import { DataPurgeModal } from "@/components/legal/data-purge-modal";
 
 interface ProfileClientProps {
   initialData: {
@@ -171,6 +172,7 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
   const [learningGoal, setLearningGoal] = useState(initialData.learningGoal || "");
 
   const [legalModalType, setLegalModalType] = useState<"terms" | "privacy" | null>(null);
+  const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [anonymousContribution, setAnonymousContribution] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isPurging, setIsPurging] = useState(false);

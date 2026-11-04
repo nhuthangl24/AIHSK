@@ -39,8 +39,8 @@ export function MarketingFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
-                  Gói Dịch Vụ
+                <Link href="/dashboard/support" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
+                  Hỗ Trợ & Báo Lỗi
                 </Link>
               </li>
               <li>
