@@ -231,70 +231,66 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
   return (
     <div className="space-y-8">
       {/* =========================================================================
-          HERO LEARNER PROFILE HEADER
+          HERO LEARNER PROFILE HEADER (Clean, modern, cover-free)
           ========================================================================= */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        {/* Decorative banner top gradient */}
-        <div className="h-28 sm:h-32 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 relative">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/20 via-transparent to-black/20" />
-          <div className="absolute right-6 top-4 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-semibold shadow-inner">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Lộ Trình Thích Ứng Cá Nhân Hóa</span>
-          </div>
-        </div>
-
-        {/* Hero content & Avatar */}
-        <div className="px-6 pb-6 pt-0 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-14 mb-4">
-            {/* Avatar & Learner Details */}
-            <div className="flex items-end gap-4">
-              <div className="relative group">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-rose-500 to-amber-500 text-white font-black text-2xl sm:text-3xl flex items-center justify-center shadow-lg ring-4 ring-white dark:ring-slate-900 select-none">
-                  {getInitials(name || initialData.email)}
-                </div>
-                <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full ring-2 ring-white dark:ring-slate-900" title="Đã xác thực">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
+      <div className="rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-6 sm:p-7">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          {/* Avatar & Learner Details */}
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="relative group shrink-0">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-100 dark:to-slate-200 text-white dark:text-slate-900 font-black text-2xl sm:text-3xl flex items-center justify-center shadow-md select-none border border-slate-200/60 dark:border-slate-700">
+                {getInitials(name || initialData.email)}
               </div>
-
-              <div className="pb-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                    {name || "Học Viên"}
-                  </h1>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                    <Target className="w-3 h-3" />
-                    Mục tiêu: {targetLevel}
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  {initialData.email}
-                </p>
+              <div
+                className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm"
+                title="Tài khoản đã xác thực"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
               </div>
             </div>
 
-            {/* Quick stats badges */}
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <div className="px-3.5 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
-                  <Flame className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Chuỗi học tập</div>
-                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{initialData.streakDays ?? 1} ngày liên tiếp</div>
-                </div>
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+                  {name || "Học Viên"}
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/80">
+                  <Target className="w-3 h-3" />
+                  Mục tiêu: {targetLevel}
+                </span>
               </div>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5 truncate">
+                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                {initialData.email}
+              </p>
+            </div>
+          </div>
 
-              <div className="px-3.5 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Thời lượng</div>
-                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{studyHoursWeekly}h / tuần</div>
-                </div>
+          {/* Quick stats badges & AI indicator */}
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+            <div className="px-3.5 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
+                <Flame className="w-4 h-4" />
               </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Chuỗi học tập</div>
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{initialData.streakDays ?? 1} ngày liên tiếp</div>
+              </div>
+            </div>
+
+            <div className="px-3.5 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold shrink-0">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Thời lượng</div>
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{studyHoursWeekly}h / tuần</div>
+              </div>
+            </div>
+
+            <div className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 text-xs font-semibold border border-slate-200/60 dark:border-slate-700/60">
+              <Sparkles className="w-3.5 h-3.5 text-rose-500" />
+              <span>Lộ trình AI thích ứng</span>
             </div>
           </div>
         </div>
@@ -424,15 +420,6 @@ export default function ProfileClient({ initialData }: ProfileClientProps) {
                   <div className="text-3xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
                     {studyHoursWeekly} <span className="text-base font-semibold text-slate-600 dark:text-slate-300">giờ / tuần</span>
                   </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
-                    {studyHoursWeekly <= 2
-                      ? "Khởi động nhẹ nhàng"
-                      : studyHoursWeekly <= 4
-                      ? "Tiêu chuẩn khuyên nghị ⭐"
-                      : studyHoursWeekly <= 7
-                      ? "Tăng tốc bứt phá 🚀"
-                      : "Cường độ cao 🔥"}
-                  </span>
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Tương đương ~{Math.max(1, Math.round(studyHoursWeekly * 1.5))} bài thi phỏng vấn AI / tuần
