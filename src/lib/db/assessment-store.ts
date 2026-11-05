@@ -546,6 +546,7 @@ class AssessmentStore {
   }
 
   private saveSessionFile(session: StoredSession) {
+    if (process.env.NODE_ENV === "test" || process.env.VITEST === "true" || isTestSession(session)) return;
     try {
       if (!fs.existsSync(this.sessionsDir)) {
         fs.mkdirSync(this.sessionsDir, { recursive: true });
@@ -574,34 +575,29 @@ class AssessmentStore {
   }
 
   private persist() {
+    if (process.env.NODE_ENV === "test" || process.env.VITEST === "true") return;
     try {
       const dir = path.dirname(this.filePath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      // If file exists on disk, read and merge any sessions and tickets from disk that might have been saved by other processes
-      if (fs.existsSync(this.filePath)) {
-        try {
-          const raw = fs.readFileSync(this.filePath, "utf-8");
-          const diskData = JSON.parse(raw);
-          if (diskData.sessions) {
-            for (const [sId, sVal] of Object.entries(diskData.sessions)) {
-              if (!this.data.sessions[sId]) {
-                this.data.sessions[sId] = sVal as any;
-              }
-            }
-          }
-          if (diskData.tickets) {
-            for (const [tId, tVal] of Object.entries(diskData.tickets)) {
-              if (!this.data.tickets[tId]) {
-                this.data.tickets[tId] = tVal as any;
-              }
-            }
-          }
-        } catch {}
+      const toPersist: StoreData = {
+        templates: {},
+        sessions: {},
+        profiles: { ...this.data.profiles },
+        tickets: {},
+      };
+      for (const [id, tpl] of Object.entries(this.data.templates)) {
+        if (!isJunkTemplate(tpl)) toPersist.templates[id] = tpl;
+      }
+      for (const [id, s] of Object.entries(this.data.sessions)) {
+        if (!isTestSession(s)) toPersist.sessions[id] = s;
+      }
+      for (const [id, t] of Object.entries(this.data.tickets)) {
+        if (!isTestTicket(t)) toPersist.tickets[id] = t;
       }
       const tmpPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(tmpPath, JSON.stringify(this.data, null, 2), "utf-8");
+      fs.writeFileSync(tmpPath, JSON.stringify(toPersist, null, 2), "utf-8");
       fs.renameSync(tmpPath, this.filePath);
     } catch (e) {
       // Non-fatal if filesystem is read-only; memory cache still works
@@ -677,9 +673,14 @@ class AssessmentStore {
         for (const file of files) {
           if (file.endsWith(".json")) {
             const sessionId = file.replace(/\.json$/, "");
-            if (!this.data.sessions[sessionId]) {
-              const loaded = this.loadSessionFile(sessionId);
-              if (loaded && loaded.id) {
+            const loaded = this.loadSessionFile(sessionId);
+            if (loaded && loaded.id) {
+              if (isTestSession(loaded)) {
+                try {
+                  fs.unlinkSync(path.join(this.sessionsDir, file));
+                } catch {}
+                delete this.data.sessions[loaded.id];
+              } else if (!this.data.sessions[sessionId]) {
                 this.data.sessions[loaded.id] = loaded;
               }
             }
@@ -936,6 +937,7 @@ class AssessmentStore {
   }
 
   private saveTicketFile(ticket: StoredSupportTicket) {
+    if (process.env.NODE_ENV === "test" || process.env.VITEST === "true" || isTestTicket(ticket)) return;
     try {
       if (!fs.existsSync(this.ticketsDir)) {
         fs.mkdirSync(this.ticketsDir, { recursive: true });
