@@ -53,29 +53,37 @@ export default function HskkPortalPage() {
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceName, setSelectedVoiceName] = useState("");
   const [playbackSpeed, setPlaybackSpeed] = useState(0.95);
-  const [recognitionLang, setRecognitionLang] = useState("zh-CN");
+  const [recognitionLang, setRecognitionLang] = useState("zh-TW");
 
   useEffect(() => {
     const sys = getSystemAudioSettings();
-    setSelectedVoiceName(sys.voiceName || "");
+    setSelectedVoiceName(FIXED_VOICE_NAME);
     setPlaybackSpeed(sys.playbackSpeed || 0.95);
-    setRecognitionLang(sys.recognitionLang || "zh-CN");
+    setRecognitionLang(sys.recognitionLang || "zh-TW");
 
     const loadVoices = () => {
       setAvailableVoices(getAvailableChineseVoices());
     };
     loadVoices();
     if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+      window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
     }
 
     const onSettingsChanged = (e: any) => {
       const updated: SystemAudioSettings = e.detail || getSystemAudioSettings();
-      if (updated.voiceName) setSelectedVoiceName(updated.voiceName);
+      setSelectedVoiceName(FIXED_VOICE_NAME);
       if (typeof updated.playbackSpeed === "number") setPlaybackSpeed(updated.playbackSpeed);
       if (updated.recognitionLang) setRecognitionLang(updated.recognitionLang);
     };
     window.addEventListener("aihsk_audio_settings_changed", onSettingsChanged);
+
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+      }
+      window.removeEventListener("aihsk_audio_settings_changed", onSettingsChanged);
+      stopSystemSpeech();
+    };
 
     async function fetchTemplates() {
       try {

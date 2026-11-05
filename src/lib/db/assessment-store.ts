@@ -320,6 +320,13 @@ class AssessmentStore {
         this.data.tickets[ticket.id] = ticket;
       }
     }
+
+    // Purge any lingering junk test templates
+    for (const id of Object.keys(this.data.templates)) {
+      if (id.startsWith("tpl_custom_") || this.data.templates[id]?.title === "Đàm phán xuất nhập khẩu") {
+        delete this.data.templates[id];
+      }
+    }
   }
 
   public reloadFromDisk() {

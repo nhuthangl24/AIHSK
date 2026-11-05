@@ -17,12 +17,74 @@ export interface EnrichedAdminUser {
   avatar?: string | null;
 }
 
+export function isTestUser(userId: string, email?: string, name?: string): boolean {
+  const u = (userId || "").toLowerCase().trim();
+  const e = (email || "").toLowerCase().trim();
+  const n = (name || "").toLowerCase().trim();
+
+  // Test ID prefixes & patterns
+  if (
+    u.startsWith("firebase_test") ||
+    u.startsWith("firebase_user_test") ||
+    u.startsWith("integration_user") ||
+    u.startsWith("user_test") ||
+    u.startsWith("purge_user") ||
+    u.startsWith("test_") ||
+    u === "anonymous" ||
+    u.startsWith("guest_") ||
+    u.startsWith("uid_firebase_test") ||
+    u.startsWith("user_synth") ||
+    u.startsWith("bulk_user") ||
+    u.includes("test")
+  ) {
+    return true;
+  }
+
+  // Test email patterns
+  if (
+    e.includes("test.") ||
+    e.includes(".test@") ||
+    e.includes("example.com") ||
+    e.includes("purge@") ||
+    e.endsWith("@test.com") ||
+    e.includes("student_test") ||
+    e.includes("learner@test.com") ||
+    e.includes("test99@") ||
+    e.includes("test@") ||
+    e.includes("synth@") ||
+    e.includes("bulk")
+  ) {
+    return true;
+  }
+
+  // Test names
+  if (
+    n.includes("học viên firebase") ||
+    n.includes("học viên integrat") ||
+    n.includes("test student") ||
+    n.includes("purge student") ||
+    n.includes("học viên test") ||
+    n.includes("synthetic user") ||
+    n.includes("bulk student")
+  ) {
+    return true;
+  }
+
+  // Reject synthetic records without a genuine email
+  if (!e || !e.includes("@")) {
+    return true;
+  }
+
+  return false;
+}
+
 export class AdminService {
   /**
-   * Retrieves unified list of all platform users merged from:
+   * Retrieves unified list of all real platform users merged from:
    * 1. Firebase Firestore registered users (Primary Auth DB)
    * 2. AssessmentStore stored user profiles
    * 3. Examination session candidate records
+   * Filters out all automated test runs, mock users, and synthetic artifacts.
    */
   static async getEnrichedUsers(): Promise<EnrichedAdminUser[]> {
     const fbUsers = await FirebaseDb.getAllUsers().catch(() => []);
@@ -31,8 +93,10 @@ export class AdminService {
 
     const userMap = new Map<string, EnrichedAdminUser>();
 
-    // 1. Add all Firestore users
+    // 1. Add all Firestore users (filter out test accounts)
     for (const u of fbUsers) {
+      if (isTestUser(u.id, u.email, u.name)) continue;
+
       const email = u.email?.toLowerCase().trim() || "";
       const key = email || u.id;
       const isAdmin = ADMIN_EMAILS.includes(email) || u.role === "ADMIN";
@@ -53,8 +117,10 @@ export class AdminService {
       });
     }
 
-    // 2. Add or merge stored profiles from assessmentStore
+    // 2. Add or merge stored profiles from assessmentStore (filter out test accounts)
     for (const p of storedProfiles) {
+      if (isTestUser(p.userId, p.email, p.name)) continue;
+
       const email = p.email?.toLowerCase().trim() || "";
       const key = email || p.userId;
       const existing = userMap.get(key);
@@ -85,17 +151,20 @@ export class AdminService {
       }
     }
 
-    // 3. Add users who participated in assessment sessions if not yet indexed
+    // 3. Add genuine users from sessions (must have valid non-test email)
     for (const s of allSessions) {
       const email = s.userEmail?.toLowerCase().trim() || "";
       const id = s.userId;
-      const key = email || id;
+      if (!email || !email.includes("@")) continue;
+      if (isTestUser(id, email, s.userName)) continue;
 
-      if (key && !userMap.has(key)) {
-        const isAdmin = Boolean(email && ADMIN_EMAILS.includes(email));
+      const key = email;
+
+      if (!userMap.has(key)) {
+        const isAdmin = Boolean(ADMIN_EMAILS.includes(email));
         userMap.set(key, {
           userId: id,
-          name: email ? email.split("@")[0] : `Học Viên ${id.substring(0, 8)}`,
+          name: s.userName || email.split("@")[0],
           email,
           role: isAdmin ? "ADMIN" : "USER",
           targetLevel: s.template?.targetLevel || s.result?.hskLevel || "HSK 3",

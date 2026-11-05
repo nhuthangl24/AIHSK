@@ -84,9 +84,9 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
 
   // Audio & Hardware Settings
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoiceName, setSelectedVoiceName] = useState("");
+  const [selectedVoiceName, setSelectedVoiceName] = useState(FIXED_VOICE_NAME);
   const [playbackSpeed, setPlaybackSpeed] = useState(0.95);
-  const [recognitionLang, setRecognitionLang] = useState("zh-CN");
+  const [recognitionLang, setRecognitionLang] = useState("zh-TW");
 
   // Live Hardware Testing & Visualizer
   const [isTestingAudio, setIsTestingAudio] = useState(false);
@@ -110,9 +110,9 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
   // 1. Initial Load & Sync
   useEffect(() => {
     const sys = getSystemAudioSettings();
-    setSelectedVoiceName(sys.voiceName || "");
+    setSelectedVoiceName(FIXED_VOICE_NAME);
     setPlaybackSpeed(sys.playbackSpeed || 0.95);
-    setRecognitionLang(sys.recognitionLang || "zh-CN");
+    setRecognitionLang(sys.recognitionLang || "zh-TW");
     setShowPinyin(typeof sys.showPinyin === "boolean" ? sys.showPinyin : true);
 
     const loadVoices = () => {
@@ -120,12 +120,12 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
     };
     loadVoices();
     if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+      window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
     }
 
     const onSettingsChanged = (e: any) => {
       const updated: SystemAudioSettings = e.detail || getSystemAudioSettings();
-      if (updated.voiceName) setSelectedVoiceName(updated.voiceName);
+      setSelectedVoiceName(FIXED_VOICE_NAME);
       if (typeof updated.playbackSpeed === "number") setPlaybackSpeed(updated.playbackSpeed);
       if (updated.recognitionLang) setRecognitionLang(updated.recognitionLang);
       if (typeof updated.showPinyin === "boolean") setShowPinyin(updated.showPinyin);
@@ -185,6 +185,9 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+      }
       hskkAudio.stopSpeaking();
       stopMicListening();
       window.removeEventListener("aihsk_audio_settings_changed", onSettingsChanged);

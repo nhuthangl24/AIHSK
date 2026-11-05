@@ -151,7 +151,8 @@ export default function FreeTalkClient() {
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = "zh-CN";
+      const sysSettings = getSystemAudioSettings();
+      recognition.lang = sysSettings.recognitionLang || "zh-TW";
       recognition.continuous = true;
       recognition.interimResults = true;
 

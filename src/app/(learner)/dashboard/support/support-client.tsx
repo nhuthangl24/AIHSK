@@ -942,68 +942,75 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
                         {t.description}
                       </p>
 
-                      {/* Prominent Resolution Box when ticket is resolved or admin responded */}
+                      {/* Compact Resolution Box when ticket is resolved or admin responded */}
                       {isResolved ? (
-                        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 space-y-2.5">
+                        <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 text-xs">
-                              <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                              <span>Kết quả xử lý từ Đội Ngũ Kỹ Thuật Classnia AI</span>
+                            <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
+                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>Phản hồi từ Kỹ thuật viên:</span>
                             </span>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0 font-medium">
                               {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : ""}
                             </span>
                           </div>
 
-                          <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed bg-emerald-50/50 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
+                          <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed font-normal">
                             {t.adminResponse || "Kỹ thuật viên đã kiểm tra và khắc phục sự cố cho tài khoản của bạn. Bạn có thể an tâm tiếp tục luyện tập!"}
                           </p>
 
-                          {/* Direct actionable buttons for learner */}
-                          <div className="flex items-center gap-2 pt-1 flex-wrap">
+                          {/* Direct compact action links */}
+                          <div className="flex items-center gap-2 pt-0.5 text-[11px] flex-wrap">
                             {t.relatedSessionId ? (
                               <>
                                 <Link
                                   href={`/dashboard/assessments/${t.relatedSessionId}`}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition-colors"
+                                  className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
                                 >
-                                  <RotateCcw className="h-3.5 w-3.5" />
-                                  <span>Vào Lại Phòng Thi #{t.relatedSessionId.substring(0, 8)}</span>
+                                  <RotateCcw className="h-3 w-3" />
+                                  <span>Vào lại bài thi</span>
                                 </Link>
+                                <span className="text-slate-300 dark:text-slate-700">&bull;</span>
                                 <Link
                                   href="/dashboard/assessments"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] transition-colors"
+                                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium hover:underline flex items-center gap-1"
                                 >
-                                  <Mic className="h-3.5 w-3.5 text-rose-600" />
-                                  <span>Thi Đề Mới</span>
+                                  <Mic className="h-3 w-3 text-rose-500" />
+                                  <span>Thi đề mới</span>
                                 </Link>
                               </>
                             ) : (
                               <>
                                 <Link
                                   href="/dashboard/assessments"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition-colors"
+                                  className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
                                 >
-                                  <Mic className="h-3.5 w-3.5" />
-                                  <span>Vào Phòng Khảo Thí Khẩu Ngữ</span>
+                                  <Mic className="h-3 w-3" />
+                                  <span>Vào phòng thi</span> &rarr;
                                 </Link>
+                                <span className="text-slate-300 dark:text-slate-700">&bull;</span>
                                 <Link
                                   href="/dashboard/free-talk"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] transition-colors"
+                                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium hover:underline flex items-center gap-1"
                                 >
-                                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                                  <span>Đối Thoại Tự Do Với Giám Khảo</span>
+                                  <Sparkles className="h-3 w-3 text-amber-500" />
+                                  <span>Trò chuyện tự do</span>
                                 </Link>
                               </>
                             )}
                           </div>
                         </div>
                       ) : t.adminResponse ? (
-                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-900 dark:text-blue-200 space-y-1">
-                          <span className="font-bold block text-blue-700 dark:text-blue-400">
-                            Phản hồi từ Kỹ thuật viên:
-                          </span>
-                          <p>{t.adminResponse}</p>
+                        <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60 text-xs text-blue-950 dark:text-blue-200 space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-blue-800 dark:text-blue-300">
+                              Phản hồi từ Kỹ thuật viên:
+                            </span>
+                            <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0 font-medium">
+                              {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : ""}
+                            </span>
+                          </div>
+                          <p className="leading-relaxed">{t.adminResponse}</p>
                         </div>
                       ) : null}
 

@@ -64,8 +64,8 @@ export function PostReportPracticeCard({
     };
 
     loadVoices();
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
     }
 
     const handleSettingsChange = (e: any) => {
@@ -77,6 +77,9 @@ export function PostReportPracticeCard({
 
     window.addEventListener("aihsk_audio_settings_changed", handleSettingsChange);
     return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+      }
       window.removeEventListener("aihsk_audio_settings_changed", handleSettingsChange);
       stopSystemSpeech();
     };

@@ -31,7 +31,8 @@ import { formatDuration } from "@/lib/utils";
 import {
   getSystemAudioSettings,
   saveSystemAudioSettings,
-  getBestChineseVoice,
+  speakWithSystemSettings,
+  stopSystemSpeech,
   FIXED_VOICE_NAME,
   FIXED_VOICE_LABEL,
 } from "@/lib/audio/system-audio-settings";
@@ -134,8 +135,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isReportReady, setIsReportReady] = useState(false);
   const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoiceName, setSelectedVoiceName] = useState<string>("Google 國語（臺灣）");
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>(FIXED_VOICE_NAME);
   const [recognitionLang, setRecognitionLang] = useState<string>("zh-TW");
 
   // Modals & Panels
@@ -154,44 +154,27 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
   const elapsedTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load Voices and System Audio Settings for TTS
+  // Load System Audio Settings for TTS
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const sysSettings = getSystemAudioSettings();
     setPlaybackSpeed(sysSettings.playbackSpeed);
-    setSelectedVoiceName(sysSettings.voiceName);
+    setSelectedVoiceName(FIXED_VOICE_NAME);
     setRecognitionLang(sysSettings.recognitionLang);
     setShowPinyin(sysSettings.showPinyin);
 
-    if (!("speechSynthesis" in window)) return;
-
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      const zhVoices = voices.filter(
-        (v) =>
-          v.lang.startsWith("zh") ||
-          v.lang.includes("cmn") ||
-          v.lang.includes("Chinese") ||
-          v.name.includes("Chinese") ||
-          v.name.includes("Taiwan") ||
-          v.name.includes("Mandarin")
-      );
-      setAvailableVoices(zhVoices);
-
-      const target = getBestChineseVoice(zhVoices, sysSettings.voiceName);
-      if (target) {
-        setSelectedVoiceName(target.name);
-      }
+    const onSettingsChanged = (e: any) => {
+      const updated = e.detail || getSystemAudioSettings();
+      if (typeof updated.playbackSpeed === "number") setPlaybackSpeed(updated.playbackSpeed);
+      if (updated.recognitionLang) setRecognitionLang(updated.recognitionLang);
+      if (typeof updated.showPinyin === "boolean") setShowPinyin(updated.showPinyin);
     };
-
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+    window.addEventListener("aihsk_audio_settings_changed", onSettingsChanged);
 
     return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      window.removeEventListener("aihsk_audio_settings_changed", onSettingsChanged);
+      stopSystemSpeech();
     };
   }, []);
 
@@ -285,9 +268,7 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
       if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      stopSystemSpeech();
     };
   }, [id]);
 
@@ -301,53 +282,28 @@ export default function AssessmentExamRoomClient({ sessionId }: { sessionId?: st
     }
   }, [session?.turns, isRecording, learnerTranscript, isExaminerSpeaking, isSubmittingTurn]);
 
-  // Examiner Voice TTS
+  // Examiner Voice TTS - Strictly unified with System Audio Settings
   const speakExaminerText = (text: string, speedOverride?: number) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    stopExaminerVoice();
 
-    window.speechSynthesis.cancel();
-    setIsExaminerSpeaking(false);
-
-    const cleanText = text
-      .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]/gu, "")
-      .replace(/[\(\[（【].*?[\)\]）】]/g, "")
-      .trim();
-
-    if (!cleanText) return;
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = recognitionLang;
-    utterance.rate = speedOverride || playbackSpeed;
-    utterance.pitch = 1.0;
-
-    if (availableVoices.length > 0) {
-      const match = availableVoices.find((v) => v.name === selectedVoiceName);
-      if (match) utterance.voice = match;
-    }
-
-    utterance.onstart = () => {
-      setIsExaminerSpeaking(true);
-    };
-
-    utterance.onend = () => {
-      setIsExaminerSpeaking(false);
-      currentUtteranceRef.current = null;
-    };
-
-    utterance.onerror = (e) => {
-      console.warn("TTS playback note:", e);
-      setIsExaminerSpeaking(false);
-      currentUtteranceRef.current = null;
-    };
+    const utterance = speakWithSystemSettings(text, {
+      speedOverride: speedOverride || playbackSpeed,
+      onStart: () => setIsExaminerSpeaking(true),
+      onEnd: () => {
+        setIsExaminerSpeaking(false);
+        currentUtteranceRef.current = null;
+      },
+      onError: () => {
+        setIsExaminerSpeaking(false);
+        currentUtteranceRef.current = null;
+      },
+    });
 
     currentUtteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
   };
 
   const stopExaminerVoice = () => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    stopSystemSpeech();
     setIsExaminerSpeaking(false);
     currentUtteranceRef.current = null;
   };
