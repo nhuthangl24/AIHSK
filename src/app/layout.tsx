@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { FirebaseSessionSync } from "@/components/auth/firebase-session-sync";
+import { PageLoadingBar } from "@/components/common/page-loading-bar";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -162,6 +163,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col font-sans bg-slate-50/50 text-slate-900 antialiased selection:bg-rose-500/20 selection:text-rose-600 dark:bg-slate-950 dark:text-slate-100 m-0 p-0">
+        <PageLoadingBar />
         <FirebaseSessionSync />
         {children}
       </body>
