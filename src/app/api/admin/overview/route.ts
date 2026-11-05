@@ -1,31 +1,35 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
-import { UserRole } from "@/types/database";
+import { getCurrentUser, isAuthorizedAdmin } from "@/lib/auth/session";
 import { AIClient } from "@/lib/ai/ai-client";
 import { assessmentStore } from "@/lib/db/assessment-store";
+import { AdminService } from "@/lib/admin/admin-service";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user || user.role !== UserRole.ADMIN) {
+  if (!isAuthorizedAdmin(user)) {
     return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
   }
 
   const allSessions = assessmentStore.getAllSessions();
-  const templates = assessmentStore.getTemplates();
+  const templates = assessmentStore.getAllTemplates();
+  const users = await AdminService.getEnrichedUsers();
+
   const assessmentCount = allSessions.length;
   const completedCount = allSessions.filter((s) => s.status === "COMPLETED").length;
   const failedCount = allSessions.filter((s) => s.status === "FAILED").length;
-  const userCount = Math.max(1, new Set(allSessions.map((s) => s.userId)).size);
+  const userCount = users.length;
 
   const activeAI = await AIClient.getActiveConfig().catch(() => ({
     providerName: "hhtech",
-    modelId: "claude-sonnet-4.6",
+    modelId: "claude-haiku-4.5",
     isEnabled: true,
     apiKey: "configured",
   }));
 
   const llmDisplay = activeAI.apiKey && activeAI.isEnabled
-    ? `${activeAI.providerName.toUpperCase()} (${activeAI.modelId})`
+    ? `${activeAI.providerName === "hhtech" ? "HHTECH.API" : activeAI.providerName.toUpperCase()} (${activeAI.modelId})`
     : "Built-in Adaptive Neural Engine";
 
   return NextResponse.json({
@@ -40,7 +44,7 @@ export async function GET() {
     templates,
     recentJobs: [],
     recentAudits: [],
-    recentUsers: [],
+    recentUsers: users.slice(0, 5),
     aiConfig: {
       llmProvider: llmDisplay,
       speechRecognition: "Web Audio STT / Cloud Whisper API",

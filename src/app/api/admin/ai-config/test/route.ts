@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
-import { UserRole } from "@/types/database";
+import { getCurrentUser, isAuthorizedAdmin } from "@/lib/auth/session";
 import { AIClient } from "@/lib/ai/ai-client";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
-  if (!user || user.role !== UserRole.ADMIN) {
+  if (!isAuthorizedAdmin(user)) {
     return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
   }
 

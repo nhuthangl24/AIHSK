@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, ADMIN_EMAILS } from "@/lib/auth/session";
-import { UserRole } from "@/types/database";
+import { getCurrentUser, isAuthorizedAdmin } from "@/lib/auth/session";
 import { assessmentStore, StoredTemplate } from "@/lib/db/assessment-store";
 import { STAGES_CONFIG } from "@/lib/ai/examiner-service";
 
-function isAuthorizedAdmin(user: any): boolean {
-  if (!user) return false;
-  return (
-    user.role === UserRole.ADMIN ||
-    user.role === "ADMIN" ||
-    ADMIN_EMAILS.includes(user.email?.toLowerCase().trim())
-  );
-}
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const user = await getCurrentUser();

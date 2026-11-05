@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Settings2,
   Plus,
@@ -14,6 +14,7 @@ import {
   Save,
   RefreshCw,
   Sparkles,
+  Search,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,22 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
   const [editingTemplate, setEditingTemplate] = useState<Partial<StoredTemplate> | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [levelFilter, setLevelFilter] = useState("ALL");
+
+  const filteredTemplates = useMemo(() => {
+    return templates.filter((t) => {
+      const matchLevel = levelFilter === "ALL" || t.targetLevel === levelFilter;
+      const q = search.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        t.title.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.slug.toLowerCase().includes(q) ||
+        t.targetLevel.toLowerCase().includes(q);
+      return matchLevel && matchSearch;
+    });
+  }, [templates, levelFilter, search]);
 
   const handleToggleActive = async (template: StoredTemplate) => {
     const newActive = !template.isActive;
@@ -165,9 +182,38 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
         </div>
       </div>
 
+      {/* Search & Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Tìm theo tên đề thi, mô tả, cấp độ HSK..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <select
+            value={levelFilter}
+            onChange={(e) => setLevelFilter(e.target.value)}
+            className="px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-hidden"
+          >
+            <option value="ALL">Tất cả cấp độ ({templates.length} đề)</option>
+            {["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"].map((lvl) => (
+              <option key={lvl} value={lvl}>
+                {lvl} ({templates.filter((t) => t.targetLevel === lvl).length})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {templates.map((t) => (
+        {filteredTemplates.map((t) => (
           <Card
             key={t.id}
             className={`border transition-all ${

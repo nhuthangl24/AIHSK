@@ -10,6 +10,7 @@ import {
   Clock,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
   X,
   Volume2,
   Bot,
@@ -29,11 +30,14 @@ interface SessionsClientProps {
   initialSessions: StoredSession[];
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export function SessionsClient({ initialSessions }: SessionsClientProps) {
   const [sessions, setSessions] = useState<StoredSession[]>(initialSessions);
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedSession, setSelectedSession] = useState<StoredSession | null>(null);
   const [activeTab, setActiveTab] = useState<"SCORE" | "TRANSCRIPT">("SCORE");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -69,6 +73,12 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
       return matchStatus && matchLevel && matchSearch;
     });
   }, [sessions, statusFilter, levelFilter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / ITEMS_PER_PAGE));
+  const paginatedSessions = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredSessions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredSessions, currentPage]);
 
   const handleDeleteSession = async (sessionId: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa phiên khảo thí #${sessionId} này không?`)) return;
@@ -166,7 +176,10 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
             type="text"
             placeholder="Tìm theo email thí sinh, mã phòng thi, tên đề..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -175,7 +188,10 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
           {/* Level Filter */}
           <select
             value={levelFilter}
-            onChange={(e) => setLevelFilter(e.target.value)}
+            onChange={(e) => {
+              setLevelFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-hidden"
           >
             <option value="ALL">Mọi cấp độ HSK</option>
@@ -192,7 +208,10 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
             {["ALL", "COMPLETED", "IN_PROGRESS", "FAILED"].map((s) => (
               <button
                 key={s}
-                onClick={() => setStatusFilter(s)}
+                onClick={() => {
+                  setStatusFilter(s);
+                  setCurrentPage(1);
+                }}
                 className={`px-2.5 py-1.5 rounded-lg font-medium transition-all ${
                   statusFilter === s
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
@@ -223,7 +242,7 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredSessions.map((session) => {
+              {paginatedSessions.map((session) => {
                 const targetLvl = session.template?.targetLevel || session.result?.hskLevel || "HSK 3";
                 const isCompleted = session.status === "COMPLETED";
                 const score = session.result?.overallScore;
@@ -328,6 +347,44 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {filteredSessions.length > ITEMS_PER_PAGE && (
+          <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-900/50">
+            <span>
+              Hiển thị {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{" "}
+              {Math.min(currentPage * ITEMS_PER_PAGE, filteredSessions.length)} trên tổng số {filteredSessions.length} bài thi
+            </span>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-7 px-2 text-xs"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Trước</span>
+              </Button>
+
+              <span className="px-2 font-bold text-slate-700 dark:text-slate-300">
+                {currentPage} / {totalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-7 px-2 text-xs"
+              >
+                <span>Sau</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Session Details Modal */}
