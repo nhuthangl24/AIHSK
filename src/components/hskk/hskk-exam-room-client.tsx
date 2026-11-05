@@ -14,6 +14,7 @@ import {
   HskkResult,
 } from "@/types/hskk";
 import { hskkAudio } from "@/lib/audio/hskk-audio";
+import { WavRecorder } from "@/lib/audio/wav-recorder";
 import {
   getSystemAudioSettings,
   saveSystemAudioSettings,
@@ -98,8 +99,12 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
   const [learnerTranscript, setLearnerTranscript] = useState("");
   const [isRecordingActive, setIsRecordingActive] = useState(false);
   const [finalResult, setFinalResult] = useState<HskkResult | null>(null);
+  const [recordedAudioUrls, setRecordedAudioUrls] = useState<Record<string, string>>({});
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs
+  const wavRecorderRef = useRef<WavRecorder | null>(null);
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<any>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -411,6 +416,18 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
     startSpeechRecognition();
     startRecordingVolumeMonitor();
 
+    // Start WAV recording for native Gemini 3.6 Flash multimodal evaluation
+    try {
+      if (!wavRecorderRef.current) {
+        wavRecorderRef.current = new WavRecorder();
+      }
+      if (micStreamRef.current) {
+        wavRecorderRef.current.start(micStreamRef.current, 16000);
+      }
+    } catch (e) {
+      console.warn("WAV recorder startup error:", e);
+    }
+
     timerRef.current = setInterval(() => {
       setSpeakingSecondsLeft((prev) => {
         if (prev <= 1) {
@@ -467,6 +484,21 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
 
     await hskkAudio.playEndingBeep();
 
+    // Stop WAV recorder and obtain clean 16kHz PCM WAV base64
+    let audioBase64: string | undefined = undefined;
+    try {
+      if (wavRecorderRef.current && wavRecorderRef.current.recording) {
+        const recResult = await wavRecorderRef.current.stop();
+        if (recResult?.base64) {
+          audioBase64 = recResult.base64;
+          const blobUrl = URL.createObjectURL(recResult.blob);
+          setRecordedAudioUrls((prev) => ({ ...prev, [q.id]: blobUrl }));
+        }
+      }
+    } catch (recErr) {
+      console.warn("WAV recorder stop error:", recErr);
+    }
+
     const spokenText = learnerTranscript.trim();
     const duration = q.speakingTimeSeconds - speakingSecondsLeft;
 
@@ -475,6 +507,7 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
       partNumber: q.partNumber,
       questionIndex: q.questionIndex,
       transcript: spokenText,
+      audioBase64,
       durationSeconds: duration,
       spokenAt: new Date().toISOString(),
     };
@@ -539,6 +572,33 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
     } catch (err: any) {
       setErrorMsg(err.message || "Lỗi nộp bài thi.");
     }
+  };
+
+  const togglePlayRecordedAudio = (qId: string) => {
+    const url = recordedAudioUrls[qId];
+    if (!url) return;
+
+    if (playingAudioId === qId) {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      setPlayingAudioId(null);
+      return;
+    }
+
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+    }
+    const audio = new Audio(url);
+    audioPlayerRef.current = audio;
+    setPlayingAudioId(qId);
+    audio.play().catch(() => setPlayingAudioId(null));
+    audio.onended = () => {
+      setPlayingAudioId(null);
+    };
+    audio.onerror = () => {
+      setPlayingAudioId(null);
+    };
   };
 
   // =========================================================================
@@ -1056,41 +1116,105 @@ export function HskkExamRoomClient({ sessionId }: { sessionId: string }) {
               {finalResult.detailedQuestions.map((q, idx) => (
                 <div
                   key={idx}
-                  className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5"
+                  className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 shadow-sm"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-700">
                           Phần {q.partNumber} &bull; #{q.questionIndex}
                         </Badge>
                         <span className="text-xs font-bold text-white">{q.title}</span>
+                        {typeof q.tonesAccuracyScore === "number" && (
+                          <Badge className="bg-emerald-950/80 text-emerald-300 border-emerald-800 text-[10px] font-semibold">
+                            Thanh điệu: {q.tonesAccuracyScore}%
+                          </Badge>
+                        )}
+                        {typeof q.fluencyScore === "number" && (
+                          <Badge className="bg-sky-950/80 text-sky-300 border-sky-800 text-[10px] font-semibold">
+                            Lưu loát: {q.fluencyScore}%
+                          </Badge>
+                        )}
                       </div>
-                      <p className="text-xs font-medium text-rose-300 mt-1">
+                      <p className="text-xs font-medium text-rose-300 pt-0.5">
                         Đề bài: &ldquo;{q.prompt}&rdquo;
                       </p>
                     </div>
 
-                    <div className="text-right shrink-0">
-                      <span className="text-sm font-black text-white">
-                        {q.score}/{q.maxScore}
-                      </span>
-                      <span className="text-[10px] block text-slate-400 font-semibold">
-                        {q.pronunciationQuality}
-                      </span>
+                    <div className="flex items-center sm:flex-col sm:items-end justify-between gap-2 shrink-0">
+                      <div className="text-right">
+                        <span className="text-sm sm:text-base font-black text-white">
+                          {q.score}/{q.maxScore}
+                        </span>
+                        <span className="text-[10px] block text-slate-400 font-semibold uppercase tracking-wider">
+                          {q.pronunciationQuality}
+                        </span>
+                      </div>
+
+                      {recordedAudioUrls[q.questionId] && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => togglePlayRecordedAudio(q.questionId)}
+                          className="h-7 px-2.5 rounded-lg text-[11px] border-slate-700 bg-slate-800 text-slate-200 hover:text-white flex items-center gap-1.5"
+                        >
+                          <Volume2 className={`h-3 w-3 ${playingAudioId === q.questionId ? "text-rose-400 animate-spin" : "text-rose-400"}`} />
+                          <span>{playingAudioId === q.questionId ? "Đang phát..." : "Nghe lại giọng tôi"}</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
 
+                  {/* Candidate Spoken Text */}
                   <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-1">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold block">
-                      Thí sinh đã trả lời:
+                      Thí sinh đã phát biểu (Nhận diện âm thanh):
                     </span>
-                    <p className="italic font-sans">&ldquo;{q.candidateSpoken || "(Không phát âm)"}&rdquo;</p>
+                    <p className="italic font-sans text-emerald-300/90">&ldquo;{q.candidateSpoken || "(Không phát âm)"}&rdquo;</p>
                   </div>
 
+                  {/* Deep Phonetics & Acoustic Breakdown (Gemini 3.6 Flash) */}
+                  {q.phoneticsAnalysis && (q.phoneticsAnalysis.tonesComment || q.phoneticsAnalysis.initialsAndFinalsComment || q.phoneticsAnalysis.pauseAndFluencyComment) && (
+                    <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 text-xs space-y-1.5">
+                      <span className="text-[10px] uppercase tracking-wider text-amber-400 font-bold block">
+                        Phân Tích Ngữ Âm &amp; Thanh Điệu Thực Tế:
+                      </span>
+                      {q.phoneticsAnalysis.tonesComment && (
+                        <div className="text-[11px] text-slate-300">
+                          <strong className="text-emerald-400">Thanh điệu (声调):</strong> {q.phoneticsAnalysis.tonesComment}
+                        </div>
+                      )}
+                      {q.phoneticsAnalysis.initialsAndFinalsComment && (
+                        <div className="text-[11px] text-slate-300">
+                          <strong className="text-sky-400">Thanh mẫu / Vận mẫu:</strong> {q.phoneticsAnalysis.initialsAndFinalsComment}
+                        </div>
+                      )}
+                      {q.phoneticsAnalysis.pauseAndFluencyComment && (
+                        <div className="text-[11px] text-slate-300">
+                          <strong className="text-amber-300">Ngắt nghỉ &amp; Lưu loát:</strong> {q.phoneticsAnalysis.pauseAndFluencyComment}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Native Correction / Benchmark */}
+                  {q.correction && (
+                    <div className="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-800/40 text-xs text-emerald-200">
+                      <span className="text-[10px] uppercase font-bold text-emerald-400 block mb-0.5">
+                        Mẫu câu chuẩn khảo thí CTI:
+                      </span>
+                      <span className="font-semibold text-white">{q.correction}</span>
+                      {q.pinyinCorrection && (
+                        <span className="font-mono text-emerald-300/80 ml-2">({q.pinyinCorrection})</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Examiner Constructive Feedback */}
                   {q.feedback && (
-                    <p className="text-xs text-slate-400">
-                      <strong>Nhận xét:</strong> {q.feedback}
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      <strong className="text-slate-300">Nhận xét giám khảo:</strong> {q.feedback}
                     </p>
                   )}
                 </div>

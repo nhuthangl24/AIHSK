@@ -5,6 +5,7 @@ import {
   HskkResult,
   HskkLevel,
   HskkDetailedQuestionEvaluation,
+  HskkPhoneticsAnalysis,
 } from "@/types/hskk";
 import { AIClient, ChatMessage } from "@/lib/ai/ai-client";
 import { assessmentStore } from "@/lib/db/assessment-store";
@@ -1121,6 +1122,100 @@ export class HskkService {
   }
 
   /**
+   * Evaluate a single question's recorded audio directly using Gemini 3.6 Flash.
+   * Performs deep acoustic phonetics & tone inspection (thanh 1-4, sandhi, fluency, grammar).
+   */
+  static async evaluateQuestionAudioWithGemini(
+    q: HskkExamTemplate["questions"][number],
+    audioBase64: string
+  ): Promise<{
+    score: number;
+    pronunciationQuality: "EXCELLENT" | "GOOD" | "FAIR" | "POOR";
+    recognizedTranscript?: string;
+    tonesAccuracyScore?: number;
+    fluencyScore?: number;
+    phoneticsAnalysis?: HskkPhoneticsAnalysis;
+    feedback: string;
+    correction?: string;
+    pinyinCorrection?: string;
+  } | null> {
+    try {
+      const systemPrompt = `Bạn là Giám khảo Khảo thí Khẩu ngữ Tiếng Trung Quốc tế (HSKK 考官) của hệ thống Classnia AI.
+Nhiệm vụ của bạn là NGHE TRỰC TIẾP file âm thanh của thí sinh và chấm điểm theo tiêu chuẩn khảo thí quốc tế HSKK (CTI 汉考国际).
+Phân tích kỹ lưỡng:
+1. Thanh điệu (声调: thanh 1 cao bằng, thanh 2 đi lên, thanh 3 thấp rồi lên hoặc biến điệu 3-3, thanh 4 dứt khoát).
+2. Thanh mẫu & Vận mẫu (zh/ch/sh vs z/c/s, b/p, d/t, j/q/x, âm uốn lưỡi, vận mẫu mũi).
+3. Độ trôi chảy (流利度: ngắt nghỉ đúng chỗ, tốc độ tự nhiên).
+4. Độ chính xác nội dung so với đề bài.
+Trả về định dạng JSON thuần túy theo cấu trúc yêu cầu.`;
+
+      const prompt = `Đề thi HSKK: Phần ${q.partNumber} - Loại câu hỏi: ${q.type}
+Câu hỏi / Yêu cầu: "${q.audioPrompt}"
+${q.readingText ? `Văn bản đọc: "${q.readingText}"` : ""}
+Thang điểm tối đa câu này: ${q.maxScore} điểm.
+
+Hãy nghe file âm thanh ghi âm phần trả lời của thí sinh và trả về JSON:
+{
+  "recognizedTranscript": "nội dung chữ Hán nghe được từ thí sinh",
+  "pinyinWithTones": "phiên âm pinyin kèm dấu thanh của câu thí sinh nói",
+  "score": number, // số từ 0 đến ${q.maxScore}
+  "pronunciationQuality": "EXCELLENT" | "GOOD" | "FAIR" | "POOR",
+  "tonesAccuracyScore": number, // 0 - 100%
+  "fluencyScore": number, // 0 - 100%
+  "phoneticsAnalysis": {
+    "tonesComment": "Nhận xét chi tiết về thanh điệu (thanh 1, 2, 3, 4, biến điệu)",
+    "initialsAndFinalsComment": "Nhận xét về phụ âm thanh mẫu và vần vận mẫu",
+    "pauseAndFluencyComment": "Nhận xét về độ trôi chảy, tốc độ và ngắt câu"
+  },
+  "feedbackVi": "Lời nhận xét và hướng dẫn cải thiện cụ thể bằng tiếng Việt (2-3 câu ngắn gọn)",
+  "correction": "Câu chuẩn gợi ý",
+  "pinyinCorrection": "Pinyin câu chuẩn gợi ý"
+}`;
+
+      const raw = await AIClient.evaluateAudioWithGemini({
+        audioBase64,
+        prompt,
+        systemPrompt,
+        model: "gemini-3.6-flash",
+        temperature: 0.2,
+      });
+
+      if (!raw) return null;
+      const parsed = AIClient.extractJson(raw);
+      if (!parsed) return null;
+
+      const score =
+        typeof parsed.score === "number"
+          ? Math.min(q.maxScore, Math.max(0, parsed.score))
+          : Math.round(q.maxScore * 0.8);
+
+      return {
+        score,
+        pronunciationQuality: parsed.pronunciationQuality || "GOOD",
+        recognizedTranscript: parsed.recognizedTranscript,
+        tonesAccuracyScore:
+          typeof parsed.tonesAccuracyScore === "number"
+            ? parsed.tonesAccuracyScore
+            : 85,
+        fluencyScore:
+          typeof parsed.fluencyScore === "number"
+            ? parsed.fluencyScore
+            : 85,
+        phoneticsAnalysis: parsed.phoneticsAnalysis || {},
+        feedback:
+          parsed.feedbackVi ||
+          parsed.feedback ||
+          "Phát âm tương đối rõ ràng.",
+        correction: parsed.correction || q.audioPrompt,
+        pinyinCorrection: parsed.pinyinCorrection || q.pinyinPrompt,
+      };
+    } catch (err) {
+      console.warn(`Gemini audio evaluation skipped for question ${q.id}:`, err);
+      return null;
+    }
+  }
+
+  /**
    * Evaluate complete HSKK Exam Session using Official CTI Rubric & AI
    */
   static async evaluateSession(
@@ -1145,6 +1240,42 @@ export class HskkService {
     const questions = template.questions;
     const answeredCount = Object.keys(session.answers).length;
 
+    // Step A: Perform Native Multimodal Audio Evaluation using Gemini 3.6 Flash for answers containing audio
+    const audioResults = new Map<string, any>();
+    const audioTasks: { q: (typeof questions)[number]; audioBase64: string }[] = [];
+
+    for (const q of questions) {
+      const ans = session.answers[q.id];
+      if (ans?.audioBase64 && ans.audioBase64.length > 500) {
+        audioTasks.push({ q, audioBase64: ans.audioBase64 });
+      }
+    }
+
+    if (audioTasks.length > 0) {
+      const BATCH_SIZE = 4;
+      for (let i = 0; i < audioTasks.length; i += BATCH_SIZE) {
+        const batch = audioTasks.slice(i, i + BATCH_SIZE);
+        const settled = await Promise.allSettled(
+          batch.map(({ q, audioBase64 }) =>
+            this.evaluateQuestionAudioWithGemini(q, audioBase64)
+          )
+        );
+        settled.forEach((res, idx) => {
+          if (res.status === "fulfilled" && res.value) {
+            audioResults.set(batch[idx].q.id, res.value);
+            if (
+              res.value.recognizedTranscript &&
+              (!session.answers[batch[idx].q.id]?.transcript ||
+                session.answers[batch[idx].q.id]?.transcript.length < 2)
+            ) {
+              session.answers[batch[idx].q.id].transcript =
+                res.value.recognizedTranscript;
+            }
+          }
+        });
+      }
+    }
+
     // AI Evaluation Prompt for HSKK
     let llmResult: any = null;
 
@@ -1158,11 +1289,18 @@ Total answered: ${answeredCount}
 Candidate Answers:
 ${questions
   .map((q, idx) => {
-    const ans = session.answers[q.id]?.transcript || "";
+    const audioEval = audioResults.get(q.id);
+    const ans =
+      audioEval?.recognizedTranscript ||
+      session.answers[q.id]?.transcript ||
+      "";
+    const audioNote = audioEval
+      ? ` [Acoustic Audio Evaluated by Gemini: Tones Score: ${audioEval.tonesAccuracyScore}%, Fluency: ${audioEval.fluencyScore}%]`
+      : "";
     return `[Q${idx + 1} - Part ${q.partNumber} - ${q.type}]:
 Prompt / Question: "${q.audioPrompt}"
 Target: "${q.pinyinPrompt || q.readingText || q.vietnamesePrompt || ""}"
-Candidate Spoken Answer: "${ans || "(No audio / Silence)"}"
+Candidate Spoken Answer: "${ans || "(No audio / Silence)"}"${audioNote}
 Max Score: ${q.maxScore}`;
   })
   .join("\n\n")}
@@ -1230,8 +1368,18 @@ RETURN STRICT JSON ONLY:
 
     const detailedList: HskkDetailedQuestionEvaluation[] = [];
 
+    let totalToneScore = 0;
+    let toneScoreCount = 0;
+    let totalFluencyScore = 0;
+    let fluencyScoreCount = 0;
+
     for (const q of questions) {
-      const candidateText = (session.answers[q.id]?.transcript || "").trim();
+      const audioEval = audioResults.get(q.id);
+      const candidateText = (
+        audioEval?.recognizedTranscript ||
+        session.answers[q.id]?.transcript ||
+        ""
+      ).trim();
       const llmItem = llmResult?.detailedQuestions?.find(
         (d: any) => d.questionId === q.id
       );
@@ -1241,8 +1389,30 @@ RETURN STRICT JSON ONLY:
       let feedback = "";
       let correction = "";
       let pinyinCorrection = "";
+      let tonesAccuracyScore: number | undefined = undefined;
+      let fluencyScore: number | undefined = undefined;
+      let phoneticsAnalysis: HskkPhoneticsAnalysis | undefined = undefined;
 
-      if (llmItem && typeof llmItem.score === "number") {
+      if (audioEval) {
+        // High fidelity native audio grading from Gemini 3.6 Flash
+        qScore = Math.min(q.maxScore, Math.max(0, Math.round(audioEval.score)));
+        pronunciationQuality = audioEval.pronunciationQuality;
+        feedback = audioEval.feedback;
+        correction = audioEval.correction;
+        pinyinCorrection = audioEval.pinyinCorrection;
+        tonesAccuracyScore = audioEval.tonesAccuracyScore;
+        fluencyScore = audioEval.fluencyScore;
+        phoneticsAnalysis = audioEval.phoneticsAnalysis;
+
+        if (typeof tonesAccuracyScore === "number") {
+          totalToneScore += tonesAccuracyScore;
+          toneScoreCount++;
+        }
+        if (typeof fluencyScore === "number") {
+          totalFluencyScore += fluencyScore;
+          fluencyScoreCount++;
+        }
+      } else if (llmItem && typeof llmItem.score === "number") {
         qScore = Math.min(q.maxScore, Math.max(0, Math.round(llmItem.score)));
         pronunciationQuality = llmItem.pronunciationQuality || "GOOD";
         feedback = llmItem.feedback || "";
@@ -1303,13 +1473,28 @@ RETURN STRICT JSON ONLY:
         score: qScore,
         maxScore: q.maxScore,
         pronunciationQuality,
+        tonesAccuracyScore,
+        fluencyScore,
+        phoneticsAnalysis,
         feedback,
         correction,
         pinyinCorrection,
       });
     }
 
-    const finalOverallScore = llmResult?.overallScore ?? Math.min(100, Math.round(totalScore));
+    const calculatedPronunciation =
+      toneScoreCount > 0
+        ? Math.round(totalToneScore / toneScoreCount)
+        : (llmResult?.pronunciationScore ?? Math.min(100, Math.round(totalScore)));
+
+    const calculatedFluency =
+      fluencyScoreCount > 0
+        ? Math.round(totalFluencyScore / fluencyScoreCount)
+        : (llmResult?.fluencyScore ?? Math.min(100, Math.round(totalScore) + 2));
+
+    const finalOverallScore = audioTasks.length > 0
+      ? Math.min(100, Math.round(totalScore))
+      : (llmResult?.overallScore ?? Math.min(100, Math.round(totalScore)));
     const isPassed = finalOverallScore >= 60;
 
     const result: HskkResult = {
@@ -1324,8 +1509,8 @@ RETURN STRICT JSON ONLY:
       part2Max: template.parts[1]?.maxScore || 40,
       part3Score: llmResult?.part3Score ?? part3Score,
       part3Max: template.parts[2]?.maxScore || 30,
-      fluencyScore: llmResult?.fluencyScore ?? Math.min(100, finalOverallScore + 2),
-      pronunciationScore: llmResult?.pronunciationScore ?? finalOverallScore,
+      fluencyScore: calculatedFluency,
+      pronunciationScore: calculatedPronunciation,
       grammarScore: llmResult?.grammarScore ?? Math.max(40, finalOverallScore - 3),
       vocabularyScore: llmResult?.vocabularyScore ?? finalOverallScore,
       summary:
