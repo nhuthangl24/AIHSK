@@ -30,6 +30,44 @@ function normalizeTargetLevel(targetHsk?: number | string): string {
 
 export class FirebaseDb {
   /**
+   * Get all registered users from Firestore collection 'users'
+   */
+  static async getAllUsers(): Promise<FirebaseUserDoc[]> {
+    try {
+      const db = getFirestoreDb();
+      if (!db) return [];
+
+      const snap = await getDocs(collection(db, "users"));
+      return snap.docs.map((docSnap) => {
+        const data = docSnap.data();
+        const level = normalizeTargetLevel(data.targetHsk || data.targetLevel);
+        const email = (data.email || "").toLowerCase().trim();
+
+        return {
+          id: docSnap.id,
+          email,
+          name: data.name || (email ? email.split("@")[0] : "Học Viên"),
+          role: (data.role || "USER").toUpperCase(),
+          targetHsk: data.targetHsk || 3,
+          targetLevel: level,
+          streakDays: typeof data.streakDays === "number" ? data.streakDays : 1,
+          totalMastered: typeof data.totalMastered === "number" ? data.totalMastered : 0,
+          avatar: data.avatar || data.photoURL || null,
+          createdAt: data.createdAt || new Date().toISOString(),
+          updatedAt: data.updatedAt || new Date().toISOString(),
+          lastLoginAt: data.lastLoginAt || new Date().toISOString(),
+          nativeLanguage: data.nativeLanguage || "Tiếng Việt",
+          studyHoursWeekly: data.studyHoursWeekly || 3,
+          learningGoal: data.learningGoal || "Luyện thi khẩu ngữ tiếng Trung chuẩn hóa",
+        };
+      });
+    } catch (e) {
+      console.warn("FirebaseDb getAllUsers note:", e);
+      return [];
+    }
+  }
+
+  /**
    * Find user in Firestore by email
    */
   static async findUserByEmail(email: string): Promise<FirebaseUserDoc | null> {
@@ -204,6 +242,113 @@ export class FirebaseDb {
     } catch (e) {
       console.warn("FirebaseDb getSession note:", e);
       return null;
+    }
+  }
+
+  /**
+   * Save or update support ticket in Firestore collection 'support_tickets'
+   */
+  static async saveTicket(ticket: any): Promise<boolean> {
+    try {
+      const db = getFirestoreDb();
+      if (!db || !ticket || !ticket.id) return false;
+
+      const docRef = doc(db, "support_tickets", ticket.id);
+      const cleanData = JSON.parse(JSON.stringify(ticket));
+      await setDoc(
+        docRef,
+        {
+          ...cleanData,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+      return true;
+    } catch (e: any) {
+      if (
+        e?.code === "permission-denied" ||
+        e?.message?.includes("PERMISSION_DENIED") ||
+        e?.message?.includes("Missing or insufficient permissions")
+      ) {
+        return false;
+      }
+      console.warn("FirebaseDb saveTicket note:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Get all support tickets from Firestore
+   */
+  static async getAllTickets(): Promise<any[]> {
+    try {
+      const db = getFirestoreDb();
+      if (!db) return [];
+
+      const colRef = collection(db, "support_tickets");
+      const snap = await getDocs(colRef);
+      if (snap.empty) return [];
+
+      return snap.docs.map((d) => d.data());
+    } catch (e: any) {
+      // Permission denied or offline fallback
+      return [];
+    }
+  }
+
+  /**
+   * Get support tickets for a specific user from Firestore
+   */
+  static async getTicketsByUser(userId: string, email?: string): Promise<any[]> {
+    try {
+      const db = getFirestoreDb();
+      if (!db) return [];
+
+      const colRef = collection(db, "support_tickets");
+      const q = query(colRef, where("userId", "==", userId));
+      const snap = await getDocs(q);
+      const results: any[] = [];
+      snap.forEach((d) => results.push(d.data()));
+
+      if (email && email.includes("@")) {
+        const normEmail = email.toLowerCase().trim();
+        const qEmail = query(colRef, where("userEmail", "==", normEmail));
+        const snapEmail = await getDocs(qEmail);
+        snapEmail.forEach((d) => {
+          const t = d.data();
+          if (!results.some((r) => r.id === t.id)) {
+            results.push(t);
+          }
+        });
+      }
+
+      return results;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /**
+   * Update support ticket in Firestore
+   */
+  static async updateTicket(id: string, updates: any): Promise<boolean> {
+    try {
+      const db = getFirestoreDb();
+      if (!db || !id) return false;
+
+      const docRef = doc(db, "support_tickets", id);
+      const cleanData = JSON.parse(JSON.stringify(updates));
+      await setDoc(
+        docRef,
+        {
+          ...cleanData,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+      return true;
+    } catch (e: any) {
+      return false;
     }
   }
 }

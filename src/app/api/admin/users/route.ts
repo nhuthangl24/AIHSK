@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, ADMIN_EMAILS } from "@/lib/auth/session";
-import { UserRole } from "@/types/database";
+import { getCurrentUser, isAuthorizedAdmin } from "@/lib/auth/session";
+import { AdminService } from "@/lib/admin/admin-service";
 import { assessmentStore, StoredUserProfile } from "@/lib/db/assessment-store";
 
-function isAuthorizedAdmin(user: any): boolean {
-  if (!user) return false;
-  return (
-    user.role === UserRole.ADMIN ||
-    user.role === "ADMIN" ||
-    ADMIN_EMAILS.includes(user.email?.toLowerCase().trim())
-  );
-}
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -18,39 +11,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
   }
 
-  const profiles = assessmentStore.getAllProfiles();
-  const allSessions = assessmentStore.getAllSessions();
-
-  const enrichedUsers = profiles.map((p) => {
-    const email = p.email?.toLowerCase().trim() || "";
-    const isAdmin = ADMIN_EMAILS.includes(email);
-    
-    // Find all sessions belonging to this user
-    const userSessions = allSessions.filter(
-      (s) =>
-        s.userId === p.userId ||
-        (email && s.userEmail?.toLowerCase().trim() === email)
-    );
-
-    const completed = userSessions.filter((s) => s.status === "COMPLETED");
-    const totalScore = completed.reduce((sum, s) => sum + (s.result?.overallScore || 0), 0);
-    const avgScore = completed.length > 0 ? Math.round(totalScore / completed.length) : null;
-
-    return {
-      userId: p.userId,
-      name: p.name || email.split("@")[0] || "Học Viên",
-      email: p.email || "",
-      role: isAdmin ? "ADMIN" : "USER",
-      targetLevel: p.targetLevel || "HSK 3",
-      nativeLanguage: p.nativeLanguage || "vi",
-      studyHoursWeekly: p.studyHoursWeekly || 5,
-      totalSessions: userSessions.length,
-      completedSessions: completed.length,
-      avgScore,
-      lastActive: p.updatedAt || userSessions[0]?.startedAt || new Date().toISOString(),
-    };
-  });
-
+  const enrichedUsers = await AdminService.getEnrichedUsers();
   return NextResponse.json({ users: enrichedUsers });
 }
 
@@ -68,10 +29,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "userId là bắt buộc." }, { status: 400 });
     }
 
-    const existing = assessmentStore.getProfile(userId);
-    if (!existing) {
-      return NextResponse.json({ error: "Không tìm thấy hồ sơ người dùng." }, { status: 404 });
-    }
+    const existing = assessmentStore.getProfile(userId) || {
+      userId,
+      targetLevel: "HSK 3",
+      nativeLanguage: "Tiếng Việt",
+      studyHoursWeekly: 3,
+      updatedAt: new Date().toISOString(),
+    };
 
     const updated: StoredUserProfile = {
       ...existing,

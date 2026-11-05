@@ -13,13 +13,16 @@ import {
   RefreshCw,
   Clock,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  User as UserIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 
-interface EnrichedUser {
+export interface EnrichedUser {
   userId: string;
   name: string;
   email: string;
@@ -31,17 +34,22 @@ interface EnrichedUser {
   completedSessions: number;
   avgScore: number | null;
   lastActive: string;
+  avatar?: string | null;
 }
 
 interface UsersClientProps {
   initialUsers: EnrichedUser[];
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export function UsersClient({ initialUsers }: UsersClientProps) {
   const [users, setUsers] = useState<EnrichedUser[]>(initialUsers);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [levelFilter, setLevelFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const stats = useMemo(() => {
     const admins = users.filter((u) => u.role === "ADMIN").length;
@@ -66,6 +74,27 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
     });
   }, [users, roleFilter, levelFilter, search]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+  const currentUsers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch("/api/admin/users");
+      const d = await res.json();
+      if (d.users) {
+        setUsers(d.users);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -80,69 +109,89 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
             </h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Theo dõi tiến trình học tập, mục tiêu HSK, số bài thi và điểm trung bình của từng học viên.
+            Đồng bộ hồ sơ tài khoản từ Firebase SSO, theo dõi mục tiêu HSK và kết quả khảo thí khẩu ngữ.
           </p>
         </div>
 
         <Button
           variant="outline"
           size="sm"
-          onClick={async () => {
-            const res = await fetch("/api/admin/users");
-            const d = await res.json();
-            if (d.users) setUsers(d.users);
-          }}
+          onClick={handleRefresh}
+          disabled={isRefreshing}
           className="text-xs flex items-center gap-1.5"
         >
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span>Làm mới</span>
+          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          <span>{isRefreshing ? "Đang đồng bộ..." : "Làm mới dữ liệu"}</span>
         </Button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      {/* KPI Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="border-slate-200 dark:border-slate-800">
-          <CardContent className="p-4">
-            <span className="text-xs text-slate-500 font-medium">Tổng Tài Khoản</span>
-            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.total}</div>
-            <p className="text-[11px] text-slate-400">Đã đăng ký hệ thống</p>
+          <CardContent className="p-4 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+              <span>Tổng Người Dùng</span>
+              <Users className="h-4 w-4 text-purple-600" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white">
+              {stats.total}
+            </div>
+            <p className="text-[11px] text-slate-400">Firebase & Khảo thí</p>
           </CardContent>
         </Card>
 
-        <Card className="border-purple-200 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/10">
-          <CardContent className="p-4">
-            <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">Học Viên Luyện Thi</span>
-            <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{stats.learners}</div>
-            <p className="text-[11px] text-purple-500">Đang luyện tập</p>
+        <Card className="border-slate-200 dark:border-slate-800">
+          <CardContent className="p-4 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+              <span>Học Viên Luyện Thi</span>
+              <BookOpen className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="text-2xl font-black text-blue-600">
+              {stats.learners}
+            </div>
+            <p className="text-[11px] text-slate-400">Tài khoản học viên</p>
           </CardContent>
         </Card>
 
-        <Card className="border-rose-200 dark:border-rose-900/50 bg-rose-50/30 dark:bg-rose-950/10">
-          <CardContent className="p-4">
-            <span className="text-xs text-rose-600 dark:text-rose-400 font-bold">Quản Trị Viên</span>
-            <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{stats.admins}</div>
-            <p className="text-[11px] text-rose-500">Quyền Admin Cấp Cao</p>
+        <Card className="border-slate-200 dark:border-slate-800">
+          <CardContent className="p-4 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+              <span>Quản Trị Viên</span>
+              <Shield className="h-4 w-4 text-rose-600" />
+            </div>
+            <div className="text-2xl font-black text-rose-600">
+              {stats.admins}
+            </div>
+            <p className="text-[11px] text-slate-400">Quyền truy cập Admin</p>
           </CardContent>
         </Card>
 
-        <Card className="border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-950/10">
-          <CardContent className="p-4">
-            <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">Tổng Lượt Thi Khẩu Ngữ</span>
-            <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">{stats.totalSessions}</div>
-            <p className="text-[11px] text-blue-500">Từ tất cả học viên</p>
+        <Card className="border-slate-200 dark:border-slate-800">
+          <CardContent className="p-4 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+              <span>Tổng Phiên Khảo Thí</span>
+              <Award className="h-4 w-4 text-emerald-600" />
+            </div>
+            <div className="text-2xl font-black text-emerald-600">
+              {stats.totalSessions}
+            </div>
+            <p className="text-[11px] text-slate-400">Đã tham gia đánh giá</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search & Filters */}
+      {/* Filter Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Tìm theo tên học viên, email, id..."
+            placeholder="Tìm theo tên học viên, email, mã UID..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -151,12 +200,17 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
           {/* Level Filter */}
           <select
             value={levelFilter}
-            onChange={(e) => setLevelFilter(e.target.value)}
+            onChange={(e) => {
+              setLevelFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-hidden"
           >
             <option value="ALL">Mọi trình độ HSK</option>
             {["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"].map((lvl) => (
-              <option key={lvl} value={lvl}>{lvl}</option>
+              <option key={lvl} value={lvl}>
+                {lvl}
+              </option>
             ))}
           </select>
 
@@ -165,7 +219,10 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
             {["ALL", "USER", "ADMIN"].map((r) => (
               <button
                 key={r}
-                onClick={() => setRoleFilter(r)}
+                onClick={() => {
+                  setRoleFilter(r);
+                  setCurrentPage(1);
+                }}
                 className={`px-2.5 py-1.5 rounded-lg font-medium transition-all ${
                   roleFilter === r
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
@@ -180,7 +237,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
       </div>
 
       {/* Users Table */}
-      <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <Card className="border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-900/70 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
@@ -195,11 +252,30 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredUsers.map((u) => (
+              {currentUsers.map((u) => (
                 <tr key={u.userId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                   <td className="py-3 px-4">
-                    <span className="font-bold text-slate-900 dark:text-white block">{u.name}</span>
-                    <span className="text-slate-400 text-[11px]">{u.email || u.userId}</span>
+                    <div className="flex items-center gap-2.5">
+                      {u.avatar ? (
+                        <img
+                          src={u.avatar}
+                          alt={u.name}
+                          className="w-7 h-7 rounded-full object-cover shrink-0 border border-purple-200"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
+                          {u.name ? u.name.charAt(0).toUpperCase() : "U"}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-900 dark:text-white block truncate max-w-[200px]">
+                          {u.name}
+                        </span>
+                        <span className="text-slate-400 text-[11px] block truncate max-w-[200px]">
+                          {u.email || u.userId}
+                        </span>
+                      </div>
+                    </div>
                   </td>
 
                   <td className="py-3 px-4">
@@ -262,6 +338,44 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {filteredUsers.length > ITEMS_PER_PAGE && (
+          <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-900/50">
+            <span>
+              Hiển thị {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{" "}
+              {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} trên tổng số {filteredUsers.length} người dùng
+            </span>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-7 px-2 text-xs"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Trước</span>
+              </Button>
+
+              <span className="px-2 font-bold text-slate-700 dark:text-slate-300">
+                {currentPage} / {totalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-7 px-2 text-xs"
+              >
+                <span>Sau</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

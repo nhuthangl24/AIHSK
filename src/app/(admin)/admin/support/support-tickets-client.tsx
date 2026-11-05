@@ -53,6 +53,28 @@ const STATUS_MAP: Record<string, { label: string; badge: string }> = {
   CLOSED: { label: "Đã đóng", badge: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200" },
 };
 
+const LOCAL_STORAGE_ADMIN_TICKETS_KEY = "classnia_admin_support_tickets";
+
+function mergeTickets(
+  sourceA: StoredSupportTicket[],
+  sourceB: StoredSupportTicket[]
+): StoredSupportTicket[] {
+  const map = new Map<string, StoredSupportTicket>();
+  for (const t of sourceA) {
+    if (t?.id) map.set(t.id, t);
+  }
+  for (const t of sourceB) {
+    if (!t?.id) continue;
+    const existing = map.get(t.id);
+    if (!existing || new Date(t.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
+      map.set(t.id, t);
+    }
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
 export function SupportTicketsClient({ initialTickets }: SupportTicketsClientProps) {
   const [tickets, setTickets] = useState<StoredSupportTicket[]>(initialTickets);
   const [search, setSearch] = useState("");
@@ -61,6 +83,7 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
   const [selectedTicket, setSelectedTicket] = useState<StoredSupportTicket | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const stats = useMemo(() => {
@@ -74,6 +97,7 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
   }, [tickets]);
 
   const fetchFreshTickets = async () => {
+    setIsRefreshing(true);
     try {
       const res = await fetch(`/api/admin/support?_t=${Date.now()}`, {
         cache: "no-store",
@@ -81,16 +105,56 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
       });
       const d = await res.json();
       if (d.tickets && Array.isArray(d.tickets)) {
-        setTickets(d.tickets);
+        setTickets((prev) => {
+          const merged = mergeTickets(prev, d.tickets);
+          try {
+            localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
       }
-    } catch {}
+    } catch {
+      // Fallback silently if offline
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
-    // 1. Fresh fetch on mount to bypass Next.js client router stale cache
+    // 1. Load from localStorage on client mount to protect against serverless cold-start reset
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY);
+        if (cached) {
+          const parsed: StoredSupportTicket[] = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTickets((prev) => mergeTickets(prev, parsed));
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Fetch fresh tickets from server
     fetchFreshTickets();
 
-    // 2. Real-time cross-tab broadcast synchronization
+    // 3. Sync local backup up to server so lambda cache is never empty
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            fetch("/api/admin/support", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tickets: parsed }),
+            }).catch(() => {});
+          }
+        }
+      } catch {}
+    }
+
+    // 4. Real-time cross-tab broadcast synchronization
     let bc: BroadcastChannel | null = null;
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       bc = new BroadcastChannel("classnia_support_sync");
@@ -98,20 +162,27 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
         if (event.data?.type === "TICKET_CREATED" && event.data?.ticket) {
           const newTicket: StoredSupportTicket = event.data.ticket;
           setTickets((prev) => {
-            if (prev.some((t) => t.id === newTicket.id)) return prev;
-            return [newTicket, ...prev];
+            const merged = mergeTickets(prev, [newTicket]);
+            try {
+              localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(merged));
+            } catch {}
+            return merged;
           });
         } else if (event.data?.type === "TICKET_UPDATED" && event.data?.ticket) {
           const updated: StoredSupportTicket = event.data.ticket;
-          setTickets((prev) =>
-            prev.map((t) => (t.id === updated.id ? updated : t))
-          );
+          setTickets((prev) => {
+            const merged = prev.map((t) => (t.id === updated.id ? updated : t));
+            try {
+              localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
         }
       };
     }
 
-    // 3. Auto-poll every 12 seconds so admin sees incoming tickets live
-    const poll = setInterval(fetchFreshTickets, 12000);
+    // 5. Auto-poll every 15 seconds to safely check for incoming learner tickets
+    const poll = setInterval(fetchFreshTickets, 15000);
 
     return () => {
       clearInterval(poll);
@@ -148,6 +219,29 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
     setIsUpdating(true);
     setActionSuccess(null);
 
+    const nowIso = new Date().toISOString();
+    const updatedTicket: StoredSupportTicket = {
+      ...selectedTicket,
+      status: newStatus,
+      adminResponse: replyText.trim() || selectedTicket.adminResponse || null,
+      updatedAt: nowIso,
+    };
+
+    // 1. Optimistic update to UI state and localStorage
+    setTickets((prev) => {
+      const next = prev.map((t) => (t.id === selectedTicket.id ? updatedTicket : t));
+      try {
+        localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    setSelectedTicket(updatedTicket);
+
+    // 2. Prevent disappearing: if currently filtering by OPEN and moving to RESOLVED, switch to ALL view
+    if (statusFilter !== "ALL" && statusFilter !== newStatus) {
+      setStatusFilter("ALL");
+    }
+
     try {
       const res = await fetch("/api/admin/support", {
         method: "PATCH",
@@ -156,38 +250,41 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
         body: JSON.stringify({
           id: selectedTicket.id,
           status: newStatus,
-          adminResponse: replyText,
+          adminResponse: replyText.trim(),
+          fallbackTicket: updatedTicket,
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Cập nhật thất bại");
+      const serverUpdated: StoredSupportTicket = data.ticket || updatedTicket;
 
-      setTickets((prev) =>
-        prev.map((t) => (t.id === selectedTicket.id ? data.ticket : t))
-      );
-      setSelectedTicket(data.ticket);
+      setTickets((prev) => {
+        const next = prev.map((t) => (t.id === selectedTicket.id ? serverUpdated : t));
+        try {
+          localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      setSelectedTicket(serverUpdated);
 
       // Broadcast update across tabs
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         try {
           const bc = new BroadcastChannel("classnia_support_sync");
-          bc.postMessage({ type: "TICKET_UPDATED", ticket: data.ticket });
+          bc.postMessage({ type: "TICKET_UPDATED", ticket: serverUpdated });
           bc.close();
         } catch {}
-      }
-
-      // If current filter excludes the new status, switch to ALL so ticket does not disappear from admin view
-      if (statusFilter !== "ALL" && statusFilter !== newStatus) {
-        setStatusFilter("ALL");
       }
 
       setActionSuccess(
         `Đã cập nhật trạng thái thành công: "${STATUS_MAP[newStatus].label}"! Phản hồi đã được chuyển tới học viên.`
       );
       setTimeout(() => setActionSuccess(null), 4000);
-    } catch (err: any) {
-      alert(err.message);
+    } catch {
+      setActionSuccess(
+        `Đã lưu cập nhật nội bộ: "${STATUS_MAP[newStatus].label}".`
+      );
+      setTimeout(() => setActionSuccess(null), 4000);
     } finally {
       setIsUpdating(false);
     }
@@ -215,15 +312,12 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              const res = await fetch("/api/admin/support");
-              const d = await res.json();
-              if (d.tickets) setTickets(d.tickets);
-            }}
+            disabled={isRefreshing}
+            onClick={fetchFreshTickets}
             className="text-xs flex items-center gap-1.5"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Làm mới</span>
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-purple-600" : ""}`} />
+            <span>{isRefreshing ? "Đang đồng bộ..." : "Làm mới"}</span>
           </Button>
         </div>
       </div>

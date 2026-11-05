@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, ADMIN_EMAILS } from "@/lib/auth/session";
 import { UserRole } from "@/types/database";
-import { assessmentStore } from "@/lib/db/assessment-store";
+import { assessmentStore, StoredSupportTicket } from "@/lib/db/assessment-store";
+import { FirebaseDb } from "@/lib/firebase-db";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -26,6 +27,14 @@ export async function GET(req: NextRequest) {
   if (!isAuthorizedAdmin(user)) {
     return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403, headers: NO_CACHE_HEADERS });
   }
+
+  // Attempt to merge from Firestore if cloud tickets exist
+  try {
+    const fbTickets = await FirebaseDb.getAllTickets();
+    if (Array.isArray(fbTickets) && fbTickets.length > 0) {
+      assessmentStore.bulkUpsertTickets(fbTickets as StoredSupportTicket[]);
+    }
+  } catch {}
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
@@ -54,15 +63,37 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const allTickets = assessmentStore.getAllSupportTickets();
   const stats = {
-    total: assessmentStore.getAllSupportTickets().length,
-    open: assessmentStore.getAllSupportTickets().filter((t) => t.status === "OPEN").length,
-    inProgress: assessmentStore.getAllSupportTickets().filter((t) => t.status === "IN_PROGRESS").length,
-    resolved: assessmentStore.getAllSupportTickets().filter((t) => t.status === "RESOLVED").length,
-    closed: assessmentStore.getAllSupportTickets().filter((t) => t.status === "CLOSED").length,
+    total: allTickets.length,
+    open: allTickets.filter((t) => t.status === "OPEN").length,
+    inProgress: allTickets.filter((t) => t.status === "IN_PROGRESS").length,
+    resolved: allTickets.filter((t) => t.status === "RESOLVED").length,
+    closed: allTickets.filter((t) => t.status === "CLOSED").length,
   };
 
   return NextResponse.json({ tickets, stats }, { headers: NO_CACHE_HEADERS });
+}
+
+export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!isAuthorizedAdmin(user)) {
+    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403, headers: NO_CACHE_HEADERS });
+  }
+
+  try {
+    const body = await req.json();
+    const { tickets: incomingTickets } = body;
+
+    if (Array.isArray(incomingTickets) && incomingTickets.length > 0) {
+      assessmentStore.bulkUpsertTickets(incomingTickets);
+    }
+
+    const all = assessmentStore.getAllSupportTickets();
+    return NextResponse.json({ success: true, tickets: all }, { headers: NO_CACHE_HEADERS });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Lỗi đồng bộ danh sách yêu cầu" }, { status: 500, headers: NO_CACHE_HEADERS });
+  }
 }
 
 export async function PATCH(req: NextRequest) {
@@ -73,7 +104,7 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { id, status, adminResponse } = body;
+    const { id, status, adminResponse, fallbackTicket } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Mã yêu cầu (id) là bắt buộc." }, { status: 400, headers: NO_CACHE_HEADERS });
@@ -83,10 +114,15 @@ export async function PATCH(req: NextRequest) {
     if (status) updates.status = status;
     if (typeof adminResponse === "string") updates.adminResponse = adminResponse.trim();
 
-    const updated = assessmentStore.updateSupportTicket(id, updates);
+    const updated = assessmentStore.updateSupportTicket(id, updates, fallbackTicket);
     if (!updated) {
       return NextResponse.json({ error: "Không tìm thấy yêu cầu hỗ trợ tương ứng." }, { status: 404, headers: NO_CACHE_HEADERS });
     }
+
+    // Background cloud sync
+    try {
+      FirebaseDb.updateTicket(id, { ...updates, updatedAt: updated.updatedAt });
+    } catch {}
 
     return NextResponse.json(
       {

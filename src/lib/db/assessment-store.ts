@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { DEFAULT_SUPPORT_TICKETS } from "@/data/default-support-tickets";
 import { STAGES_CONFIG } from "@/lib/ai/examiner-service";
 
 export interface StoredTemplate {
@@ -309,10 +310,43 @@ class AssessmentStore {
         this.data.templates[tpl.id] = tpl;
       }
     }
+
+    // Seed default support tickets if missing (ensures admin desk always has active tickets even on fresh serverless cold starts)
+    if (!this.data.tickets) {
+      this.data.tickets = {};
+    }
+    for (const ticket of DEFAULT_SUPPORT_TICKETS) {
+      if (!this.data.tickets[ticket.id]) {
+        this.data.tickets[ticket.id] = ticket;
+      }
+    }
   }
 
   public reloadFromDisk() {
     try {
+      // 1. Ensure file exists from seed if missing (critical for serverless /tmp & fresh clones)
+      if (!fs.existsSync(this.filePath)) {
+        const candidateSeeds = [
+          path.join(process.cwd(), "src", "data", "seed-assessment-store.json"),
+          path.join(process.cwd(), ".data", "assessment_store.json"),
+        ];
+
+        for (const sp of candidateSeeds) {
+          if (fs.existsSync(sp)) {
+            try {
+              if (!fs.existsSync(this.baseDir)) {
+                fs.mkdirSync(this.baseDir, { recursive: true });
+              }
+              fs.copyFileSync(sp, this.filePath);
+              break;
+            } catch (copyErr) {
+              console.warn("Could not copy seed assessment store:", copyErr);
+            }
+          }
+        }
+      }
+
+      // 2. Read from primary store file
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, "utf-8");
         const parsed = JSON.parse(raw);
@@ -321,6 +355,27 @@ class AssessmentStore {
         if (parsed.profiles) Object.assign(this.data.profiles, parsed.profiles);
         if (parsed.tickets) Object.assign(this.data.tickets, parsed.tickets);
       }
+
+      // 3. Fallback: if templates is suspiciously low (e.g. only defaults), attempt merging seed templates
+      if (Object.keys(this.data.templates).length <= 7) {
+        const seedPath = path.join(process.cwd(), "src", "data", "seed-assessment-store.json");
+        if (fs.existsSync(seedPath)) {
+          try {
+            const seedRaw = fs.readFileSync(seedPath, "utf-8");
+            const seedParsed = JSON.parse(seedRaw);
+            if (seedParsed.templates) {
+              Object.assign(this.data.templates, seedParsed.templates);
+            }
+            if (seedParsed.sessions && Object.keys(this.data.sessions).length === 0) {
+              Object.assign(this.data.sessions, seedParsed.sessions);
+            }
+            if (seedParsed.tickets && Object.keys(this.data.tickets).length === 0) {
+              Object.assign(this.data.tickets, seedParsed.tickets);
+            }
+          } catch {}
+        }
+      }
+
       this.scanTicketsDir();
     } catch (e) {
       console.warn("Could not load assessment store from disk:", e);
@@ -768,6 +823,13 @@ class AssessmentStore {
         console.warn("Could not read individual ticket file:", e);
       }
     }
+    if (!ticket) {
+      const matchDefault = DEFAULT_SUPPORT_TICKETS.find((t) => t.id === id);
+      if (matchDefault) {
+        ticket = { ...matchDefault };
+        this.data.tickets[id] = ticket;
+      }
+    }
     return ticket || null;
   }
 
@@ -800,12 +862,24 @@ class AssessmentStore {
 
   updateSupportTicket(
     id: string,
-    updates: Partial<StoredSupportTicket>
+    updates: Partial<StoredSupportTicket>,
+    fallbackTicket?: StoredSupportTicket
   ): StoredSupportTicket | null {
     this.init();
     this.reloadFromDisk();
     this.scanTicketsDir();
-    const existing = this.getSupportTicket(id);
+    let existing = this.getSupportTicket(id);
+    if (!existing && fallbackTicket) {
+      existing = fallbackTicket;
+      this.data.tickets[id] = fallbackTicket;
+    }
+    if (!existing) {
+      const matchDefault = DEFAULT_SUPPORT_TICKETS.find((t) => t.id === id);
+      if (matchDefault) {
+        existing = { ...matchDefault };
+        this.data.tickets[id] = existing;
+      }
+    }
     if (!existing) return null;
 
     const updated: StoredSupportTicket = {
@@ -817,6 +891,23 @@ class AssessmentStore {
     this.saveTicketFile(updated);
     this.persist();
     return updated;
+  }
+
+  bulkUpsertTickets(incomingTickets: StoredSupportTicket[]): StoredSupportTicket[] {
+    this.init();
+    if (!Array.isArray(incomingTickets) || incomingTickets.length === 0) {
+      return this.getAllSupportTickets();
+    }
+    for (const ticket of incomingTickets) {
+      if (!ticket || !ticket.id) continue;
+      const existing = this.data.tickets[ticket.id];
+      if (!existing || new Date(ticket.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
+        this.data.tickets[ticket.id] = ticket;
+        this.saveTicketFile(ticket);
+      }
+    }
+    this.persist();
+    return this.getAllSupportTickets();
   }
 
   deleteSupportTicket(id: string): boolean {

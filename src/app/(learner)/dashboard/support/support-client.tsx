@@ -209,22 +209,70 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
         }
       }
 
-      // Fresh fetch helper with no-cache and timestamp
+      const mergeLearnerTickets = (
+        sourceA: StoredSupportTicket[],
+        sourceB: StoredSupportTicket[]
+      ) => {
+        const map = new Map<string, StoredSupportTicket>();
+        sourceA.forEach((t) => t?.id && map.set(t.id, t));
+        sourceB.forEach((t) => {
+          if (!t?.id) return;
+          const existing = map.get(t.id);
+          if (!existing || new Date(t.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
+            map.set(t.id, t);
+          }
+        });
+        return Array.from(map.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      };
+
+      // Fresh fetch helper with no-cache, timestamp and lambda sync
       const fetchLatest = () => {
-        fetch(`/api/support/ticket?_t=${Date.now()}`, {
-          cache: "no-store",
-          headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.tickets && Array.isArray(data.tickets)) {
-              setTickets(data.tickets);
-              try {
-                localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(data.tickets));
-              } catch {}
-            }
+        let localTickets: StoredSupportTicket[] = [];
+        try {
+          const cached = localStorage.getItem(LOCAL_STORAGE_TICKETS_KEY);
+          if (cached) localTickets = JSON.parse(cached);
+        } catch {}
+
+        if (Array.isArray(localTickets) && localTickets.length > 0) {
+          fetch("/api/support/ticket", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "sync", localTickets }),
           })
-          .catch(() => {});
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.tickets && Array.isArray(data.tickets)) {
+                setTickets((prev) => {
+                  const merged = mergeLearnerTickets(prev, data.tickets);
+                  try {
+                    localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(merged));
+                  } catch {}
+                  return merged;
+                });
+              }
+            })
+            .catch(() => {});
+        } else {
+          fetch(`/api/support/ticket?_t=${Date.now()}`, {
+            cache: "no-store",
+            headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.tickets && Array.isArray(data.tickets)) {
+                setTickets((prev) => {
+                  const merged = mergeLearnerTickets(prev, data.tickets);
+                  try {
+                    localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(merged));
+                  } catch {}
+                  return merged;
+                });
+              }
+            })
+            .catch(() => {});
+        }
       };
 
       // Always fetch latest tickets from server immediately
@@ -266,16 +314,46 @@ export default function SupportClient({ user, initialTickets }: SupportClientPro
   const handleRefreshTickets = async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch(`/api/support/ticket?_t=${Date.now()}`, {
-        cache: "no-store",
-        headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
-      });
+      let localTickets: StoredSupportTicket[] = [];
+      try {
+        const cached = localStorage.getItem(LOCAL_STORAGE_TICKETS_KEY);
+        if (cached) localTickets = JSON.parse(cached);
+      } catch {}
+
+      let res: Response;
+      if (Array.isArray(localTickets) && localTickets.length > 0) {
+        res = await fetch("/api/support/ticket", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "sync", localTickets }),
+        });
+      } else {
+        res = await fetch(`/api/support/ticket?_t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
+        });
+      }
+
       const data = await res.json();
       if (data.tickets && Array.isArray(data.tickets)) {
-        setTickets(data.tickets);
-        try {
-          localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(data.tickets));
-        } catch {}
+        setTickets((prev) => {
+          const map = new Map<string, StoredSupportTicket>();
+          prev.forEach((t) => t?.id && map.set(t.id, t));
+          data.tickets.forEach((t: StoredSupportTicket) => {
+            if (!t?.id) return;
+            const existing = map.get(t.id);
+            if (!existing || new Date(t.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
+              map.set(t.id, t);
+            }
+          });
+          const merged = Array.from(map.values()).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          try {
+            localStorage.setItem(LOCAL_STORAGE_TICKETS_KEY, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
       }
     } catch (err) {
       console.warn("Failed to refresh tickets:", err);

@@ -124,6 +124,26 @@ export class AIClient {
       // Firestore query skipped, proceed to ENV fallback
     }
 
+    try {
+      if (typeof window === "undefined") {
+        const fs = await import("fs");
+        const path = await import("path");
+        const isServerless = Boolean(process.env.NETLIFY || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+        const configPath = isServerless ? "/tmp/ai_config.json" : path.join(process.cwd(), ".data", "ai_config.json");
+        if (fs.existsSync(configPath)) {
+          const fileData = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+          if (fileData && fileData.providerName) {
+            cachedAIConfig = {
+              ...fileData,
+              apiKey: fileData.apiKey || process.env.HHTECH_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "",
+              isEnabled: fileData.isEnabled !== false && Boolean(fileData.apiKey || process.env.HHTECH_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY),
+            };
+            return cachedAIConfig;
+          }
+        }
+      }
+    } catch {}
+
     // Default fallback from environment variables
     const apiKey =
       process.env.HHTECH_API_KEY ||
@@ -180,6 +200,22 @@ export class AIClient {
       isDefault: true,
       notes: config.notes ?? "Updated via Admin AI Hub",
     };
+
+    try {
+      if (typeof window === "undefined") {
+        const fs = await import("fs");
+        const path = await import("path");
+        const isServerless = Boolean(process.env.NETLIFY || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+        const configDir = isServerless ? "/tmp" : path.join(process.cwd(), ".data");
+        if (!fs.existsSync(configDir)) {
+          fs.mkdirSync(configDir, { recursive: true });
+        }
+        const configPath = path.join(configDir, "ai_config.json");
+        fs.writeFileSync(configPath, JSON.stringify(cachedAIConfig, null, 2), "utf-8");
+      }
+    } catch (diskErr) {
+      console.warn("Could not write ai_config.json:", diskErr);
+    }
 
     try {
       const db = getFirestoreDb();

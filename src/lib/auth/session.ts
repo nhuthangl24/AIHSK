@@ -32,6 +32,13 @@ export const ADMIN_EMAILS = [
   "superadmin@aihsk.com",
 ];
 
+export function isAuthorizedAdmin(user: any): boolean {
+  if (!user) return false;
+  const roleStr = String(user.role || "").toUpperCase();
+  const email = String(user.email || "").toLowerCase().trim();
+  return roleStr === "ADMIN" || ADMIN_EMAILS.includes(email);
+}
+
 export function getAuthCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
   const configuredDomain = process.env.COOKIE_DOMAIN;
@@ -94,13 +101,20 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
 
       if (fbUser) {
         if (fbUser.name) payload.name = fbUser.name;
-        if (fbUser.role) payload.role = fbUser.role as any;
+        if (fbUser.role) {
+          payload.role = String(fbUser.role).toUpperCase() === "ADMIN" ? "ADMIN" : "USER";
+        }
         if (!payload.userId && fbUser.id) {
           payload.userId = fbUser.id;
         }
       }
     } catch {
       // In edge/serverless, continue with JWT payload
+    }
+
+    // Guarantee ADMIN role if email matches authorized admin list
+    if (payload.email && ADMIN_EMAILS.includes(payload.email.toLowerCase().trim())) {
+      payload.role = "ADMIN";
     }
 
     return payload;
@@ -143,7 +157,12 @@ export async function getCurrentUserWithProfile() {
     id: fbUser?.id || session.userId,
     email: session.email,
     name: resolvedName,
-    role: fbUser?.role || session.role,
+    role:
+      (fbUser?.role && String(fbUser.role).toUpperCase() === "ADMIN") ||
+      (session.email && ADMIN_EMAILS.includes(session.email.toLowerCase().trim())) ||
+      session.role === "ADMIN"
+        ? "ADMIN"
+        : "USER",
     avatarUrl: fbUser?.avatar || null,
     isActive: true,
     emailVerified: true,
