@@ -14,9 +14,34 @@ export interface LLMConfig {
   notes?: string;
 }
 
+export interface TextContentPart {
+  type: "text";
+  text: string;
+}
+
+export interface InputAudioContentPart {
+  type: "input_audio";
+  input_audio: {
+    data: string;
+    format: "wav" | "mp3";
+  };
+}
+
+export interface ImageUrlContentPart {
+  type: "image_url";
+  image_url: {
+    url: string;
+  };
+}
+
+export type MessageContentPart =
+  | TextContentPart
+  | InputAudioContentPart
+  | ImageUrlContentPart;
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: string | MessageContentPart[];
 }
 
 export interface ModelCatalogItem {
@@ -330,6 +355,121 @@ export class AIClient {
     }
 
     return content;
+  }
+
+  /**
+   * Multimodal Audio Evaluation using native Gemini 3.6 Flash audio processing.
+   * Directly evaluates tones (thanh 1-4, sandhi), initials/finals, fluency, and spoken content.
+   */
+  static async evaluateAudioWithGemini({
+    audioBase64,
+    audioFormat = "wav",
+    prompt,
+    systemPrompt,
+    model = "gemini-3.6-flash",
+    temperature = 0.2,
+    max_tokens = 1200,
+    timeoutMs = 45000,
+    retries = 2,
+  }: {
+    audioBase64: string;
+    audioFormat?: "wav" | "mp3";
+    prompt: string;
+    systemPrompt?: string;
+    model?: string;
+    temperature?: number;
+    max_tokens?: number;
+    timeoutMs?: number;
+    retries?: number;
+  }): Promise<string> {
+    const config = await this.getActiveConfig();
+    const apiKey = config.apiKey;
+    if (!apiKey) {
+      throw new Error("No API key configured for LLM. Please configure HHTECH_API_KEY in Admin.");
+    }
+
+    let endpoint = config.baseUrl.trim().replace(/\/+$/, "");
+    if (!endpoint.endsWith("/chat/completions")) {
+      endpoint = `${endpoint}/chat/completions`;
+    }
+
+    const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, "").trim();
+
+    const messages: ChatMessage[] = [];
+    if (systemPrompt) {
+      messages.push({
+        role: "system",
+        content: systemPrompt,
+      });
+    }
+
+    messages.push({
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        {
+          type: "input_audio",
+          input_audio: {
+            data: cleanBase64,
+            format: audioFormat,
+          },
+        },
+      ],
+    });
+
+    const requestBody = {
+      model: model || "gemini-3.6-flash",
+      messages,
+      temperature,
+      max_tokens,
+    };
+
+    let lastError: any = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const content = data?.choices?.[0]?.message?.content;
+          if (content && typeof content === "string") {
+            return content;
+          }
+          throw new Error("LLM returned empty completion message for audio evaluation.");
+        }
+
+        const errText = await response.text();
+        lastError = new Error(
+          `LLM API audio evaluation error (${response.status}): ${errText || response.statusText}`
+        );
+
+        if (
+          (response.status === 500 || response.status === 503 || response.status === 429) &&
+          attempt < retries
+        ) {
+          await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+          continue;
+        }
+
+        throw lastError;
+      } catch (err: any) {
+        lastError = err;
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+          continue;
+        }
+      }
+    }
+
+    throw lastError || new Error("Failed to evaluate audio with Gemini Flash after retries.");
   }
 
   /**

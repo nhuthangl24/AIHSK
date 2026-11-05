@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   HelpCircle,
@@ -82,6 +82,7 @@ export default function AdminSupportClient({ initialTickets, user }: AdminSuppor
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [selectedTicket, setSelectedTicket] = useState<StoredSupportTicket | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Form edit states for selected ticket
   const [editStatus, setEditStatus] = useState<"OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED">("OPEN");
@@ -90,6 +91,52 @@ export default function AdminSupportClient({ initialTickets, user }: AdminSuppor
   const [isSaving, setIsSaving] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
+  const fetchFreshTickets = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(`/api/admin/support?_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
+      });
+      const d = await res.json();
+      if (d.tickets && Array.isArray(d.tickets)) {
+        setTickets(d.tickets);
+      }
+    } catch {
+      // Silently fail — keep showing current state
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Fetch fresh on mount (bypass SSR cache)
+    fetchFreshTickets();
+
+    // Real-time cross-tab: listen for learner ticket creation
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      bc = new BroadcastChannel("classnia_support_sync");
+      bc.onmessage = (event) => {
+        if (event.data?.type === "TICKET_CREATED" && event.data?.ticket) {
+          const newTicket: StoredSupportTicket = event.data.ticket;
+          setTickets((prev) => {
+            if (prev.some((t) => t.id === newTicket.id)) return prev;
+            return [newTicket, ...prev];
+          });
+        }
+      };
+    }
+
+    // Auto-poll every 15 seconds so admin sees new learner tickets without refreshing
+    const poll = setInterval(fetchFreshTickets, 15000);
+
+    return () => {
+      clearInterval(poll);
+      if (bc) bc.close();
+    };
+  }, [fetchFreshTickets]);
 
   const openTicketDetail = (ticket: StoredSupportTicket) => {
     setSelectedTicket(ticket);
@@ -111,10 +158,11 @@ export default function AdminSupportClient({ initialTickets, user }: AdminSuppor
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ticketId: selectedTicket.id,
+          id: selectedTicket.id,
           status: editStatus,
           priority: editPriority,
           adminResponse: editResponse,
+          fallbackTicket: { ...selectedTicket, status: editStatus, adminResponse: editResponse, updatedAt: new Date().toISOString() },
         }),
       });
 
@@ -123,12 +171,27 @@ export default function AdminSupportClient({ initialTickets, user }: AdminSuppor
         throw new Error(data.error || "Không thể cập nhật yêu cầu.");
       }
 
-      const updatedTicket: StoredSupportTicket = data.ticket;
+      const updatedTicket: StoredSupportTicket = data.ticket || {
+        ...selectedTicket,
+        status: editStatus,
+        adminResponse: editResponse.trim() || selectedTicket.adminResponse || null,
+        updatedAt: new Date().toISOString(),
+      };
 
       setTickets((prev) =>
         prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t))
       );
       setSelectedTicket(updatedTicket);
+
+      // Broadcast update to learner tab so they see response without refreshing
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        try {
+          const bc = new BroadcastChannel("classnia_support_sync");
+          bc.postMessage({ type: "TICKET_UPDATED", ticket: updatedTicket });
+          bc.close();
+        } catch {}
+      }
+
       setFeedbackSuccess("Đã lưu cập nhật và gửi phản hồi tới học viên thành công!");
     } catch (err: any) {
       setFeedbackError(err.message || "Đã xảy ra sự cố khi lưu cập nhật.");
@@ -192,6 +255,14 @@ export default function AdminSupportClient({ initialTickets, user }: AdminSuppor
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={fetchFreshTickets}
+            title="Tải lại danh sách mới nhất"
+            className="p-2 rounded-xl text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-slate-200 dark:border-slate-800 transition-colors"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-purple-600" : ""}`} />
+          </button>
           <Link href="/admin">
             <Button variant="outline" size="sm" className="text-xs rounded-xl h-9">
               &larr; Về Tổng Quan Admin

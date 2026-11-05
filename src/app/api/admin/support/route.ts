@@ -94,7 +94,9 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { id, status, adminResponse, fallbackTicket } = body;
+    const { id: rawId, ticketId, status, adminResponse, priority, fallbackTicket } = body;
+    // Accept both "id" and "ticketId" for backward compat with older client
+    const id = rawId || ticketId;
 
     if (!id) {
       return NextResponse.json({ error: "Mã yêu cầu (id) là bắt buộc." }, { status: 400, headers: NO_CACHE_HEADERS });
@@ -103,6 +105,7 @@ export async function PATCH(req: NextRequest) {
     const updates: any = {};
     if (status) updates.status = status;
     if (typeof adminResponse === "string") updates.adminResponse = adminResponse.trim();
+    if (priority) updates.priority = priority;
 
     const updated = assessmentStore.updateSupportTicket(id, updates, fallbackTicket);
     if (!updated) {

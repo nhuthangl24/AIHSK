@@ -56,8 +56,16 @@ export interface HskkCandidateAnswer {
   partNumber: number;
   questionIndex: number;
   transcript: string;
+  audioBase64?: string;
+  audioUrl?: string;
   durationSeconds: number;
   spokenAt: string;
+}
+
+export interface HskkPhoneticsAnalysis {
+  tonesComment?: string;
+  initialsAndFinalsComment?: string;
+  pauseAndFluencyComment?: string;
 }
 
 export interface HskkDetailedQuestionEvaluation {
@@ -71,6 +79,9 @@ export interface HskkDetailedQuestionEvaluation {
   score: number;
   maxScore: number;
   pronunciationQuality: "EXCELLENT" | "GOOD" | "FAIR" | "POOR";
+  tonesAccuracyScore?: number;
+  fluencyScore?: number;
+  phoneticsAnalysis?: HskkPhoneticsAnalysis;
   feedback: string;
   correction?: string;
   pinyinCorrection?: string;
