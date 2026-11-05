@@ -357,7 +357,13 @@ class AssessmentStore {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, "utf-8");
         const parsed = JSON.parse(raw);
-        if (parsed.templates) Object.assign(this.data.templates, parsed.templates);
+        if (parsed.templates) {
+          for (const [tId, tVal] of Object.entries(parsed.templates)) {
+            if (!tId.startsWith("tpl_custom_") && (tVal as any)?.title !== "Đàm phán xuất nhập khẩu") {
+              this.data.templates[tId] = tVal as any;
+            }
+          }
+        }
         if (parsed.sessions) Object.assign(this.data.sessions, parsed.sessions);
         if (parsed.profiles) Object.assign(this.data.profiles, parsed.profiles);
         if (parsed.tickets) Object.assign(this.data.tickets, parsed.tickets);
@@ -371,7 +377,11 @@ class AssessmentStore {
             const seedRaw = fs.readFileSync(seedPath, "utf-8");
             const seedParsed = JSON.parse(seedRaw);
             if (seedParsed.templates) {
-              Object.assign(this.data.templates, seedParsed.templates);
+              for (const [tId, tVal] of Object.entries(seedParsed.templates)) {
+                if (!tId.startsWith("tpl_custom_") && (tVal as any)?.title !== "Đàm phán xuất nhập khẩu") {
+                  this.data.templates[tId] = tVal as any;
+                }
+              }
             }
             if (seedParsed.sessions && Object.keys(this.data.sessions).length === 0) {
               Object.assign(this.data.sessions, seedParsed.sessions);
@@ -461,12 +471,16 @@ class AssessmentStore {
   // --- TEMPLATES ---
   getTemplates(): StoredTemplate[] {
     this.init();
-    return Object.values(this.data.templates).filter((t) => t.isActive && t.isPublic);
+    return Object.values(this.data.templates).filter(
+      (t) => t.isActive && t.isPublic && !t.id.startsWith("tpl_custom_") && t.title !== "Đàm phán xuất nhập khẩu"
+    );
   }
 
   getAllTemplates(): StoredTemplate[] {
     this.init();
-    return Object.values(this.data.templates);
+    return Object.values(this.data.templates).filter(
+      (t) => !t.id.startsWith("tpl_custom_") && t.title !== "Đàm phán xuất nhập khẩu"
+    );
   }
 
   getTemplate(id: string): StoredTemplate | null {
