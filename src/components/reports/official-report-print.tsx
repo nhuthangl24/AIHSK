@@ -30,7 +30,7 @@ function ScannableQrCode({ value, size = 68 }: { value: string; size?: number })
     try {
       const qr = QRCode.create(value, { errorCorrectionLevel: "M" });
       const moduleCount = qr.modules.size;
-      const margin = 1;
+      const margin = 2;
       const total = moduleCount + margin * 2;
       let path = "";
 
@@ -306,10 +306,19 @@ export function OfficialReportPrintTemplate({
   });
 
   // Dynamic verification link pointing to the real report
-  const verificationUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/dashboard/reports/${testId}`
-      : `https://classnia.id.vn/dashboard/reports/${testId}`;
+  // If previewing on localhost, fallback to public domain so scanning on phone actually connects
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "::1");
+
+  const baseUrl =
+    typeof window !== "undefined" && !isLocalhost
+      ? window.location.origin
+      : "https://www.classnia.id.vn";
+
+  const verificationUrl = `${baseUrl}/dashboard/reports/${testId}`;
 
   const printRecommendations = (allRecommendations || []).slice(0, 5);
 
