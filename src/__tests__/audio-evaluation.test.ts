@@ -13,9 +13,9 @@ describe("Native Multimodal Audio Evaluation (Approach 1 with Gemini 3.6 Flash)"
       .spyOn(AIClient, "evaluateAudioWithGemini")
       .mockResolvedValue(
         JSON.stringify({
-          recognizedTranscript: "你好，我想去图书馆借一本书。",
-          pinyinWithTones: "Nǐ hǎo, wǒ xiǎng qù túshūguǎn jiè yī běn shū.",
-          score: 4.8,
+          recognizedTranscript: "随着现代科技的快速发展，人们的交流方式变得越来越便利。",
+          pinyinWithTones: "Suízhe xiàndài kējì de kuàisù fāzhǎn, rénmen de jiāoliú fāngshì biànde yuèláiyuè biànlì.",
+          score: 3.0,
           pronunciationQuality: "EXCELLENT",
           tonesAccuracyScore: 96,
           fluencyScore: 92,
@@ -25,8 +25,8 @@ describe("Native Multimodal Audio Evaluation (Approach 1 with Gemini 3.6 Flash)"
             pauseAndFluencyComment: "Tốc độ nói vừa phải, lưu loát.",
           },
           feedbackVi: "Phát âm rất tốt, ngữ điệu tự nhiên.",
-          correction: "我想去图书馆借一本书。",
-          pinyinCorrection: "Wǒ xiǎng qù túshūguǎn jiè yī běn shū.",
+          correction: "随着现代科技的快速发展，人们的交流方式变得越来越便利。",
+          pinyinCorrection: "Suízhe xiàndài kējì de kuàisù fāzhǎn, rénmen de jiāoliú fāngshì biànde yuèláiyuè biànlì.",
         })
       );
 
@@ -46,7 +46,7 @@ describe("Native Multimodal Audio Evaluation (Approach 1 with Gemini 3.6 Flash)"
       questionId: q1.id,
       partNumber: q1.partNumber,
       questionIndex: q1.questionIndex,
-      transcript: "你好，我想去图书馆",
+      transcript: "随着现代科技的快速发展，人们的交流方式变得越来越便利。",
       audioBase64: fakeAudioBase64,
       durationSeconds: 3,
     });
@@ -74,13 +74,13 @@ describe("Native Multimodal Audio Evaluation (Approach 1 with Gemini 3.6 Flash)"
     const template = HskkService.getTemplateById("hskk-intermediate-std-1")!;
     const q1 = template.questions[0];
 
-    // Only text transcript, no audio
+    // Accurate Chinese text matching q1
     HskkService.saveAnswer(session.id, q1.id, {
       questionId: q1.id,
       partNumber: q1.partNumber,
       questionIndex: q1.questionIndex,
-      transcript: "今天天气非常好。",
-      durationSeconds: 2,
+      transcript: "随着现代科技的快速发展，人们的交流方式变得越来越便利。",
+      durationSeconds: 8,
     });
 
     const result = await HskkService.evaluateSession(session.id);
@@ -89,5 +89,63 @@ describe("Native Multimodal Audio Evaluation (Approach 1 with Gemini 3.6 Flash)"
     // evaluateAudioWithGemini should not be called since there is no audioBase64
     expect(evaluateAudioSpy).not.toHaveBeenCalled();
     expect(result!.detailedQuestions[0].score).toBeGreaterThan(0);
+  });
+
+  it("should give 0 points and POOR rating when candidate reads Vietnamese or gibberish", async () => {
+    const session = HskkService.createSession({
+      userId: "test_gibberish_user",
+      templateId: "hskk-intermediate-std-1",
+      mode: "OFFICIAL",
+    });
+
+    const template = HskkService.getTemplateById("hskk-intermediate-std-1")!;
+    const q1 = template.questions[0];
+
+    // Candidate speaks Vietnamese gibberish
+    HskkService.saveAnswer(session.id, q1.id, {
+      questionId: q1.id,
+      partNumber: q1.partNumber,
+      questionIndex: q1.questionIndex,
+      transcript: "alo alo một hai ba bốn em đọc linh tinh xem có được không nhé",
+      durationSeconds: 5,
+    });
+
+    const result = await HskkService.evaluateSession(session.id);
+
+    expect(result).not.toBeNull();
+    expect(result!.detailedQuestions[0].score).toBe(0);
+    expect(result!.detailedQuestions[0].pronunciationQuality).toBe("POOR");
+    expect(result!.detailedQuestions[0].tonesAccuracyScore).toBe(0);
+    expect(result!.detailedQuestions[0].feedback).toContain("Không phát hiện tiếng Trung có nghĩa");
+    expect(result!.isPassed).toBe(false);
+    expect(result!.overallScore).toBe(0);
+  });
+
+  it("should give 0 points when candidate in Part 1 repeats random unrelated Chinese characters", async () => {
+    const session = HskkService.createSession({
+      userId: "test_unrelated_user",
+      templateId: "hskk-intermediate-std-1",
+      mode: "OFFICIAL",
+    });
+
+    const template = HskkService.getTemplateById("hskk-intermediate-std-1")!;
+    const q1 = template.questions[0]; // "随着现代科技的快速发展..."
+
+    // Candidate repeats completely unrelated Chinese words
+    HskkService.saveAnswer(session.id, q1.id, {
+      questionId: q1.id,
+      partNumber: q1.partNumber,
+      questionIndex: q1.questionIndex,
+      transcript: "苹果很好吃，我想去买香蕉。",
+      durationSeconds: 4,
+    });
+
+    const result = await HskkService.evaluateSession(session.id);
+
+    expect(result).not.toBeNull();
+    expect(result!.detailedQuestions[0].score).toBe(0);
+    expect(result!.detailedQuestions[0].pronunciationQuality).toBe("POOR");
+    expect(result!.detailedQuestions[0].feedback).toContain("không nhắc lại đúng câu mẫu");
+    expect(result!.isPassed).toBe(false);
   });
 });

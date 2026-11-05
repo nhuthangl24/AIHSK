@@ -1122,6 +1122,156 @@ export class HskkService {
   }
 
   /**
+   * Strictly validates and calibrates candidate speech against official CTI HSKK rules.
+   * Completely rejects gibberish, non-Chinese, Vietnamese/English banter, off-topic guessing, or silence.
+   */
+  static calibrateHskkQuestionScore(
+    q: HskkExamTemplate["questions"][number],
+    candidateText: string,
+    rawScore: number,
+    pronunciationQuality: "EXCELLENT" | "GOOD" | "FAIR" | "POOR",
+    tonesAccuracyScore?: number,
+    fluencyScore?: number,
+    feedback?: string
+  ): {
+    score: number;
+    pronunciationQuality: "EXCELLENT" | "GOOD" | "FAIR" | "POOR";
+    tonesAccuracyScore: number;
+    fluencyScore: number;
+    feedback: string;
+  } {
+    const text = (candidateText || "").trim();
+    // Extract Chinese characters only
+    const chineseChars = text.match(/[\u4e00-\u9fa5]/g) || [];
+    const chineseCount = chineseChars.length;
+    // Strip punctuation and spaces to count non-Chinese characters
+    const cleanNoPunct = text.replace(/[\s\p{P}\p{S}]/gu, "");
+    const nonChineseChars = cleanNoPunct.replace(/[\u4e00-\u9fa5]/g, "");
+
+    // 1. Zero tolerance for silence, noise, Vietnamese/English or gibberish
+    if (!text || chineseCount === 0 || (cleanNoPunct.length >= 3 && nonChineseChars.length > chineseCount)) {
+      return {
+        score: 0,
+        pronunciationQuality: "POOR",
+        tonesAccuracyScore: 0,
+        fluencyScore: 0,
+        feedback: "Không phát hiện tiếng Trung có nghĩa. Thí sinh phát âm tiếng Việt/ngoại ngữ hoặc nói linh tinh, đạt 0 điểm.",
+      };
+    }
+
+    // 2. Part 1 (听后重复) & Part 2 (朗读): Candidate MUST match target sentence
+    if (q.type === "LISTEN_AND_REPEAT" || q.type === "READ_ALOUD") {
+      const target = (q.readingText || q.audioPrompt || "").replace(/[\s\p{P}\p{S}]/gu, "");
+      const targetChinese = target.match(/[\u4e00-\u9fa5]/g) || [];
+
+      if (targetChinese.length > 0) {
+        // Count matching Chinese characters
+        const matchedIndices = new Set<number>();
+        for (const spChar of chineseChars) {
+          const foundIdx = targetChinese.findIndex((tc, i) => tc === spChar && !matchedIndices.has(i));
+          if (foundIdx !== -1) {
+            matchedIndices.add(foundIdx);
+          }
+        }
+
+        const matchCount = matchedIndices.size;
+        const matchRatio = matchCount / targetChinese.length;
+
+        // If less than 40% matching characters: gibberish or completely wrong sentence
+        if (matchRatio < 0.4) {
+          return {
+            score: 0,
+            pronunciationQuality: "POOR",
+            tonesAccuracyScore: 0,
+            fluencyScore: 0,
+            feedback: `Thí sinh không nhắc lại đúng câu mẫu của đề bài (chỉ khớp ${matchCount}/${targetChinese.length} chữ, đọc sai hoặc nói linh tinh). Đạt 0/${q.maxScore} điểm.`,
+          };
+        }
+
+        // 40% - 65% match: partial attempt
+        if (matchRatio < 0.65) {
+          const cappedScore = Math.min(Math.round(q.maxScore * 0.4), Math.max(1, Math.round(rawScore)));
+          return {
+            score: cappedScore,
+            pronunciationQuality: "FAIR",
+            tonesAccuracyScore: Math.min(50, Math.max(25, tonesAccuracyScore || 40)),
+            fluencyScore: Math.min(50, Math.max(25, fluencyScore || 40)),
+            feedback: `Thí sinh chỉ nhắc lại được một phần (${matchCount}/${targetChinese.length} chữ), sai lệch nhiều thanh điệu hoặc thiếu từ ngữ.`,
+          };
+        }
+
+        // 65% - 85% match: good attempt
+        if (matchRatio < 0.85) {
+          const cappedScore = Math.min(Math.round(q.maxScore * 0.75), Math.max(1, Math.round(rawScore)));
+          return {
+            score: cappedScore,
+            pronunciationQuality: "GOOD",
+            tonesAccuracyScore: Math.min(75, Math.max(60, tonesAccuracyScore || 70)),
+            fluencyScore: Math.min(75, Math.max(60, fluencyScore || 70)),
+            feedback: feedback || "Nhắc lại tương đối đúng câu mẫu, cần chú ý độ chuẩn xác của thanh điệu và âm cuối.",
+          };
+        }
+
+        // >= 85% match: excellent
+        return {
+          score: Math.min(q.maxScore, Math.max(1, Math.round(rawScore || q.maxScore))),
+          pronunciationQuality: (tonesAccuracyScore || 85) >= 80 ? "EXCELLENT" : "GOOD",
+          tonesAccuracyScore: Math.min(100, Math.max(75, tonesAccuracyScore || 90)),
+          fluencyScore: Math.min(100, Math.max(75, fluencyScore || 90)),
+          feedback: feedback || "Nhắc lại trọn vẹn câu mẫu, âm điệu chuẩn xác và tự nhiên.",
+        };
+      }
+    }
+
+    // 3. Part 2 (看图说话) & Part 3 (回答问题): Must have sufficient Chinese characters
+    if (q.type === "PICTURE_DESCRIPTION" || q.type === "ANSWER_QUESTIONS" || q.type === "LISTEN_AND_ANSWER") {
+      // Under 8 characters: fragmented phrases or simple formulaic words ("你好", "好的")
+      if (chineseCount < 8) {
+        return {
+          score: 0,
+          pronunciationQuality: "POOR",
+          tonesAccuracyScore: Math.min(20, tonesAccuracyScore || 0),
+          fluencyScore: Math.min(20, fluencyScore || 0),
+          feedback: "Câu trả lời quá ngắn (dưới 8 chữ Hán), không thể hiện được khả năng diễn đạt theo chuẩn HSKK. Đạt 0 điểm.",
+        };
+      }
+
+      // Under 20 characters: short response, cap at max 35% of maxScore
+      if (chineseCount < 20) {
+        const cappedScore = Math.min(Math.round(q.maxScore * 0.35), Math.max(1, Math.round(rawScore)));
+        return {
+          score: cappedScore,
+          pronunciationQuality: "FAIR",
+          tonesAccuracyScore: Math.min(55, Math.max(30, tonesAccuracyScore || 45)),
+          fluencyScore: Math.min(55, Math.max(30, fluencyScore || 45)),
+          feedback: "Câu trả lời tương đối ngắn, chưa phát triển được luận điểm hoàn chỉnh.",
+        };
+      }
+
+      // Under 35 characters: moderate response, cap at max 65% of maxScore
+      if (chineseCount < 35) {
+        const cappedScore = Math.min(Math.round(q.maxScore * 0.65), Math.max(1, Math.round(rawScore)));
+        return {
+          score: cappedScore,
+          pronunciationQuality: "GOOD",
+          tonesAccuracyScore: Math.min(75, Math.max(50, tonesAccuracyScore || 65)),
+          fluencyScore: Math.min(75, Math.max(50, fluencyScore || 65)),
+          feedback: feedback || "Trả lời đúng trọng tâm đề tài, nên mở rộng thêm luận cứ và liên từ nối.",
+        };
+      }
+    }
+
+    // Pass through calibrated score
+    return {
+      score: Math.min(q.maxScore, Math.max(0, Math.round(rawScore))),
+      pronunciationQuality,
+      tonesAccuracyScore: Math.min(100, Math.max(0, tonesAccuracyScore || 0)),
+      fluencyScore: Math.min(100, Math.max(0, fluencyScore || 0)),
+      feedback: feedback || "Hoàn thành phần thi theo yêu cầu.",
+    };
+  }
+
+  /**
    * Evaluate a single question's recorded audio directly using Gemini 3.6 Flash.
    * Performs deep acoustic phonetics & tone inspection (thanh 1-4, sandhi, fluency, grammar).
    */
@@ -1142,28 +1292,37 @@ export class HskkService {
     try {
       const systemPrompt = `Bạn là Giám khảo Khảo thí Khẩu ngữ Tiếng Trung Quốc tế (HSKK 考官) của hệ thống Classnia AI.
 Nhiệm vụ của bạn là NGHE TRỰC TIẾP file âm thanh của thí sinh và chấm điểm theo tiêu chuẩn khảo thí quốc tế HSKK (CTI 汉考国际).
-Phân tích kỹ lưỡng:
-1. Thanh điệu (声调: thanh 1 cao bằng, thanh 2 đi lên, thanh 3 thấp rồi lên hoặc biến điệu 3-3, thanh 4 dứt khoát).
-2. Thanh mẫu & Vận mẫu (zh/ch/sh vs z/c/s, b/p, d/t, j/q/x, âm uốn lưỡi, vận mẫu mũi).
-3. Độ trôi chảy (流利度: ngắt nghỉ đúng chỗ, tốc độ tự nhiên).
-4. Độ chính xác nội dung so với đề bài.
-Trả về định dạng JSON thuần túy theo cấu trúc yêu cầu.`;
+
+QUY TẮC BẮT BUỘC VỀ PHÒNG CHỐNG NÓI LINH TINH / GIAN LẬN / LẠC ĐỀ (ZERO TOLERANCE FOR GIBBERISH / OFF-TOPIC):
+1. PHÁT HIỆN NÓI LINH TINH / KHÔNG PHẢI TIẾNG TRUNG:
+   - Nếu thí sinh nói tiếng Việt, tiếng Anh, nói lảm nhảm, cười đùa, tạo âm thanh vô nghĩa/tiếng ồn, hoặc đọc câu linh tinh không liên quan đề bài: BẮT BUỘC CHẤM 0 ĐIỂM (score: 0, pronunciationQuality: "POOR", tonesAccuracyScore: 0, fluencyScore: 0).
+   - Tuyệt đối KHÔNG tự suy diễn nghĩa hay chấm điểm khích lệ khi thí sinh nói bừa!
+2. PHẦN 1 (听后重复 - Nghe nhắc lại) & ĐỌC VĂN BẢN (朗读):
+   - Thí sinh PHẢI nhắc lại đúng câu mẫu của đề bài.
+   - Nếu thí sinh đọc sai câu khác, bịa từ, hoặc chỉ lặp lại 1-2 từ rời rạc: BẮT BUỘC CHẤM 0 ĐIỂM (hoặc tối đa 1 điểm nếu lặp lại được một nửa câu mẫu có nghĩa).
+3. PHẦN 2 (看图说话) & PHẦN 3 (回答问题):
+   - Thí sinh phải trả lời đúng trọng tâm đề tài bằng câu tiếng Trung hoàn chỉnh có nghĩa.
+   - Nếu chỉ nói "你好", "谢谢", hoặc nói lan man vô nghĩa: CHẤM 0 ĐIỂM.
+4. Trả về định dạng JSON thuần túy theo cấu trúc yêu cầu.`;
 
       const prompt = `Đề thi HSKK: Phần ${q.partNumber} - Loại câu hỏi: ${q.type}
-Câu hỏi / Yêu cầu: "${q.audioPrompt}"
+Yêu cầu câu hỏi: "${q.audioPrompt}"
 ${q.readingText ? `Văn bản đọc: "${q.readingText}"` : ""}
 Thang điểm tối đa câu này: ${q.maxScore} điểm.
+
+CHÚ Ý: Nếu nghe thấy thí sinh nói tiếng Việt, tiếng Anh, nói lảm nhảm, âm thanh vô nghĩa hoặc đọc sai hoàn toàn câu mẫu:
+Hãy ghi nhận recognizedTranscript đúng âm thanh nghe được, và đặt score: 0, pronunciationQuality: "POOR", tonesAccuracyScore: 0, fluencyScore: 0.
 
 Hãy nghe file âm thanh ghi âm phần trả lời của thí sinh và trả về JSON:
 {
   "recognizedTranscript": "nội dung chữ Hán nghe được từ thí sinh",
   "pinyinWithTones": "phiên âm pinyin kèm dấu thanh của câu thí sinh nói",
-  "score": number, // số từ 0 đến ${q.maxScore}
+  "score": number, // số từ 0 đến ${q.maxScore} (nếu nói linh tinh thì chấm 0)
   "pronunciationQuality": "EXCELLENT" | "GOOD" | "FAIR" | "POOR",
-  "tonesAccuracyScore": number, // 0 - 100%
-  "fluencyScore": number, // 0 - 100%
+  "tonesAccuracyScore": number, // 0 - 100% (0 nếu nói linh tinh)
+  "fluencyScore": number, // 0 - 100% (0 nếu nói linh tinh)
   "phoneticsAnalysis": {
-    "tonesComment": "Nhận xét chi tiết về thanh điệu (thanh 1, 2, 3, 4, biến điệu)",
+    "tonesComment": "Nhận xét chi tiết về thanh điệu",
     "initialsAndFinalsComment": "Nhận xét về phụ âm thanh mẫu và vần vận mẫu",
     "pauseAndFluencyComment": "Nhận xét về độ trôi chảy, tốc độ và ngắt câu"
   },
@@ -1184,28 +1343,31 @@ Hãy nghe file âm thanh ghi âm phần trả lời của thí sinh và trả v�
       const parsed = AIClient.extractJson(raw);
       if (!parsed) return null;
 
-      const score =
-        typeof parsed.score === "number"
-          ? Math.min(q.maxScore, Math.max(0, parsed.score))
-          : Math.round(q.maxScore * 0.8);
+      const rawScore = typeof parsed.score === "number" ? Math.min(q.maxScore, Math.max(0, parsed.score)) : 0;
+      const recognized = (parsed.recognizedTranscript || "").trim();
+      const rawQuality = parsed.pronunciationQuality || (rawScore === 0 ? "POOR" : "FAIR");
+      const rawTones = typeof parsed.tonesAccuracyScore === "number" ? parsed.tonesAccuracyScore : (rawScore === 0 ? 0 : 50);
+      const rawFluency = typeof parsed.fluencyScore === "number" ? parsed.fluencyScore : (rawScore === 0 ? 0 : 50);
+
+      // Perform Algorithmic Calibration Guard
+      const calibrated = HskkService.calibrateHskkQuestionScore(
+        q,
+        recognized,
+        rawScore,
+        rawQuality,
+        rawTones,
+        rawFluency,
+        parsed.feedbackVi || parsed.feedback
+      );
 
       return {
-        score,
-        pronunciationQuality: parsed.pronunciationQuality || "GOOD",
-        recognizedTranscript: parsed.recognizedTranscript,
-        tonesAccuracyScore:
-          typeof parsed.tonesAccuracyScore === "number"
-            ? parsed.tonesAccuracyScore
-            : 85,
-        fluencyScore:
-          typeof parsed.fluencyScore === "number"
-            ? parsed.fluencyScore
-            : 85,
+        score: calibrated.score,
+        pronunciationQuality: calibrated.pronunciationQuality,
+        recognizedTranscript: recognized,
+        tonesAccuracyScore: calibrated.tonesAccuracyScore,
+        fluencyScore: calibrated.fluencyScore,
         phoneticsAnalysis: parsed.phoneticsAnalysis || {},
-        feedback:
-          parsed.feedbackVi ||
-          parsed.feedback ||
-          "Phát âm tương đối rõ ràng.",
+        feedback: calibrated.feedback,
         correction: parsed.correction || q.audioPrompt,
         pinyinCorrection: parsed.pinyinCorrection || q.pinyinPrompt,
       };
@@ -1305,12 +1467,13 @@ Max Score: ${q.maxScore}`;
   })
   .join("\n\n")}
 
-CRITICAL HSKK SCORING RULES:
+CRITICAL HSKK SCORING RULES (ZERO TOLERANCE FOR GIBBERISH / OFF-TOPIC / NONSENSE):
 1. Total score is on a 0 - 100 scale. Passing standard is 60 / 100 (合格).
-2. Part 1 (听后重复): Deduct points for missing characters, wrong tones, or substitutions. If candidate was silent, score 0.
-3. Part 2 (看图说话 / 听后回答 / 朗读): Evaluate completeness, coherence, vocabulary richness, and pronunciation accuracy.
-4. Part 3 (回答问题): Evaluate logic, fluency, structured arguments, and appropriate discourse connectives.
-5. Provide constructive feedback in Vietnamese.
+2. ZERO TOLERANCE FOR GIBBERISH / NON-CHINESE: If candidate speaks gibberish, random unrelated words, Vietnamese, English, or makes nonsensical noises, that question MUST receive 0 points. If the entire exam consists of gibberish or unrelated reading, overallScore MUST be between 0 and 20, and isPassed MUST be FALSE.
+3. Part 1 (听后重复): Deduct points for missing characters, wrong tones, or substitutions. If candidate spoke random words or was silent, score 0.
+4. Part 2 (看图说话 / 听后回答 / 朗读): Evaluate completeness, coherence, vocabulary richness, and pronunciation accuracy. Off-topic responses receive 0 points.
+5. Part 3 (回答问题): Evaluate logic, fluency, structured arguments, and appropriate discourse connectives. Responses under 8 words receive 0 points.
+6. Provide constructive feedback in Vietnamese. Strictly NO grade inflation!
 
 RETURN STRICT JSON ONLY:
 {
@@ -1395,7 +1558,7 @@ RETURN STRICT JSON ONLY:
 
       if (audioEval) {
         // High fidelity native audio grading from Gemini 3.6 Flash
-        qScore = Math.min(q.maxScore, Math.max(0, Math.round(audioEval.score)));
+        qScore = audioEval.score;
         pronunciationQuality = audioEval.pronunciationQuality;
         feedback = audioEval.feedback;
         correction = audioEval.correction;
@@ -1403,15 +1566,6 @@ RETURN STRICT JSON ONLY:
         tonesAccuracyScore = audioEval.tonesAccuracyScore;
         fluencyScore = audioEval.fluencyScore;
         phoneticsAnalysis = audioEval.phoneticsAnalysis;
-
-        if (typeof tonesAccuracyScore === "number") {
-          totalToneScore += tonesAccuracyScore;
-          toneScoreCount++;
-        }
-        if (typeof fluencyScore === "number") {
-          totalFluencyScore += fluencyScore;
-          fluencyScoreCount++;
-        }
       } else if (llmItem && typeof llmItem.score === "number") {
         qScore = Math.min(q.maxScore, Math.max(0, Math.round(llmItem.score)));
         pronunciationQuality = llmItem.pronunciationQuality || "GOOD";
@@ -1419,42 +1573,35 @@ RETURN STRICT JSON ONLY:
         correction = llmItem.correction || "";
         pinyinCorrection = llmItem.pinyinCorrection || "";
       } else {
-        // Deterministic fallback based on answer quality
-        if (!candidateText) {
-          qScore = 0;
-          pronunciationQuality = "POOR";
-          feedback = "Thí sinh không ghi âm hoặc không phát biểu câu trả lời.";
-        } else if (candidateText.length >= 3) {
-          if (q.type === "LISTEN_AND_REPEAT") {
-            // Check character similarity
-            const cleanTarget = q.audioPrompt.replace(/[，。！？、\s]/g, "");
-            const cleanSpoken = candidateText.replace(/[，。！？、\s]/g, "");
-            let matches = 0;
-            for (const ch of cleanSpoken) {
-              if (cleanTarget.includes(ch)) matches++;
-            }
-            const ratio = cleanTarget.length > 0 ? matches / cleanTarget.length : 0.8;
-            qScore = Math.min(q.maxScore, Math.max(1, Math.round(ratio * q.maxScore)));
-            pronunciationQuality = ratio >= 0.8 ? "EXCELLENT" : ratio >= 0.5 ? "GOOD" : "FAIR";
-            feedback = ratio >= 0.8 ? "Nhắc lại đầy đủ, âm điệu chuẩn xác." : "Nhắc lại được ý chính, chú ý các thanh điệu khó.";
-          } else {
-            // Extended answers (Pictures, Questions, Reading)
-            const charCount = candidateText.length;
-            if (charCount >= 30) {
-              qScore = Math.round(q.maxScore * 0.85);
-              pronunciationQuality = "EXCELLENT";
-              feedback = "Diễn đạt lưu loát, ý tứ mạch lạc và phản xạ tốt.";
-            } else if (charCount >= 10) {
-              qScore = Math.round(q.maxScore * 0.65);
-              pronunciationQuality = "GOOD";
-              feedback = "Trả lời đúng trọng tâm đề tài, nên mở rộng thêm chi tiết.";
-            } else {
-              qScore = Math.round(q.maxScore * 0.4);
-              pronunciationQuality = "FAIR";
-              feedback = "Câu trả lời tương đối ngắn, cần rèn luyện khả năng nói câu phức.";
-            }
-          }
-        }
+        qScore = 0;
+        pronunciationQuality = "POOR";
+        feedback = "Thí sinh không ghi âm hoặc không phát biểu câu trả lời.";
+      }
+
+      // Enforce zero tolerance anti-gibberish / anti-offtopic calibration on EVERY question
+      const calibrated = HskkService.calibrateHskkQuestionScore(
+        q,
+        candidateText,
+        qScore,
+        pronunciationQuality,
+        tonesAccuracyScore,
+        fluencyScore,
+        feedback
+      );
+
+      qScore = calibrated.score;
+      pronunciationQuality = calibrated.pronunciationQuality;
+      tonesAccuracyScore = calibrated.tonesAccuracyScore;
+      fluencyScore = calibrated.fluencyScore;
+      feedback = calibrated.feedback;
+
+      if (typeof tonesAccuracyScore === "number" && tonesAccuracyScore > 0) {
+        totalToneScore += tonesAccuracyScore;
+        toneScoreCount++;
+      }
+      if (typeof fluencyScore === "number" && fluencyScore > 0) {
+        totalFluencyScore += fluencyScore;
+        fluencyScoreCount++;
       }
 
       totalScore += qScore;
@@ -1482,20 +1629,39 @@ RETURN STRICT JSON ONLY:
       });
     }
 
+    const part1Max = template.parts[0]?.maxScore || 30;
+    const part2Max = template.parts[1]?.maxScore || 40;
+    const part3Max = template.parts[2]?.maxScore || 30;
+
+    // Direct mathematical sum of calibrated individual questions (no inflation)
+    const finalPart1Score = Math.min(part1Max, Math.max(0, part1Score));
+    const finalPart2Score = Math.min(part2Max, Math.max(0, part2Score));
+    const finalPart3Score = Math.min(part3Max, Math.max(0, part3Score));
+    const finalOverallScore = Math.min(100, Math.max(0, finalPart1Score + finalPart2Score + finalPart3Score));
+    const isPassed = finalOverallScore >= 60;
+
     const calculatedPronunciation =
       toneScoreCount > 0
         ? Math.round(totalToneScore / toneScoreCount)
-        : (llmResult?.pronunciationScore ?? Math.min(100, Math.round(totalScore)));
+        : Math.min(100, Math.round(finalOverallScore));
 
     const calculatedFluency =
       fluencyScoreCount > 0
         ? Math.round(totalFluencyScore / fluencyScoreCount)
-        : (llmResult?.fluencyScore ?? Math.min(100, Math.round(totalScore) + 2));
+        : Math.min(100, Math.round(finalOverallScore));
 
-    const finalOverallScore = audioTasks.length > 0
-      ? Math.min(100, Math.round(totalScore))
-      : (llmResult?.overallScore ?? Math.min(100, Math.round(totalScore)));
-    const isPassed = finalOverallScore >= 60;
+    let finalSummary = "";
+    if (finalOverallScore === 0) {
+      finalSummary = `Kết quả thi HSKK: 0/100 điểm (KHÔNG ĐẠT). Toàn bộ câu trả lời bị bỏ trống, nói linh tinh hoặc không phát âm tiếng Trung có nghĩa theo yêu cầu đề bài.`;
+    } else if (finalOverallScore < 40) {
+      finalSummary = `Kết quả thi HSKK: ${finalOverallScore}/100 điểm (KHÔNG ĐẠT - Dưới chuẩn cơ bản). Bài thi có nhiều câu đọc sai lệch hoàn toàn, nói linh tinh hoặc ngắt quãng nặng. Cần ôn luyện nghiêm túc lại từ đầu.`;
+    } else if (finalOverallScore < 60) {
+      finalSummary = `Kết quả thi HSKK: ${finalOverallScore}/100 điểm (KHÔNG ĐẠT - Chuẩn đỗ là 60/100). Bạn đã cố gắng hoàn thành bài thi nhưng độ chuẩn xác về thanh điệu và ngữ nghĩa chưa đáp ứng chuẩn đầu ra ${template.titleZh}.`;
+    } else {
+      finalSummary =
+        llmResult?.summary ||
+        `Chúc mừng bạn đã hoàn thành xuất sắc kỳ thi thử ${template.titleZh} với tổng điểm ${finalOverallScore}/100 (ĐẠT CHUẨN). Phản xạ ngữ âm và cấu trúc câu đáp ứng tốt tiêu chuẩn khảo thí quốc tế.`;
+    }
 
     const result: HskkResult = {
       overallScore: finalOverallScore,
@@ -1503,29 +1669,32 @@ RETURN STRICT JSON ONLY:
       level: template.level,
       levelName: template.titleZh,
       certificateCode: `HSKK-CTI-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`,
-      part1Score: llmResult?.part1Score ?? part1Score,
-      part1Max: template.parts[0]?.maxScore || 30,
-      part2Score: llmResult?.part2Score ?? part2Score,
-      part2Max: template.parts[1]?.maxScore || 40,
-      part3Score: llmResult?.part3Score ?? part3Score,
-      part3Max: template.parts[2]?.maxScore || 30,
+      part1Score: finalPart1Score,
+      part1Max,
+      part2Score: finalPart2Score,
+      part2Max,
+      part3Score: finalPart3Score,
+      part3Max,
       fluencyScore: calculatedFluency,
       pronunciationScore: calculatedPronunciation,
-      grammarScore: llmResult?.grammarScore ?? Math.max(40, finalOverallScore - 3),
-      vocabularyScore: llmResult?.vocabularyScore ?? finalOverallScore,
-      summary:
-        llmResult?.summary ||
-        (isPassed
-          ? `Chúc mừng bạn đã hoàn thành xuất sắc kỳ thi thử ${template.titleZh} với tổng điểm ${finalOverallScore}/100 (ĐẠT CHUẨN). Phản xạ ngữ âm và cấu trúc câu đáp ứng tốt tiêu chuẩn khảo thí quốc tế.`
-          : `Bạn đã nỗ lực hoàn thành kỳ thi thử ${template.titleZh} với ${finalOverallScore}/100 điểm. Cần tăng cường độ trôi chảy và độ dài câu trả lời để vượt qua mốc điểm đạt 60/100.`),
-      strengths: llmResult?.strengths || [
-        "Phát âm rõ ràng, nhịp độ nói tự tin và phản xạ tốt sau tiếng bíp.",
-        "Nắm vững các mẫu câu giao tiếp cơ bản theo khung chuẩn HSK 3.0.",
-      ],
-      improvements: llmResult?.improvements || [
-        "Luyện tập phát âm chuẩn biến điệu hai thanh 3 đi liền nhau (三声变调).",
-        "Mở rộng vốn từ nối (不仅...而且, 虽然...但是) để tăng tính gắn kết cho câu trả lời.",
-      ],
+      grammarScore: finalOverallScore < 30 ? Math.min(15, finalOverallScore) : (llmResult?.grammarScore ?? Math.max(40, finalOverallScore - 3)),
+      vocabularyScore: finalOverallScore < 30 ? Math.min(15, finalOverallScore) : (llmResult?.vocabularyScore ?? finalOverallScore),
+      summary: finalSummary,
+      strengths: finalOverallScore < 40
+        ? ["Đã tiếp cận và làm quen với quy trình phòng thi khẩu ngữ HSKK chuẩn CTI."]
+        : (llmResult?.strengths || [
+            "Phát âm rõ ràng, nhịp độ nói tự tin và phản xạ tốt sau tiếng bíp.",
+            "Nắm vững các mẫu câu giao tiếp cơ bản theo khung chuẩn HSK 3.0.",
+          ]),
+      improvements: finalOverallScore < 60
+        ? [
+            "Bắt buộc học phát âm chuẩn 4 thanh điệu tiếng Trung, tránh đọc ngẫu nhiên hoặc nói tiếng khác.",
+            "Luyện nghe và nhắc lại nguyên vẹn từng câu ngắn trước khi chuyển sang câu phức.",
+          ]
+        : (llmResult?.improvements || [
+            "Luyện tập phát âm chuẩn biến điệu hai thanh 3 đi liền nhau (三声变调).",
+            "Mở rộng vốn từ nối (不仅...而且, 虽然...但是) để tăng tính gắn kết cho câu trả lời.",
+          ]),
       detailedQuestions: detailedList,
       evaluatedAt: new Date().toISOString(),
     };
