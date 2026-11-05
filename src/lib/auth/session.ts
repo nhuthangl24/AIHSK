@@ -66,10 +66,25 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
 
     let payload: TokenPayload | null = null;
 
-    // 1. Check native AIHSK token
+    // 1. Check native AIHSK token from cookies
     const token = cookieStore.get(COOKIE_NAME)?.value;
     if (token) {
       payload = await verifyToken(token);
+    }
+
+    // 1b. Check Authorization / X-Auth-Token header fallback
+    if (!payload) {
+      try {
+        const { headers } = await import("next/headers");
+        const headerStore = await headers();
+        const authHeader = headerStore.get("authorization") || headerStore.get("x-auth-token");
+        if (authHeader) {
+          const rawToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+          if (rawToken) {
+            payload = await verifyToken(rawToken);
+          }
+        }
+      } catch {}
     }
 
     // 2. Check Classnia session token (hsk_session_token) from classnia.id.vn
