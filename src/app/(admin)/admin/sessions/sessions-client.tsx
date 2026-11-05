@@ -53,7 +53,7 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
       completed: completed.length,
       inProgress: sessions.filter((s) => s.status === "IN_PROGRESS").length,
       avgScore,
-      passRate: completed.length > 0 ? Math.round((passed / completed.length) * 100) : 100,
+      passRate: completed.length > 0 ? Math.round((passed / completed.length) * 100) : 0,
     };
   }, [sessions]);
 
@@ -154,7 +154,7 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
         <Card className="border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-950/10">
           <CardContent className="p-4">
             <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">Điểm TB Hệ Thống</span>
-            <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">{stats.avgScore} / 100</div>
+            <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">{stats.completed > 0 ? `${stats.avgScore} / 100` : "--"}</div>
             <p className="text-[11px] text-blue-500">Toàn bộ thí sinh</p>
           </CardContent>
         </Card>
@@ -162,7 +162,7 @@ export function SessionsClient({ initialSessions }: SessionsClientProps) {
         <Card className="border-purple-200 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/10">
           <CardContent className="p-4">
             <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">Tỷ Lệ Đạt (Pass)</span>
-            <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{stats.passRate}%</div>
+            <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{stats.completed > 0 ? `${stats.passRate}%` : "--"}</div>
             <p className="text-[11px] text-purple-500">Chuẩn đầu ra HSKK</p>
           </CardContent>
         </Card>

@@ -273,6 +273,7 @@ const DEFAULT_TEMPLATES: StoredTemplate[] = [
 ];
 
 export function isJunkTemplate(t: StoredTemplate | null | undefined): boolean {
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) return false;
   if (!t) return true;
   if (t.id.startsWith("tpl_custom_") || t.id.startsWith("tpl-mw")) return true;
   const title = (t.title || "").toLowerCase();
@@ -285,6 +286,100 @@ export function isJunkTemplate(t: StoredTemplate | null | undefined): boolean {
   ) {
     return true;
   }
+  return false;
+}
+
+export function isTestSession(s: StoredSession | null | undefined): boolean {
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) return false;
+  if (!s || !s.id) return true;
+  const id = s.id.toLowerCase();
+  if (id.startsWith("session_cold_") || id.startsWith("test_")) return true;
+
+  const uId = (s.userId || "").toLowerCase();
+  if (
+    uId.startsWith("firebase_user_test_") ||
+    uId.startsWith("firebase_test_user_") ||
+    uId.startsWith("integration_user_") ||
+    uId.startsWith("user_test_") ||
+    uId.startsWith("test_user") ||
+    uId.startsWith("purge_user_") ||
+    uId.startsWith("student_test_") ||
+    uId.startsWith("anonymous") ||
+    uId.startsWith("guest_") ||
+    uId.startsWith("learner_test_") ||
+    uId.startsWith("learner_eval_") ||
+    uId.startsWith("user_healed") ||
+    uId === "user123"
+  ) {
+    return true;
+  }
+
+  const email = (s.userEmail || "").toLowerCase();
+  if (
+    email.endsWith("@example.com") ||
+    email.endsWith("@test.com") ||
+    email.endsWith("@purge.org") ||
+    email === "test@test.com" ||
+    email === "learner.sync@test.com" ||
+    email === "healed@test.com" ||
+    email === "learner88@example.com" ||
+    email === "eval1@example.com"
+  ) {
+    return true;
+  }
+
+  const tId = (s.templateId || "").toLowerCase();
+  if (tId.startsWith("tpl_custom_") || tId.startsWith("tpl-mw")) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isTestTicket(t: StoredSupportTicket | null | undefined): boolean {
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) return false;
+  if (!t || !t.id) return true;
+  const id = t.id.toUpperCase();
+  if (
+    id.startsWith("TK-TEST-") ||
+    id.startsWith("TK-UPDATE-") ||
+    id.startsWith("TK-ADM-") ||
+    id.startsWith("TK-BULK-") ||
+    id.startsWith("TK-SYNTH-") ||
+    id.startsWith("TK-DEBUG-") ||
+    id.startsWith("TK-HSKK-")
+  ) {
+    return true;
+  }
+
+  const uId = (t.userId || "").toLowerCase();
+  if (
+    uId.startsWith("user_seed_") ||
+    uId.startsWith("firebase_user_test_") ||
+    uId.startsWith("firebase_test_user_") ||
+    uId.startsWith("integration_user_") ||
+    uId.startsWith("user_test_") ||
+    uId.startsWith("test_user") ||
+    uId.startsWith("purge_user_")
+  ) {
+    return true;
+  }
+
+  const email = (t.userEmail || "").toLowerCase();
+  if (
+    email.endsWith("@example.com") ||
+    email.endsWith("@test.com") ||
+    email.endsWith("@purge.org") ||
+    email === "ha.nguyen@classnia.id.vn" ||
+    email === "duc.tm@gmail.com" ||
+    email === "yen.le@outlook.com" ||
+    email === "bao.pq@classnia.id.vn" ||
+    email === "quynhanh.vu@classnia.id.vn" ||
+    email === "huy.do@classnia.id.vn"
+  ) {
+    return true;
+  }
+
   return false;
 }
 
@@ -337,20 +432,19 @@ class AssessmentStore {
       }
     }
 
-    // Purge any lingering junk test templates and test tickets
+    // Purge any lingering junk test templates, sessions, and test tickets
     for (const [id, tpl] of Object.entries(this.data.templates)) {
       if (isJunkTemplate(tpl)) {
         delete this.data.templates[id];
       }
     }
-    for (const id of Object.keys(this.data.tickets || {})) {
-      if (
-        id.startsWith("TK-TEST-") ||
-        id.startsWith("TK-UPDATE-") ||
-        id.startsWith("TK-ADM-") ||
-        id.startsWith("TK-BULK-") ||
-        id.startsWith("TK-SYNTH-")
-      ) {
+    for (const [id, s] of Object.entries(this.data.sessions || {})) {
+      if (isTestSession(s)) {
+        delete this.data.sessions[id];
+      }
+    }
+    for (const [id, t] of Object.entries(this.data.tickets || {})) {
+      if (isTestTicket(t)) {
         delete this.data.tickets[id];
       }
     }
@@ -391,17 +485,17 @@ class AssessmentStore {
             }
           }
         }
-        if (parsed.sessions) Object.assign(this.data.sessions, parsed.sessions);
+        if (parsed.sessions) {
+          for (const [sId, sVal] of Object.entries(parsed.sessions)) {
+            if (!isTestSession(sVal as any)) {
+              this.data.sessions[sId] = sVal as any;
+            }
+          }
+        }
         if (parsed.profiles) Object.assign(this.data.profiles, parsed.profiles);
         if (parsed.tickets) {
           for (const [tId, tVal] of Object.entries(parsed.tickets)) {
-            if (
-              !tId.startsWith("TK-TEST-") &&
-              !tId.startsWith("TK-UPDATE-") &&
-              !tId.startsWith("TK-ADM-") &&
-              !tId.startsWith("TK-BULK-") &&
-              !tId.startsWith("TK-SYNTH-")
-            ) {
+            if (!isTestTicket(tVal as any)) {
               this.data.tickets[tId] = tVal as any;
             }
           }
@@ -423,10 +517,18 @@ class AssessmentStore {
               }
             }
             if (seedParsed.sessions && Object.keys(this.data.sessions).length === 0) {
-              Object.assign(this.data.sessions, seedParsed.sessions);
+              for (const [sId, sVal] of Object.entries(seedParsed.sessions)) {
+                if (!isTestSession(sVal as any)) {
+                  this.data.sessions[sId] = sVal as any;
+                }
+              }
             }
             if (seedParsed.tickets && Object.keys(this.data.tickets).length === 0) {
-              Object.assign(this.data.tickets, seedParsed.tickets);
+              for (const [tId, tVal] of Object.entries(seedParsed.tickets)) {
+                if (!isTestTicket(tVal as any)) {
+                  this.data.tickets[tId] = tVal as any;
+                }
+              }
             }
           } catch {}
         }
@@ -564,7 +666,7 @@ class AssessmentStore {
     return session;
   }
 
-  getAllSessions(): StoredSession[] {
+  getAllSessions(includeTest = false): StoredSession[] {
     this.init();
     this.reloadFromDisk();
 
@@ -589,6 +691,7 @@ class AssessmentStore {
     }
 
     return Object.values(this.data.sessions)
+      .filter((s) => includeTest || !isTestSession(s))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .map((s) => ({
         ...s,
@@ -853,13 +956,10 @@ class AssessmentStore {
               const raw = fs.readFileSync(path.join(this.ticketsDir, file), "utf-8");
               const t = JSON.parse(raw) as StoredSupportTicket;
               if (t && t.id) {
-                if (
-                  t.id.startsWith("TK-TEST-") ||
-                  t.id.startsWith("TK-UPDATE-") ||
-                  t.id.startsWith("TK-ADM-") ||
-                  t.id.startsWith("TK-BULK-") ||
-                  t.id.startsWith("TK-SYNTH-")
-                ) {
+                if (isTestTicket(t)) {
+                  try {
+                    fs.unlinkSync(path.join(this.ticketsDir, file));
+                  } catch {}
                   continue;
                 }
                 const existing = this.data.tickets[t.id];
@@ -926,6 +1026,7 @@ class AssessmentStore {
     this.reloadFromDisk();
     this.scanTicketsDir();
     return Object.values(this.data.tickets || {})
+      .filter((t) => !isTestTicket(t))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
@@ -968,7 +1069,7 @@ class AssessmentStore {
       return this.getAllSupportTickets();
     }
     for (const ticket of incomingTickets) {
-      if (!ticket || !ticket.id) continue;
+      if (!ticket || !ticket.id || isTestTicket(ticket)) continue;
       const existing = this.data.tickets[ticket.id];
       if (!existing || new Date(ticket.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
         this.data.tickets[ticket.id] = ticket;

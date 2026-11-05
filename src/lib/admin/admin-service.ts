@@ -155,8 +155,9 @@ export class AdminService {
     for (const s of allSessions) {
       const email = s.userEmail?.toLowerCase().trim() || "";
       const id = s.userId;
+      const sUserName = (s as any).userName;
       if (!email || !email.includes("@")) continue;
-      if (isTestUser(id, email, s.userName)) continue;
+      if (isTestUser(id, email, sUserName)) continue;
 
       const key = email;
 
@@ -164,7 +165,7 @@ export class AdminService {
         const isAdmin = Boolean(ADMIN_EMAILS.includes(email));
         userMap.set(key, {
           userId: id,
-          name: s.userName || email.split("@")[0],
+          name: sUserName || email.split("@")[0],
           email,
           role: isAdmin ? "ADMIN" : "USER",
           targetLevel: s.template?.targetLevel || s.result?.hskLevel || "HSK 3",

@@ -208,6 +208,7 @@ export function AssessmentReportView({
   // Generate 5 contextual practice questions for this report's topic
   const practiceQuestions = generatePostAssessmentQuestions(template.title, hskLabel);
   const [showCertificatePreview, setShowCertificatePreview] = useState(false);
+  const [printMode, setPrintMode] = useState<"all" | "certificate" | "diagnostics">("all");
 
   return (
     <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-20 print:p-0 print:space-y-0 animate-in fade-in duration-200">
@@ -787,9 +788,9 @@ export function AssessmentReportView({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150 print:hidden overflow-y-auto">
           <div className="relative w-full max-w-4xl bg-slate-100 dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
             {/* Modal Top Bar */}
-            <div className="p-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+            <div className="p-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs">
+                <div className="h-8 w-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                   A4
                 </div>
                 <div>
@@ -797,16 +798,53 @@ export function AssessmentReportView({
                     Xem Trước Bản Điểm Khẩu Ngữ A4 (Test Report Form)
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Mẫu chứng nhận chuẩn hóa xuất sang tệp PDF hoặc in ấn
+                    Bản chứng nhận chuẩn hóa xuất sang tệp PDF hoặc in ấn chất lượng cao
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Print Mode Selector & Actions */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode("all")}
+                    className={`px-2.5 py-1 rounded-lg transition-colors ${
+                      printMode === "all"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    Cả 2 Trang (Đầy đủ)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode("certificate")}
+                    className={`px-2.5 py-1 rounded-lg transition-colors ${
+                      printMode === "certificate"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    Chỉ Trang 1 (Chứng chỉ)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode("diagnostics")}
+                    className={`px-2.5 py-1 rounded-lg transition-colors ${
+                      printMode === "diagnostics"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    Chỉ Trang 2 (Phân tích)
+                  </button>
+                </div>
+
                 <Button
                   size="sm"
                   onClick={() => window.print()}
-                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl h-8 px-3 gap-1.5 shadow-xs"
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl h-8 px-3.5 gap-1.5 shadow-xs"
                 >
                   <Printer className="h-3.5 w-3.5" />
                   <span>In / Lưu PDF Ngay</span>
@@ -838,6 +876,8 @@ export function AssessmentReportView({
                   strengths={strengths}
                   weaknesses={weaknesses}
                   userName={userName}
+                  improvementPlan={improvementPlan}
+                  printMode={printMode}
                 />
               </div>
             </div>
@@ -860,6 +900,8 @@ export function AssessmentReportView({
           strengths={strengths}
           weaknesses={weaknesses}
           userName={userName}
+          improvementPlan={improvementPlan}
+          printMode={printMode}
         />
       </div>
     </div>

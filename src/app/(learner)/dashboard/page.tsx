@@ -218,17 +218,18 @@ export default function LearnerDashboardPage() {
     };
   }, [router]);
 
-  const completedSessions = sessions.filter((s) => s.status === "COMPLETED" && s.result);
+  const completedSessions = sessions.filter((s) => s && s.status === "COMPLETED" && s.result);
   const latestSession = completedSessions[0];
 
+  const safeTargetLevel = String(userTargetLevel || "HSK 3");
   const matchedLevelKey =
-    Object.keys(LEVEL_RECOMMENDATIONS).find((k) => userTargetLevel.includes(k)) || "HSK 3";
+    Object.keys(LEVEL_RECOMMENDATIONS).find((k) => safeTargetLevel.includes(k)) || "HSK 3";
   const recommendedAssessment =
     LEVEL_RECOMMENDATIONS[matchedLevelKey] || LEVEL_RECOMMENDATIONS["HSK 3"];
 
   const avgScore =
     completedSessions.length > 0
-      ? completedSessions.reduce((acc, s) => acc + (s.result?.overallScore || 0), 0) /
+      ? completedSessions.reduce((acc, s) => acc + (Number(s?.result?.overallScore) || 0), 0) /
         completedSessions.length
       : null;
 

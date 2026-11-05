@@ -68,7 +68,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
-  if (!isAuthorizedAdmin(user)) {
+  if (!user || !isAuthorizedAdmin(user)) {
     return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
   }
 

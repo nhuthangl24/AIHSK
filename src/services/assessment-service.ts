@@ -95,8 +95,8 @@ export class AssessmentService {
       // ignore
     }
 
-    // Retrieve sessions from assessmentStore
-    const storeSessions = assessmentStore.getAllSessions().filter((s: any) => {
+    // Retrieve sessions from assessmentStore (pass true so users/tests can retrieve their own sessions)
+    const storeSessions = assessmentStore.getAllSessions(true).filter((s: any) => {
       // 1. Check candidate IDs directly
       if (candidateUserIds.has(s.userId)) return true;
       if (s.userEmail && candidateUserIds.has(s.userEmail.toLowerCase().trim())) return true;

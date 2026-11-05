@@ -53,7 +53,33 @@ const STATUS_MAP: Record<string, { label: string; badge: string }> = {
   CLOSED: { label: "Đã đóng", badge: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200" },
 };
 
-const LOCAL_STORAGE_ADMIN_TICKETS_KEY = "classnia_admin_support_tickets";
+const LOCAL_STORAGE_ADMIN_TICKETS_KEY = "classnia_admin_support_tickets_v2";
+
+function isClientTestTicket(t: StoredSupportTicket | null | undefined): boolean {
+  if (!t || !t.id) return true;
+  const id = t.id.toUpperCase();
+  if (
+    id.startsWith("TK-TEST-") ||
+    id.startsWith("TK-UPDATE-") ||
+    id.startsWith("TK-ADM-") ||
+    id.startsWith("TK-BULK-") ||
+    id.startsWith("TK-SYNTH-") ||
+    id.startsWith("TK-DEBUG-") ||
+    id.startsWith("TK-HSKK-")
+  ) {
+    return true;
+  }
+  const email = (t.userEmail || "").toLowerCase();
+  if (
+    email.endsWith("@example.com") ||
+    email.endsWith("@test.com") ||
+    email.endsWith("@purge.org") ||
+    (email.includes("classnia.id.vn") && (email.startsWith("ha.") || email.startsWith("bao.") || email.startsWith("quynhanh.") || email.startsWith("huy.")))
+  ) {
+    return true;
+  }
+  return false;
+}
 
 function mergeTickets(
   sourceA: StoredSupportTicket[],
@@ -61,10 +87,10 @@ function mergeTickets(
 ): StoredSupportTicket[] {
   const map = new Map<string, StoredSupportTicket>();
   for (const t of sourceA) {
-    if (t?.id) map.set(t.id, t);
+    if (t?.id && !isClientTestTicket(t)) map.set(t.id, t);
   }
   for (const t of sourceB) {
-    if (!t?.id) continue;
+    if (!t?.id || isClientTestTicket(t)) continue;
     const existing = map.get(t.id);
     if (!existing || new Date(t.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
       map.set(t.id, t);
@@ -76,7 +102,9 @@ function mergeTickets(
 }
 
 export function SupportTicketsClient({ initialTickets }: SupportTicketsClientProps) {
-  const [tickets, setTickets] = useState<StoredSupportTicket[]>(initialTickets);
+  const [tickets, setTickets] = useState<StoredSupportTicket[]>(() =>
+    (initialTickets || []).filter((t) => !isClientTestTicket(t))
+  );
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
@@ -105,13 +133,11 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
       });
       const d = await res.json();
       if (d.tickets && Array.isArray(d.tickets)) {
-        setTickets((prev) => {
-          const merged = mergeTickets(prev, d.tickets);
-          try {
-            localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(merged));
-          } catch {}
-          return merged;
-        });
+        const cleanTickets = d.tickets.filter((t: StoredSupportTicket) => !isClientTestTicket(t));
+        setTickets(cleanTickets);
+        try {
+          localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(cleanTickets));
+        } catch {}
       }
     } catch {
       // Fallback silently if offline
@@ -121,62 +147,31 @@ export function SupportTicketsClient({ initialTickets }: SupportTicketsClientPro
   };
 
   useEffect(() => {
-    // 1. Load from localStorage on client mount to protect against serverless cold-start reset
+    // 1. Wipe old legacy dirty cache
     if (typeof window !== "undefined") {
       try {
-        const cached = localStorage.getItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY);
-        if (cached) {
-          const parsed: StoredSupportTicket[] = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setTickets((prev) => mergeTickets(prev, parsed));
-          }
-        }
+        localStorage.removeItem("classnia_admin_support_tickets");
       } catch {}
     }
 
     // 2. Fetch fresh tickets from server
     fetchFreshTickets();
 
-    // 3. Sync local backup up to server so lambda cache is never empty
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            fetch("/api/admin/support", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ tickets: parsed }),
-            }).catch(() => {});
-          }
-        }
-      } catch {}
-    }
-
-    // 4. Real-time cross-tab broadcast synchronization
+    // 3. Real-time cross-tab broadcast synchronization
     let bc: BroadcastChannel | null = null;
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       bc = new BroadcastChannel("classnia_support_sync");
       bc.onmessage = (event) => {
         if (event.data?.type === "TICKET_CREATED" && event.data?.ticket) {
           const newTicket: StoredSupportTicket = event.data.ticket;
-          setTickets((prev) => {
-            const merged = mergeTickets(prev, [newTicket]);
-            try {
-              localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
+          if (!isClientTestTicket(newTicket)) {
+            setTickets((prev) => mergeTickets(prev, [newTicket]));
+          }
         } else if (event.data?.type === "TICKET_UPDATED" && event.data?.ticket) {
           const updated: StoredSupportTicket = event.data.ticket;
-          setTickets((prev) => {
-            const merged = prev.map((t) => (t.id === updated.id ? updated : t));
-            try {
-              localStorage.setItem(LOCAL_STORAGE_ADMIN_TICKETS_KEY, JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
+          if (!isClientTestTicket(updated)) {
+            setTickets((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+          }
         }
       };
     }

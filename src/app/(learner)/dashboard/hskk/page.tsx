@@ -34,6 +34,7 @@ import {
   saveSystemAudioSettings,
   getAvailableChineseVoices,
   speakWithSystemSettings,
+  stopSystemSpeech,
   SystemAudioSettings,
   FIXED_VOICE_NAME,
   FIXED_VOICE_LABEL,
@@ -56,13 +57,14 @@ export default function HskkPortalPage() {
   const [recognitionLang, setRecognitionLang] = useState("zh-TW");
 
   useEffect(() => {
+    let isMounted = true;
     const sys = getSystemAudioSettings();
     setSelectedVoiceName(FIXED_VOICE_NAME);
     setPlaybackSpeed(sys.playbackSpeed || 0.95);
     setRecognitionLang(sys.recognitionLang || "zh-TW");
 
     const loadVoices = () => {
-      setAvailableVoices(getAvailableChineseVoices());
+      if (isMounted) setAvailableVoices(getAvailableChineseVoices());
     };
     loadVoices();
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -70,6 +72,7 @@ export default function HskkPortalPage() {
     }
 
     const onSettingsChanged = (e: any) => {
+      if (!isMounted) return;
       const updated: SystemAudioSettings = e.detail || getSystemAudioSettings();
       setSelectedVoiceName(FIXED_VOICE_NAME);
       if (typeof updated.playbackSpeed === "number") setPlaybackSpeed(updated.playbackSpeed);
@@ -77,32 +80,31 @@ export default function HskkPortalPage() {
     };
     window.addEventListener("aihsk_audio_settings_changed", onSettingsChanged);
 
-    return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
-      }
-      window.removeEventListener("aihsk_audio_settings_changed", onSettingsChanged);
-      stopSystemSpeech();
-    };
-
     async function fetchTemplates() {
       try {
         setIsLoadingTemplates(true);
         const res = await fetch("/api/hskk/templates");
         const data = await res.json();
-        if (data.success && Array.isArray(data.templates)) {
+        if (isMounted && data.success && Array.isArray(data.templates)) {
           setTemplates(data.templates);
         }
       } catch (err) {
         console.warn("Failed to load templates:", err);
       } finally {
-        setIsLoadingTemplates(false);
+        if (isMounted) setIsLoadingTemplates(false);
       }
     }
     fetchTemplates();
 
     return () => {
+      isMounted = false;
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+      }
       window.removeEventListener("aihsk_audio_settings_changed", onSettingsChanged);
+      try {
+        stopSystemSpeech();
+      } catch {}
     };
   }, []);
 

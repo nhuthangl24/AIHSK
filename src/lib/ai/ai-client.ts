@@ -138,7 +138,7 @@ export class AIClient {
               apiKey: fileData.apiKey || process.env.HHTECH_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "",
               isEnabled: fileData.isEnabled !== false && Boolean(fileData.apiKey || process.env.HHTECH_API_KEY || process.env.AI_API_KEY || process.env.OPENAI_API_KEY),
             };
-            return cachedAIConfig;
+            if (cachedAIConfig) return cachedAIConfig;
           }
         }
       }

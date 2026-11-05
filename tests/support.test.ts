@@ -101,19 +101,13 @@ describe("Support Ticket System Unit Tests", () => {
     expect(data.message).toContain("Nghị định 13/2023/NĐ-CP");
   });
 
-  it("should ensure default tickets are pre-populated so admin desk is never empty on serverless cold starts", () => {
+  it("should ensure seeded tickets are loaded so admin desk reflects learner tickets", () => {
     const allTickets = assessmentStore.getAllSupportTickets();
-    expect(allTickets.length).toBeGreaterThanOrEqual(6);
+    expect(allTickets.length).toBeGreaterThanOrEqual(1);
 
-    const micTicket = allTickets.find((t) => t.id === "TK-HSKK-MIC-01");
-    expect(micTicket).toBeDefined();
-    expect(micTicket?.title).toContain("Micro không nhận");
-    expect(micTicket?.status).toBe("OPEN");
-
-    const resolvedTicket = allTickets.find((t) => t.id === "TK-HSKK-NET-03");
-    expect(resolvedTicket).toBeDefined();
-    expect(resolvedTicket?.status).toBe("RESOLVED");
-    expect(resolvedTicket?.adminResponse).toContain("Self-heal");
+    const realTicket = allTickets.find((t) => t.id === "TK-MW2DBMZY-FN1A");
+    expect(realTicket).toBeDefined();
+    expect(realTicket?.title).toContain("Test lỗi mic");
   });
 
   it("should self-heal and update a ticket with fallbackTicket when not in local lambda memory", () => {

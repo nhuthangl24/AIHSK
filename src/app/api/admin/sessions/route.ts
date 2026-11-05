@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     completed: completed.length,
     inProgress: sessions.filter((s) => s.status === "IN_PROGRESS").length,
     avgScore,
-    passRate: completed.length > 0 ? Math.round((passedCount / completed.length) * 100) : 100,
+    passRate: completed.length > 0 ? Math.round((passedCount / completed.length) * 100) : 0,
   };
 
   return NextResponse.json({ sessions, stats });

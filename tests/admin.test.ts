@@ -57,6 +57,9 @@ describe("Admin Portal API Suite", () => {
     const patchData = await patchRes.json();
     expect(patchData.ticket.status).toBe("RESOLVED");
     expect(patchData.ticket.adminResponse).toContain("Đã xử lý");
+
+    // Clean up test ticket
+    assessmentStore.deleteSupportTicket(ticketId);
   });
 
   it("should fetch exam sessions and calculate metrics", async () => {

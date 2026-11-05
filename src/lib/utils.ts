@@ -5,22 +5,30 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDuration(seconds: number): string {
+export function formatDuration(seconds?: number | null): string {
+  if (typeof seconds !== "number" || isNaN(seconds) || seconds < 0) return "00:00";
   const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+  const secs = Math.floor(seconds % 60);
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function formatDate(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(d);
+export function formatDate(date?: Date | string | null): string {
+  if (!date) return "—";
+  try {
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return "—";
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(d);
+  } catch {
+    return "—";
+  }
 }
 
-export function formatScore(score: number): string {
+export function formatScore(score?: number | null): string {
+  if (typeof score !== "number" || isNaN(score)) return "0.0";
   return score.toFixed(1);
 }
 
