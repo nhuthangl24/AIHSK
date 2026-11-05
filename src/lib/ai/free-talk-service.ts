@@ -135,11 +135,11 @@ export class FreeTalkService {
       if (!process.env.VITEST) {
         const config = await AIClient.getActiveConfig();
         if (config.apiKey && config.isEnabled) {
-          // Route to high-speed conversational model (claude-haiku-4.5) to keep turn latency ~1s
+          // Route to high-speed conversational model (gemini-3.6-flash) to keep turn latency ~1s
           const targetModel =
             config.modelId.includes("sonnet") || config.modelId.includes("opus")
-              ? "claude-haiku-4.5"
-              : config.modelId;
+              ? "gemini-3.6-flash"
+              : config.modelId || "gemini-3.6-flash";
 
           const systemPrompt = `You are ${persona.name} (${persona.zhName}), a ${persona.role}.
 Casual Free-Talk companion for Chinese learners.
@@ -320,8 +320,8 @@ RETURN STRICT JSON ONLY:
         if (config.apiKey && config.isEnabled) {
           const targetModel =
             config.modelId.includes("sonnet") || config.modelId.includes("opus")
-              ? "claude-haiku-4.5"
-              : config.modelId;
+              ? "gemini-3.6-flash"
+              : config.modelId || "gemini-3.6-flash";
 
           const evalPrompt = `You are a certified Chinese Oral Proficiency Examiner (考官) applying official HSK / HSKK scoring rubrics.
 CRITICAL MANDATE: CALIBRATE STRICTLY WITHOUT INFLATION! In genuine oral exams, candidates who only speak 1 or 2 brief formulaic sentences (e.g. "你好", "好的") CANNOT pass and must receive low scores (below 35/100). Do NOT give unearned flattering scores or praise.

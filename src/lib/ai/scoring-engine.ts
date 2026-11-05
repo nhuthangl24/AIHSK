@@ -170,11 +170,11 @@ export class ScoringEngine {
       },
     ];
 
-    // Prefer fast, low-latency model (claude-haiku-4.5) for lightning-fast assessment turnaround
+    // Prefer fast, low-latency model (gemini-3.6-flash) for lightning-fast assessment turnaround
     const fastModel =
       config.modelId?.includes("sonnet") || config.modelId?.includes("opus")
-        ? "claude-haiku-4.5"
-        : config.modelId || "claude-haiku-4.5";
+        ? "gemini-3.6-flash"
+        : config.modelId || "gemini-3.6-flash";
 
     // Race against 10-second timeout so candidate never waits long
     const scoringPromise = (async () => {

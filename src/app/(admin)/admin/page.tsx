@@ -88,7 +88,7 @@ export default async function PlatformAdminPage() {
 
   const activeAI = await AIClient.getActiveConfig().catch(() => ({
     providerName: "hhtech",
-    modelId: "claude-haiku-4.5",
+    modelId: "gemini-3.6-flash",
     isEnabled: true,
     apiKey: "configured",
   }));

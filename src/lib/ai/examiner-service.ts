@@ -143,9 +143,9 @@ export class ExaminerService {
       ...dialogueMessages,
     ];
 
-    // Use fast model (e.g. claude-haiku-4.5) if default was claude-sonnet-4.6, with 15s timeout
+    // Use fast multimodal model (gemini-3.6-flash) with 15s timeout
     const targetModel =
-      config.modelId === "claude-sonnet-4.6" ? "claude-haiku-4.5" : config.modelId;
+      config.modelId === "claude-sonnet-4.6" ? "gemini-3.6-flash" : config.modelId || "gemini-3.6-flash";
 
     const rawContent = await AIClient.chatCompletion({
       messages,

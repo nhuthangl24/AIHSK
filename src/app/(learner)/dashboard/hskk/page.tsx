@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,6 @@ import {
   CheckCircle2,
   ShieldCheck,
   Headphones,
-  Mic,
   ArrowRight,
   Loader2,
   FileText,
@@ -39,7 +38,6 @@ import {
   FIXED_VOICE_NAME,
   FIXED_VOICE_LABEL,
 } from "@/lib/audio/system-audio-settings";
-import { WavRecorder } from "@/lib/audio/wav-recorder";
 
 export default function HskkPortalPage() {
   const router = useRouter();
@@ -49,19 +47,6 @@ export default function HskkPortalPage() {
   const [examMode, setExamMode] = useState<"OFFICIAL" | "PRACTICE">("OFFICIAL");
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
-
-  // Quick Voice Tester with Gemini 3.6 Flash
-  const [showQuickTestModal, setShowQuickTestModal] = useState(false);
-  const [isTestingSpeech, setIsTestingSpeech] = useState(false);
-  const [isEvaluatingSpeech, setIsEvaluatingSpeech] = useState(false);
-  const [quickTestSentence, setQuickTestSentence] = useState("我想去图书馆借一本书。");
-  const [quickTestResult, setQuickTestResult] = useState<any>(null);
-  const [quickTestError, setQuickTestError] = useState<string | null>(null);
-  const [quickAudioUrl, setQuickAudioUrl] = useState<string | null>(null);
-
-  // Audio recorder refs
-  const quickRecorderRef = useRef<WavRecorder | null>(null);
-  const quickStreamRef = useRef<MediaStream | null>(null);
 
   // System Audio Settings
   const [showAudioModal, setShowAudioModal] = useState(false);
@@ -125,66 +110,6 @@ export default function HskkPortalPage() {
   const activeTemplate =
     templates.find((t) => t.level === selectedLevel) || templates[1];
 
-  const handleStartQuickRecord = async () => {
-    try {
-      setQuickTestError(null);
-      setQuickTestResult(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      quickStreamRef.current = stream;
-
-      const recorder = new WavRecorder();
-      quickRecorderRef.current = recorder;
-      recorder.start(stream, 16000);
-      setIsTestingSpeech(true);
-    } catch (e: any) {
-      setQuickTestError("Không thể truy cập Micro. Vui lòng cấp quyền micro cho trình duyệt.");
-      setIsTestingSpeech(false);
-    }
-  };
-
-  const handleStopQuickRecord = async () => {
-    if (!quickRecorderRef.current) return;
-    setIsTestingSpeech(false);
-    setIsEvaluatingSpeech(true);
-
-    try {
-      const rec = await quickRecorderRef.current.stop();
-      if (quickStreamRef.current) {
-        quickStreamRef.current.getTracks().forEach((t) => t.stop());
-        quickStreamRef.current = null;
-      }
-
-      if (!rec?.base64) {
-        setQuickTestError("Không thu được âm thanh. Vui lòng thử nói to hơn.");
-        setIsEvaluatingSpeech(false);
-        return;
-      }
-
-      const objUrl = URL.createObjectURL(rec.blob);
-      setQuickAudioUrl(objUrl);
-
-      const res = await fetch("/api/hskk/test-audio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          audioBase64: rec.base64,
-          targetText: quickTestSentence,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success && data.evaluation) {
-        setQuickTestResult(data.evaluation);
-      } else {
-        setQuickTestError(data.error || "Chấm điểm âm thanh thất bại.");
-      }
-    } catch (err: any) {
-      setQuickTestError(err.message || "Lỗi kiểm tra âm thanh.");
-    } finally {
-      setIsEvaluatingSpeech(false);
-    }
-  };
-
   const handleStartExam = async () => {
     if (!activeTemplate || isCreatingSession) return;
     setIsCreatingSession(true);
@@ -236,21 +161,7 @@ export default function HskkPortalPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Button
-            type="button"
-            onClick={() => {
-              setQuickTestError(null);
-              setQuickTestResult(null);
-              setShowQuickTestModal(true);
-            }}
-            className="bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-extrabold text-xs h-10 px-3.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-rose-950/20"
-            title="Thử ghi âm & chấm điểm phát âm trực tiếp với Gemini 3.6 Flash"
-          >
-            <Mic className="h-4 w-4" />
-            <span>🎙️ Test Giọng Gemini 3.6 Flash</span>
-          </Button>
-
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             type="button"
             variant="outline"
@@ -642,238 +553,6 @@ export default function HskkPortalPage() {
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===================================================================== */}
-      {/* MODAL 2: QUICK VOICE TESTER (Gemini 3.6 Flash Multimodal Audio)       */}
-      {/* ===================================================================== */}
-      {showQuickTestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl text-slate-900 dark:text-white space-y-4 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-rose-500/15 text-rose-600 flex items-center justify-center">
-                  <Mic className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold flex items-center gap-2">
-                    <span>Thử Giọng Nói Với Gemini 3.6 Flash</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Nghe trực tiếp âm thanh từ micro &bull; Phân tích 4 thanh điệu chuẩn CTI
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (isTestingSpeech && quickRecorderRef.current) {
-                    quickRecorderRef.current.stop();
-                    setIsTestingSpeech(false);
-                  }
-                  setShowQuickTestModal(false);
-                }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Target Sentence Picker */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                Chọn hoặc nhập câu tiếng Trung muốn thử phát âm:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={quickTestSentence}
-                  onChange={(e) => setQuickTestSentence(e.target.value)}
-                  placeholder="Nhập câu tiếng Trung..."
-                  className="flex-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    speakWithSystemSettings(quickTestSentence, {
-                      speedOverride: playbackSpeed,
-                      voiceNameOverride: selectedVoiceName,
-                    });
-                  }}
-                  className="border-slate-300 dark:border-slate-700 text-xs px-3 h-10 rounded-xl shrink-0"
-                  title="Nghe phát âm mẫu"
-                >
-                  <Volume2 className="h-4 w-4 text-blue-500" />
-                </Button>
-              </div>
-
-              {/* Preset Quick Chips */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {[
-                  "我想去图书馆借一本书。",
-                  "星期六下午我们一起去看电影吧。",
-                  "祝你生日快乐，身体健康！",
-                  "这道菜虽然有点儿辣，但是很好吃。",
-                ].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setQuickTestSentence(preset)}
-                    className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
-                      quickTestSentence === preset
-                        ? "bg-rose-50 border-rose-400 text-rose-700 dark:bg-rose-950/40 dark:border-rose-700 dark:text-rose-300 font-bold"
-                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                    }`}
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Recording Controls */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-center space-y-3">
-              {isEvaluatingSpeech ? (
-                <div className="py-4 space-y-2">
-                  <Loader2 className="h-8 w-8 text-rose-600 mx-auto animate-spin" />
-                  <p className="text-xs font-bold text-rose-600 animate-pulse">
-                    Gemini 3.6 Flash đang nghe &amp; phân tích phổ âm thanh...
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Đối chiếu cao độ F0, thanh 1-4, biến điệu 3-3 và thanh mẫu...
-                  </p>
-                </div>
-              ) : isTestingSpeech ? (
-                <div className="py-2 space-y-3">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-600 dark:text-rose-400 text-xs font-bold animate-pulse">
-                    <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
-                    <span>Đang ghi âm PCM 16kHz... Hãy nói to, rõ ràng!</span>
-                  </div>
-
-                  <div>
-                    <Button
-                      type="button"
-                      onClick={handleStopQuickRecord}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm h-11 px-6 rounded-2xl shadow-lg shadow-emerald-950/30 flex items-center gap-2 mx-auto cursor-pointer"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span>Dừng &amp; Chấm Điểm Ngay</span>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-2 space-y-2">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Bấm nút bên dưới, đọc to câu trên vào micro của bạn:
-                  </p>
-                  <Button
-                    type="button"
-                    onClick={handleStartQuickRecord}
-                    className="bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs sm:text-sm h-11 px-6 rounded-2xl shadow-md shadow-rose-950/20 flex items-center gap-2 mx-auto cursor-pointer"
-                  >
-                    <Mic className="h-4 w-4" />
-                    <span>Bắt Đầu Thu Âm</span>
-                  </Button>
-                </div>
-              )}
-
-              {quickTestError && (
-                <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-400 text-left">
-                  {quickTestError}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Test Results Card */}
-            {quickTestResult && (
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-white space-y-3 animate-in fade-in">
-                <div className="flex items-start justify-between gap-3 pb-2 border-b border-slate-800">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge className="bg-emerald-950 text-emerald-300 border-emerald-800 text-[10px] font-bold">
-                        Thanh điệu: {quickTestResult.tonesAccuracyScore || 90}%
-                      </Badge>
-                      <Badge className="bg-sky-950 text-sky-300 border-sky-800 text-[10px] font-bold">
-                        Lưu loát: {quickTestResult.fluencyScore || 90}%
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-700">
-                        {quickTestResult.pronunciationQuality}
-                      </Badge>
-                    </div>
-                    <span className="text-xs text-slate-400 mt-1 block">
-                      Điểm giám khảo CTI: <strong className="text-white text-sm">{quickTestResult.score}/5</strong>
-                    </span>
-                  </div>
-
-                  {quickAudioUrl && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const audio = new Audio(quickAudioUrl);
-                        audio.play();
-                      }}
-                      className="border-slate-700 bg-slate-800 text-xs text-slate-300 hover:text-white h-8 px-2.5 rounded-xl flex items-center gap-1.5 shrink-0"
-                    >
-                      <Volume2 className="h-3.5 w-3.5 text-rose-400" />
-                      <span>Nghe lại</span>
-                    </Button>
-                  )}
-                </div>
-
-                {/* Recognized Transcript from Audio */}
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-0.5">
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block">
-                    AI nghe được từ giọng của bạn:
-                  </span>
-                  <p className="font-semibold text-emerald-300 text-sm">
-                    {quickTestResult.recognizedTranscript || "—"}
-                  </p>
-                  {quickTestResult.pinyinWithTones && (
-                    <p className="font-mono text-[11px] text-slate-400">
-                      {quickTestResult.pinyinWithTones}
-                    </p>
-                  )}
-                </div>
-
-                {/* Phonetics Breakdown */}
-                {quickTestResult.phoneticsAnalysis && (
-                  <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs space-y-1.5 text-slate-300">
-                    {quickTestResult.phoneticsAnalysis.tonesComment && (
-                      <div className="text-[11px]">
-                        <strong className="text-emerald-400">Thanh điệu (声调):</strong>{" "}
-                        {quickTestResult.phoneticsAnalysis.tonesComment}
-                      </div>
-                    )}
-                    {quickTestResult.phoneticsAnalysis.initialsAndFinalsComment && (
-                      <div className="text-[11px]">
-                        <strong className="text-sky-400">Phụ âm / Vần:</strong>{" "}
-                        {quickTestResult.phoneticsAnalysis.initialsAndFinalsComment}
-                      </div>
-                    )}
-                    {quickTestResult.phoneticsAnalysis.pauseAndFluencyComment && (
-                      <div className="text-[11px]">
-                        <strong className="text-amber-300">Ngắt nghỉ &amp; Lưu loát:</strong>{" "}
-                        {quickTestResult.phoneticsAnalysis.pauseAndFluencyComment}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Feedback */}
-                {quickTestResult.feedback && (
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    <strong className="text-slate-300">Nhận xét:</strong> {quickTestResult.feedback}
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}

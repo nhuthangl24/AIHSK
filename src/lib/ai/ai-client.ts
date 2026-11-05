@@ -183,7 +183,7 @@ export class AIClient {
 
     const modelId =
       process.env.AI_DEFAULT_MODEL ||
-      "claude-haiku-4.5";
+      "gemini-3.6-flash";
 
     cachedAIConfig = {
       providerName: process.env.AI_PROVIDER || (apiKey.startsWith("ark-") ? "hhtech" : "openai"),
