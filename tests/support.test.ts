@@ -38,6 +38,9 @@ describe("Support Ticket System Unit Tests", () => {
     const byEmail = assessmentStore.getSupportTicketsByUser("different_id", testEmail);
     expect(byEmail.length).toBeGreaterThanOrEqual(1);
     expect(byEmail[0].id).toBe(sampleTicket.id);
+
+    // Clean up
+    assessmentStore.deleteSupportTicket(sampleTicket.id);
   });
 
   it("should update a support ticket status and admin response", () => {
@@ -77,6 +80,9 @@ describe("Support Ticket System Unit Tests", () => {
     expect(singleLookup).not.toBeNull();
     expect(singleLookup?.id).toBe(sampleTicket.id);
     expect(singleLookup?.status).toBe("RESOLVED");
+
+    // Clean up
+    assessmentStore.deleteSupportTicket(sampleTicket.id);
   });
 
   it("should process user data purge request conforming to Decree 13 and GDPR Right to be Forgotten", async () => {
@@ -142,6 +148,9 @@ describe("Support Ticket System Unit Tests", () => {
     // And verify it is now stored
     const retrieved = assessmentStore.getSupportTicket(syntheticId);
     expect(retrieved?.status).toBe("RESOLVED");
+
+    // Clean up
+    assessmentStore.deleteSupportTicket(syntheticId);
   });
 
   it("should bulk upsert tickets for multi-instance lambda synchronization", () => {
@@ -180,5 +189,9 @@ describe("Support Ticket System Unit Tests", () => {
     expect(assessmentStore.getSupportTicket(ticketA.id)).toBeDefined();
     expect(assessmentStore.getSupportTicket(ticketB.id)).toBeDefined();
     expect(assessmentStore.getSupportTicket(ticketB.id)?.status).toBe("RESOLVED");
+
+    // Clean up
+    assessmentStore.deleteSupportTicket(ticketA.id);
+    assessmentStore.deleteSupportTicket(ticketB.id);
   });
 });

@@ -272,6 +272,22 @@ const DEFAULT_TEMPLATES: StoredTemplate[] = [
   },
 ];
 
+export function isJunkTemplate(t: StoredTemplate | null | undefined): boolean {
+  if (!t) return true;
+  if (t.id.startsWith("tpl_custom_") || t.id.startsWith("tpl-mw")) return true;
+  const title = (t.title || "").toLowerCase();
+  if (
+    title.includes("đàm phán xuất nhập khẩu") ||
+    title.includes("đề thi khảo thí") ||
+    title.includes("thử nghiệm") ||
+    title.includes("đã sửa") ||
+    title.includes("test")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 class AssessmentStore {
   private data: StoreData = {
     templates: {},
@@ -321,10 +337,21 @@ class AssessmentStore {
       }
     }
 
-    // Purge any lingering junk test templates
-    for (const id of Object.keys(this.data.templates)) {
-      if (id.startsWith("tpl_custom_") || this.data.templates[id]?.title === "Đàm phán xuất nhập khẩu") {
+    // Purge any lingering junk test templates and test tickets
+    for (const [id, tpl] of Object.entries(this.data.templates)) {
+      if (isJunkTemplate(tpl)) {
         delete this.data.templates[id];
+      }
+    }
+    for (const id of Object.keys(this.data.tickets || {})) {
+      if (
+        id.startsWith("TK-TEST-") ||
+        id.startsWith("TK-UPDATE-") ||
+        id.startsWith("TK-ADM-") ||
+        id.startsWith("TK-BULK-") ||
+        id.startsWith("TK-SYNTH-")
+      ) {
+        delete this.data.tickets[id];
       }
     }
   }
@@ -366,7 +393,19 @@ class AssessmentStore {
         }
         if (parsed.sessions) Object.assign(this.data.sessions, parsed.sessions);
         if (parsed.profiles) Object.assign(this.data.profiles, parsed.profiles);
-        if (parsed.tickets) Object.assign(this.data.tickets, parsed.tickets);
+        if (parsed.tickets) {
+          for (const [tId, tVal] of Object.entries(parsed.tickets)) {
+            if (
+              !tId.startsWith("TK-TEST-") &&
+              !tId.startsWith("TK-UPDATE-") &&
+              !tId.startsWith("TK-ADM-") &&
+              !tId.startsWith("TK-BULK-") &&
+              !tId.startsWith("TK-SYNTH-")
+            ) {
+              this.data.tickets[tId] = tVal as any;
+            }
+          }
+        }
       }
 
       // 3. Fallback: if templates is suspiciously low (e.g. only defaults), attempt merging seed templates
@@ -814,6 +853,15 @@ class AssessmentStore {
               const raw = fs.readFileSync(path.join(this.ticketsDir, file), "utf-8");
               const t = JSON.parse(raw) as StoredSupportTicket;
               if (t && t.id) {
+                if (
+                  t.id.startsWith("TK-TEST-") ||
+                  t.id.startsWith("TK-UPDATE-") ||
+                  t.id.startsWith("TK-ADM-") ||
+                  t.id.startsWith("TK-BULK-") ||
+                  t.id.startsWith("TK-SYNTH-")
+                ) {
+                  continue;
+                }
                 const existing = this.data.tickets[t.id];
                 if (!existing || new Date(t.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
                   this.data.tickets[t.id] = t;

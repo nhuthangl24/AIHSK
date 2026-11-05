@@ -107,6 +107,9 @@ describe("Admin Portal API Suite", () => {
     const putData = await putRes.json();
     expect(putData.template.title).toBe("Đề Thi Khảo Thí Đã Sửa");
     expect(putData.template.isActive).toBe(false);
+
+    // Clean up test template so test runs do not leave junk
+    assessmentStore.deleteTemplate(postData.template.id);
   });
 
   it("should fetch users list with enriched session statistics", async () => {

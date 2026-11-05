@@ -179,6 +179,9 @@ describe("HSKK (汉语水平口语考试) Exam System Unit Tests", () => {
       expect(inStore).toBeDefined();
       expect(inStore?.status).toBe("COMPLETED");
       expect(inStore?.result?.overallScore).toBe(result.overallScore);
+
+      // Clean up test session
+      delete (assessmentStore as any).data.sessions[session.id];
     });
 
     it("should self-heal an HSKK session from cold-start or multi-instance serverless without failing with 404", () => {

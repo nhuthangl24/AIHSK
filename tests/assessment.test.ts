@@ -127,5 +127,8 @@ describe("Examiner 5-Stage Orchestration Unit Tests", () => {
     const found = userSessions.find((s) => s.id === session.id);
     expect(found).toBeDefined();
     expect(found?.id).toBe(session.id);
+
+    // Clean up test session
+    delete (assessmentStore as any).data.sessions[session.id];
   });
 });

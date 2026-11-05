@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { AssessmentService } from "../src/services/assessment-service";
 import { ScoringWorker } from "../src/lib/queue/scoring-worker";
 import { assessmentStore } from "../src/lib/db/assessment-store";
@@ -8,6 +8,7 @@ describe("Assessment Lifecycle Integration Tests (Firebase & Store)", () => {
   let testUserId: string;
   let testTemplateId: string;
   let createdSessionId: string;
+  let secondSessionId: string;
 
   beforeAll(async () => {
     testUserId = `integration_user_${Date.now()}`;
@@ -15,6 +16,15 @@ describe("Assessment Lifecycle Integration Tests (Firebase & Store)", () => {
     const template = templates.find((t) => t.slug === "hsk-3-speaking-intermediate") || templates[0];
     if (!template) throw new Error("Default template not found");
     testTemplateId = template.id;
+  });
+
+  afterAll(() => {
+    if (createdSessionId) {
+      delete (assessmentStore as any).data.sessions[createdSessionId];
+    }
+    if (secondSessionId) {
+      delete (assessmentStore as any).data.sessions[secondSessionId];
+    }
   });
 
   it("should create and start a new assessment session with turn 0 examiner greeting", async () => {
@@ -64,6 +74,7 @@ describe("Assessment Lifecycle Integration Tests (Firebase & Store)", () => {
   it("should create assessment session for a synthetic Firebase or newly registered userId", async () => {
     const syntheticUid = `firebase_test_user_${Date.now()}`;
     const session = await AssessmentService.startSession(syntheticUid, testTemplateId);
+    secondSessionId = session.id;
     expect(session).toBeDefined();
     expect(session.status).toBe(SessionStatus.IN_PROGRESS);
     expect(session.userId).toBe(syntheticUid);

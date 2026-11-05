@@ -81,5 +81,13 @@ describe("Firebase & Local Store Mode (Zero-PostgreSQL) Resilience Tests", () =>
 
     const templates = await AssessmentService.getTemplates();
     expect(templates.length).toBeGreaterThanOrEqual(1);
+
+    // Clean up test artifacts so test runs do not pollute store
+    if (customTemplateId) {
+      assessmentStore.deleteTemplate(customTemplateId);
+    }
+    if (testSessionId) {
+      delete (assessmentStore as any).data.sessions[testSessionId];
+    }
   });
 });
