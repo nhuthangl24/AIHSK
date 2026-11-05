@@ -1,7 +1,8 @@
 /**
- * Lightweight in-browser WAV Audio Recorder (16kHz Mono 16-bit PCM)
- * Optimized for LLM Multimodal Speech Analysis (Gemini 3.6 Flash / Whisper / CTI Exam).
- * Works across all modern browsers (Chrome, Firefox, Safari, Edge, Mobile Safari).
+ * Battle-tested in-browser WAV Audio Recorder (16kHz Mono 16-bit PCM).
+ * Uses native MediaRecorder + decodeAudioData for maximum stability and audio clarity,
+ * with ScriptProcessorNode fallback for legacy environments.
+ * Optimized for Gemini 3.6 Flash / OpenAI Multimodal Audio APIs.
  */
 
 export interface RecordedAudioResult {
@@ -12,14 +13,18 @@ export interface RecordedAudioResult {
 }
 
 export class WavRecorder {
+  private mediaRecorder: MediaRecorder | null = null;
+  private recordedChunks: Blob[] = [];
+  private startTime = 0;
+  private isRecording = false;
+  private targetSampleRate = 16000;
+
+  // Fallback Web Audio fields
   private audioCtx: AudioContext | null = null;
   private mediaStreamSource: MediaStreamAudioSourceNode | null = null;
   private processorNode: ScriptProcessorNode | null = null;
   private pcmChunks: Float32Array[] = [];
   private totalSamples = 0;
-  private startTime = 0;
-  private isRecording = false;
-  private targetSampleRate = 16000;
 
   /**
    * Start recording from a MediaStream.
@@ -29,41 +34,81 @@ export class WavRecorder {
       this.stop();
     }
 
+    this.targetSampleRate = targetSampleRate;
+    this.recordedChunks = [];
+    this.pcmChunks = [];
+    this.totalSamples = 0;
+    this.startTime = Date.now();
+    this.isRecording = true;
+
+    // 1. Primary: Try native MediaRecorder
+    if (typeof window !== "undefined" && typeof MediaRecorder !== "undefined") {
+      try {
+        let mimeType = "";
+        const candidates = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/ogg;codecs=opus",
+          "audio/mp4",
+          "",
+        ];
+        for (const c of candidates) {
+          if (!c || MediaRecorder.isTypeSupported(c)) {
+            mimeType = c;
+            break;
+          }
+        }
+
+        const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+        const mr = new MediaRecorder(stream, options);
+        this.mediaRecorder = mr;
+
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            this.recordedChunks.push(e.data);
+          }
+        };
+
+        mr.start(100); // 100ms slice
+        return;
+      } catch (mrErr) {
+        console.warn("MediaRecorder failed, falling back to Web Audio API:", mrErr);
+        this.mediaRecorder = null;
+      }
+    }
+
+    // 2. Fallback: Web Audio API ScriptProcessorNode
     try {
       const AudioContextClass =
         window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) {
-        console.warn("AudioContext is not supported on this browser.");
-        return;
+      if (!AudioContextClass) return;
+
+      this.audioCtx = new AudioContextClass();
+      if (this.audioCtx.state === "suspended") {
+        this.audioCtx.resume().catch(() => null);
       }
 
-      this.targetSampleRate = targetSampleRate;
-      this.audioCtx = new AudioContextClass();
-      this.pcmChunks = [];
-      this.totalSamples = 0;
-      this.startTime = Date.now();
-      this.isRecording = true;
-
       this.mediaStreamSource = this.audioCtx.createMediaStreamSource(stream);
-
-      // ScriptProcessorNode with bufferSize 4096 (1 channel in, 1 channel out)
       this.processorNode = this.audioCtx.createScriptProcessor(4096, 1, 1);
 
       this.processorNode.onaudioprocess = (e: AudioProcessingEvent) => {
         if (!this.isRecording) return;
         const inputData = e.inputBuffer.getChannelData(0);
-        // Copy chunk
         const chunk = new Float32Array(inputData.length);
         chunk.set(inputData);
         this.pcmChunks.push(chunk);
         this.totalSamples += chunk.length;
       };
 
+      // Mute gain to prevent microphone audio loopback echo
+      const muteGain = this.audioCtx.createGain();
+      muteGain.gain.value = 0;
+
       this.mediaStreamSource.connect(this.processorNode);
-      this.processorNode.connect(this.audioCtx.destination);
-    } catch (err) {
-      console.warn("Failed to initialize WavRecorder:", err);
-      this.isRecording = false;
+      this.processorNode.connect(muteGain);
+      muteGain.connect(this.audioCtx.destination);
+    } catch (e) {
+      console.warn("WavRecorder fallback initialization error:", e);
     }
   }
 
@@ -71,14 +116,64 @@ export class WavRecorder {
    * Stop recording and return WAV blob and base64 string.
    */
   async stop(): Promise<RecordedAudioResult | null> {
-    if (!this.isRecording && this.pcmChunks.length === 0) {
+    if (!this.isRecording && this.recordedChunks.length === 0 && this.pcmChunks.length === 0) {
       return null;
     }
 
     this.isRecording = false;
     const elapsedSeconds = Math.max(0.5, (Date.now() - this.startTime) / 1000);
 
-    // Disconnect audio nodes
+    // 1. Process MediaRecorder if used
+    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+      try {
+        await new Promise<void>((resolve) => {
+          if (!this.mediaRecorder) return resolve();
+          this.mediaRecorder.onstop = () => resolve();
+          this.mediaRecorder.stop();
+        });
+      } catch (e) {
+        console.warn("Error stopping MediaRecorder:", e);
+      }
+    }
+
+    if (this.recordedChunks.length > 0) {
+      try {
+        const rawBlob = new Blob(this.recordedChunks, {
+          type: this.recordedChunks[0]?.type || "audio/webm",
+        });
+        this.recordedChunks = [];
+
+        const AudioContextClass =
+          window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const decodeCtx = new AudioContextClass();
+          const arrayBuf = await rawBlob.arrayBuffer();
+          const audioBuffer = await decodeCtx.decodeAudioData(arrayBuf);
+          const channelData = audioBuffer.getChannelData(0);
+          const srcRate = audioBuffer.sampleRate;
+
+          await decodeCtx.close().catch(() => null);
+
+          const resampled = this.resamplePcm(channelData, srcRate, this.targetSampleRate);
+          const wavBuffer = this.encodeWavMono16Bit(resampled, this.targetSampleRate);
+          const wavBlob = new Blob([wavBuffer], { type: "audio/wav" });
+          const base64 = await this.blobToBase64(wavBlob);
+
+          return {
+            blob: wavBlob,
+            base64,
+            durationSeconds: Math.round(elapsedSeconds * 10) / 10,
+            sampleRate: this.targetSampleRate,
+          };
+        }
+      } catch (decodeErr) {
+        console.warn("decodeAudioData failed, checking PCM fallback:", decodeErr);
+      }
+    }
+
+    // 2. Process ScriptProcessorNode fallback
+    const nativeSampleRate = this.audioCtx?.sampleRate || 48000;
+
     try {
       if (this.processorNode) {
         this.processorNode.disconnect();
@@ -93,15 +188,12 @@ export class WavRecorder {
         await this.audioCtx.close().catch(() => null);
         this.audioCtx = null;
       }
-    } catch (e) {
-      console.warn("Error disconnecting audio recorder:", e);
-    }
+    } catch {}
 
     if (this.pcmChunks.length === 0 || this.totalSamples === 0) {
       return null;
     }
 
-    // Merge PCM chunks
     const fullPcm = new Float32Array(this.totalSamples);
     let offset = 0;
     for (const chunk of this.pcmChunks) {
@@ -110,22 +202,13 @@ export class WavRecorder {
     }
     this.pcmChunks = [];
 
-    // Resample to targetSampleRate (typically 16000Hz for speech models)
-    const nativeSampleRate = 44100; // default fallback if context is closed
-    const currentSampleRate = this.audioCtx?.sampleRate || nativeSampleRate;
-    const resampledPcm = this.resamplePcm(
-      fullPcm,
-      currentSampleRate,
-      this.targetSampleRate
-    );
-
-    // Encode to WAV format
-    const wavBuffer = this.encodeWavMono16Bit(resampledPcm, this.targetSampleRate);
-    const blob = new Blob([wavBuffer], { type: "audio/wav" });
-    const base64 = await this.blobToBase64(blob);
+    const resampled = this.resamplePcm(fullPcm, nativeSampleRate, this.targetSampleRate);
+    const wavBuffer = this.encodeWavMono16Bit(resampled, this.targetSampleRate);
+    const wavBlob = new Blob([wavBuffer], { type: "audio/wav" });
+    const base64 = await this.blobToBase64(wavBlob);
 
     return {
-      blob,
+      blob: wavBlob,
       base64,
       durationSeconds: Math.round(elapsedSeconds * 10) / 10,
       sampleRate: this.targetSampleRate,
@@ -136,9 +219,6 @@ export class WavRecorder {
     return this.isRecording;
   }
 
-  /**
-   * Resamples PCM float samples using linear interpolation.
-   */
   private resamplePcm(
     source: Float32Array,
     fromRate: number,
@@ -162,9 +242,6 @@ export class WavRecorder {
     return result;
   }
 
-  /**
-   * Encodes 32-bit Float PCM to 16-bit Mono RIFF/WAVE ArrayBuffer.
-   */
   private encodeWavMono16Bit(
     samples: Float32Array,
     sampleRate: number
@@ -177,26 +254,26 @@ export class WavRecorder {
     const buffer = new ArrayBuffer(44 + dataSize);
     const view = new DataView(buffer);
 
-    // RIFF chunk descriptor
+    // RIFF identifier
     this.writeString(view, 0, "RIFF");
     view.setUint32(4, 36 + dataSize, true);
     this.writeString(view, 8, "WAVE");
 
-    // "fmt " sub-chunk
+    // fmt chunk
     this.writeString(view, 12, "fmt ");
-    view.setUint32(16, 16, true); // SubChunk1Size (16 for PCM)
-    view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
     view.setUint16(22, numChannels, true);
     view.setUint32(24, sampleRate, true);
     view.setUint32(28, byteRate, true);
     view.setUint16(32, blockAlign, true);
     view.setUint16(34, bitsPerSample, true);
 
-    // "data" sub-chunk
+    // data chunk
     this.writeString(view, 36, "data");
     view.setUint32(40, dataSize, true);
 
-    // Write 16-bit signed PCM samples with clipping protection
+    // Write samples
     let offset = 44;
     for (let i = 0; i < samples.length; i++) {
       const s = Math.max(-1, Math.min(1, samples[i]));
@@ -219,7 +296,6 @@ export class WavRecorder {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
-        // Strip data:audio/wav;base64,
         const base64 = dataUrl.split(",")[1] || "";
         resolve(base64);
       };
